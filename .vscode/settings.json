@@ -3,5 +3,5 @@
     "github.copilot.chat.agent.autoFix": true,
     "github.copilot.chat.alternateGeminiModelFPrompt.enabled": true,
     "github.copilot.chat.alternateGptPrompt.enabled": true,
-    "perplexityProAI.apiKey": "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"
+    // "perplexityProAI.apiKey": "REMOVED"
 }
