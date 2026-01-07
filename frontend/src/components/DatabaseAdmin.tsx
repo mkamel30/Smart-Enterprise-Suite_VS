@@ -32,10 +32,21 @@ export function DatabaseAdmin() {
 
     // Fetch tables list
     useEffect(() => {
-        fetch(`${API_URL} /db/tables`)
+        fetch(`${API_URL}/db/tables`)
             .then(res => res.json())
-            .then(data => setTables(data))
-            .catch(err => console.error('Failed to fetch tables:', err));
+            .then(data => {
+                // Ensure data is an array before setting
+                if (Array.isArray(data)) {
+                    setTables(data);
+                } else {
+                    console.error('Invalid tables response:', data);
+                    setTables([]);
+                }
+            })
+            .catch(err => {
+                console.error('Failed to fetch tables:', err);
+                setTables([]);
+            });
 
         // Load backups on mount
         loadBackups();
@@ -114,11 +125,19 @@ export function DatabaseAdmin() {
         setLoading(true);
         setError('');
         try {
-            const res = await fetch(`${API_URL} /db/${selectedTable} `);
+            const res = await fetch(`${API_URL}/db/${selectedTable}`);
             const data = await res.json();
-            setRecords(data);
+            // Ensure data is an array
+            if (Array.isArray(data)) {
+                setRecords(data);
+            } else {
+                console.error('Invalid records response:', data);
+                setRecords([]);
+                setError(data.error || 'فشل تحميل البيانات');
+            }
         } catch (err) {
             setError('فشل تحميل البيانات');
+            setRecords([]);
         } finally {
             setLoading(false);
         }
@@ -128,7 +147,7 @@ export function DatabaseAdmin() {
         if (!confirm('هل أنت متأكد من الحذف؟')) return;
 
         try {
-            const res = await fetch(`${API_URL} /db/${selectedTable}/${id}`, {
+            const res = await fetch(`${API_URL}/db/${selectedTable}/${id}`, {
                 method: 'DELETE'
             });
             if (res.ok) {

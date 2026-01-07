@@ -169,7 +169,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Auth & User Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
 app.use('/api/user', require('./routes/user-preferences'));
 
 // Main Routes
