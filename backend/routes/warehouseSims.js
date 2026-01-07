@@ -6,6 +6,7 @@ const ExcelJS = require('exceljs');
 const multer = require('multer');
 const { getBranchFilter, canAccessBranch } = require('../utils/auth-helpers');
 const movementService = require('../services/movementService');
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -25,11 +26,11 @@ router.get('/', authenticateToken, async (req, res) => {
             where.status = req.query.status;
         }
 
-        const sims = await db.warehouseSim.findMany({
+        const sims = await db.warehouseSim.findMany(ensureBranchWhere({
             where,
             orderBy: { importDate: 'desc' },
             include: { branch: true }
-        });
+        }, req));
         res.json(sims);
     } catch (error) {
         console.error('Failed to fetch warehouse SIMs:', error);
@@ -49,18 +50,18 @@ router.get('/counts', authenticateToken, async (req, res) => {
         }
 
         // Count by status
-        const statusCounts = await db.warehouseSim.groupBy({
+        const statusCounts = await db.warehouseSim.groupBy(ensureBranchWhere({
             by: ['status'],
             where,
             _count: true
-        });
+        }, req));
 
         // Count by type
-        const typeCounts = await db.warehouseSim.groupBy({
+        const typeCounts = await db.warehouseSim.groupBy(ensureBranchWhere({
             by: ['type'],
             where,
             _count: true
-        });
+        }, req));
 
         const result = {
             ACTIVE: 0,
@@ -137,8 +138,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
         // VALIDATION: Prevent manual status change to IN_TRANSIT
         // IN_TRANSIT can only be set through transfer orders
         if (status === 'IN_TRANSIT' && existing.status !== 'IN_TRANSIT') {
-            return res.status(400).json({ 
-                error: 'لا يمكن تغيير الحالة إلى "قيد النقل" يدوياً. يجب إنشاء إذن تحويل.' 
+            return res.status(400).json({
+                error: 'لا يمكن تغيير الحالة إلى "قيد النقل" يدوياً. يجب إنشاء إذن تحويل.'
             });
         }
 
@@ -491,14 +492,14 @@ router.get('/movements', authenticateToken, async (req, res) => {
         const where = serialNumber ? { serialNumber } : {};
 
         const branchFilter = getBranchFilter(req);
-        const movements = await db.simMovementLog.findMany({
+        const movements = await db.simMovementLog.findMany(ensureBranchWhere({
             where: {
                 ...where,
                 ...branchFilter
             },
             orderBy: { createdAt: 'desc' },
             take: 100
-        });
+        }, req));
         res.json(movements);
     } catch (error) {
         console.error('Failed to fetch SIM movements:', error);
@@ -660,10 +661,10 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 router.get('/export', authenticateToken, async (req, res) => {
     try {
         const where = getBranchFilter(req);
-        const sims = await db.warehouseSim.findMany({
+        const sims = await db.warehouseSim.findMany(ensureBranchWhere({
             where,
             orderBy: { importDate: 'desc' }
-        });
+        }, req));
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('SIM Cards');
@@ -731,12 +732,11 @@ router.post('/transfer', authenticateToken, async (req, res) => {
         }
 
         // Validate sims exist and user has access
-        const sims = await db.warehouseSim.findMany({
+        const sims = await db.warehouseSim.findMany(ensureBranchWhere({
             where: {
-                id: { in: simIds },
-                ...(req.user.branchId ? { branchId: req.user.branchId } : {})
+                id: { in: simIds }
             }
-        });
+        }, req));
 
         if (sims.length !== simIds.length) {
             return res.status(400).json({ error: 'Some SIMs not found or access denied' });

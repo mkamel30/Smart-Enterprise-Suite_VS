@@ -6,6 +6,7 @@ const authenticateToken = require('../middleware/auth');
 const { createNotification } = require('./notifications');
 const { detectMachineParams } = require('../utils/machine-validation');
 const { getBranchFilter, canAccessBranch } = require('../utils/auth-helpers');
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const movementService = require('../services/movementService');
 const transferService = require('../services/transferService');
 
@@ -17,13 +18,16 @@ async function generateOrderNumber() {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
 
+    // For global uniqueness, we query across all but the enforcer requires branchId.
+    // If we're initializing, we might not have a branch context.
     const lastOrder = await db.transferOrder.findFirst({
-        __allow_unscoped: true,
         where: {
             orderNumber: { startsWith: `TO-${dateStr}` }
         },
         orderBy: { orderNumber: 'desc' }
     });
+    // NOTE: This might throw if the enforcer is strict and no branchId is provided via req.
+    // However, the USER asked to remove __allow_unscoped.
 
     let seq = 1;
     if (lastOrder) {

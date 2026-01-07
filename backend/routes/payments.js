@@ -28,10 +28,9 @@ router.get('/payments/check-receipt', async (req, res) => {
         if (!number) return res.status(400).json({ error: 'Receipt number required' });
 
         // Check globally for receipt number (pre-printed receipts are system-wide unique)
-        const exists = await db.payment.findFirst({
-            where: { receiptNumber: number },
-            __allow_unscoped: true
-        });
+        const exists = await db.payment.findFirst(ensureBranchWhere({
+            where: { receiptNumber: number }
+        }, req));
 
         res.json({ exists: !!exists });
     } catch (error) {
@@ -96,24 +95,24 @@ router.get('/payments/stats', authenticateToken, async (req, res) => {
         thisMonth.setHours(0, 0, 0, 0);
 
         const [total, todayTotal, monthTotal, byPlace] = await Promise.all([
-            db.payment.aggregate({
+            db.payment.aggregate(ensureBranchWhere({
                 where: branchFilter,
                 _sum: { amount: true }
-            }),
-            db.payment.aggregate({
+            }, req)),
+            db.payment.aggregate(ensureBranchWhere({
                 where: { ...branchFilter, createdAt: { gte: today } },
                 _sum: { amount: true }
-            }),
-            db.payment.aggregate({
+            }, req)),
+            db.payment.aggregate(ensureBranchWhere({
                 where: { ...branchFilter, createdAt: { gte: thisMonth } },
                 _sum: { amount: true }
-            }),
-            db.payment.groupBy({
+            }, req)),
+            db.payment.groupBy(ensureBranchWhere({
                 by: ['paymentPlace'],
                 where: branchFilter,
                 _sum: { amount: true },
                 _count: true
-            })
+            }, req))
         ]);
 
         res.json({

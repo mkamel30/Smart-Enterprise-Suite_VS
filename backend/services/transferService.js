@@ -19,7 +19,6 @@ async function generateOrderNumber() {
 
     const lastOrder = await db.transferOrder.findFirst({
         where: { orderNumber: { startsWith: `TO-${dateStr}` } },
-        __allow_unscoped: true,
         orderBy: { orderNumber: 'desc' }
     });
 
@@ -46,7 +45,7 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
     };
 
     const validation = await validateTransferOrder(validationData, user);
-    
+
     if (!validation.valid) {
         const err = new Error(validation.errors.join('\n'));
         err.status = 400;
@@ -113,20 +112,20 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
 
         // Update statuses within transaction - FREEZE items by setting IN_TRANSIT
         if (type === 'MACHINE' || type === 'MAINTENANCE') {
-            await tx.warehouseMachine.updateMany({ 
-                where: { 
-                    serialNumber: { in: serialsToTransfer }, 
-                    branchId: sourceBranchId 
-                }, 
-                data: { status: 'IN_TRANSIT' } 
+            await tx.warehouseMachine.updateMany({
+                where: {
+                    serialNumber: { in: serialsToTransfer },
+                    branchId: sourceBranchId
+                },
+                data: { status: 'IN_TRANSIT' }
             });
         } else if (type === 'SIM') {
-            await tx.warehouseSim.updateMany({ 
-                where: { 
-                    serialNumber: { in: serialsToTransfer }, 
-                    branchId: sourceBranchId 
-                }, 
-                data: { status: 'IN_TRANSIT' } 
+            await tx.warehouseSim.updateMany({
+                where: {
+                    serialNumber: { in: serialsToTransfer },
+                    branchId: sourceBranchId
+                },
+                data: { status: 'IN_TRANSIT' }
             });
         }
 
@@ -155,18 +154,18 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
     const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
     let order;
     if (isAdmin) {
-        order = await db.transferOrder.findUnique({ where: { id: orderId }, include: { items: true, fromBranch: true, toBranch: true }, __allow_unscoped: true });
+        order = await db.transferOrder.findUnique({ where: { id: orderId }, include: { items: true, fromBranch: true, toBranch: true } });
     } else {
         if (!user.branchId) {
             const err = new Error('Access denied'); err.status = 403; throw err;
         }
-        order = await db.transferOrder.findFirst({ 
-            where: { 
-                id: orderId, 
+        order = await db.transferOrder.findFirst({
+            where: {
+                id: orderId,
                 branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }] 
-            }, 
-            include: { items: true, fromBranch: true, toBranch: true } 
+                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+            },
+            include: { items: true, fromBranch: true, toBranch: true }
         });
     }
 
@@ -192,17 +191,17 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
         }
 
         // Update order status
-        await tx.transferOrder.update({ 
-            where: { 
+        await tx.transferOrder.update({
+            where: {
                 id: orderId,
-                branchId: order.branchId 
-            }, 
-            data: { 
-                status: allReceived ? 'RECEIVED' : 'PARTIAL', 
-                receivedBy, 
-                receivedByName, 
-                receivedAt: new Date() 
-            } 
+                branchId: order.branchId
+            },
+            data: {
+                status: allReceived ? 'RECEIVED' : 'PARTIAL',
+                receivedBy,
+                receivedByName,
+                receivedAt: new Date()
+            }
         });
 
         // Add items to warehouse based on type
@@ -252,15 +251,15 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
 
     let updatedOrder;
     if (isAdmin) {
-        updatedOrder = await db.transferOrder.findUnique({ where: { id: orderId }, include: { items: true, fromBranch: true, toBranch: true }, __allow_unscoped: true });
+        updatedOrder = await db.transferOrder.findUnique({ where: { id: orderId }, include: { items: true, fromBranch: true, toBranch: true } });
     } else {
-        updatedOrder = await db.transferOrder.findFirst({ 
-            where: { 
-                id: orderId, 
+        updatedOrder = await db.transferOrder.findFirst({
+            where: {
+                id: orderId,
                 branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }] 
-            }, 
-            include: { items: true, fromBranch: true, toBranch: true } 
+                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+            },
+            include: { items: true, fromBranch: true, toBranch: true }
         });
     }
     return updatedOrder;
@@ -276,7 +275,7 @@ async function createBulkTransfer({ serialNumbers, toBranchId, waybillNumber, no
 
     // ============= VALIDATION =============
     const { validateItemsForTransfer, validateBranches } = require('../utils/transfer-validators');
-    
+
     const branchValidation = await validateBranches(fromBranchId, toBranchId, 'MAINTENANCE');
     if (!branchValidation.valid) {
         const err = new Error(branchValidation.errors.join('\n'));
@@ -293,9 +292,9 @@ async function createBulkTransfer({ serialNumbers, toBranchId, waybillNumber, no
     // ============= END VALIDATION =============
 
     const result = await db.$transaction(async (tx) => {
-        const machines = await tx.warehouseMachine.findMany({ 
-            where: { serialNumber: { in: serialNumbers } }, 
-            select: { id: true, serialNumber: true, model: true, manufacturer: true, requestId: true } 
+        const machines = await tx.warehouseMachine.findMany({
+            where: { serialNumber: { in: serialNumbers } },
+            select: { id: true, serialNumber: true, model: true, manufacturer: true, requestId: true }
         });
         const machineMap = new Map(machines.map(m => [m.serialNumber, m]));
 
@@ -311,29 +310,31 @@ async function createBulkTransfer({ serialNumbers, toBranchId, waybillNumber, no
                 notes,
                 createdByUserId: user.id,
                 createdByName: performedBy || user.displayName,
-                items: { create: serialNumbers.map(s => {
-                    const machineInfo = machineMap.get(s) || {};
-                    return { serialNumber: s, type: 'MACHINE', model: machineInfo.model || null, manufacturer: machineInfo.manufacturer || null };
-                }) }
+                items: {
+                    create: serialNumbers.map(s => {
+                        const machineInfo = machineMap.get(s) || {};
+                        return { serialNumber: s, type: 'MACHINE', model: machineInfo.model || null, manufacturer: machineInfo.manufacturer || null };
+                    })
+                }
             }
         });
 
         // Update maintenance requests status to PENDING_TRANSFER and link to machines
-        const activeRequests = await tx.maintenanceRequest.findMany({ 
-            where: { 
-                serialNumber: { in: serialNumbers }, 
-                status: { notIn: ['Closed', 'Cancelled'] }, 
-                branchId: fromBranchId 
-            } 
+        const activeRequests = await tx.maintenanceRequest.findMany({
+            where: {
+                serialNumber: { in: serialNumbers },
+                status: { notIn: ['Closed', 'Cancelled'] },
+                branchId: fromBranchId
+            }
         });
-        
+
         // Create map of serialNumber to requestId
         const requestMap = new Map(activeRequests.map(r => [r.serialNumber, r.id]));
-        
+
         for (const req of activeRequests) {
-            await tx.maintenanceRequest.update({ 
-                where: { id: req.id }, 
-                data: { status: 'PENDING_TRANSFER' } 
+            await tx.maintenanceRequest.update({
+                where: { id: req.id },
+                data: { status: 'PENDING_TRANSFER' }
             });
         }
 
@@ -341,11 +342,11 @@ async function createBulkTransfer({ serialNumbers, toBranchId, waybillNumber, no
         for (const serial of serialNumbers) {
             const machineInfo = machineMap.get(serial);
             const requestId = requestMap.get(serial);
-            
+
             await tx.warehouseMachine.update({
                 where: { serialNumber: serial },
-                data: { 
-                    notes: `In Bulk Transfer ${orderNumber} (Waybill: ${waybillNumber})`, 
+                data: {
+                    notes: `In Bulk Transfer ${orderNumber} (Waybill: ${waybillNumber})`,
                     status: 'IN_TRANSIT',
                     requestId: requestId || machineInfo?.requestId, // Keep existing requestId if no active request
                     originBranchId: fromBranchId
@@ -373,26 +374,26 @@ async function createBulkTransfer({ serialNumbers, toBranchId, waybillNumber, no
     // Send notification to destination branch
     try {
         // Get sender branch name
-        const fromBranch = await db.branch.findUnique({ 
-            where: { id: fromBranchId }, 
-            select: { name: true } 
+        const fromBranch = await db.branch.findUnique({
+            where: { id: fromBranchId },
+            select: { name: true }
         });
         const fromBranchName = fromBranch?.name || 'فرع غير معروف';
-        
-        await createNotification({ 
-            branchId: toBranchId, 
-            type: 'TRANSFER_ORDER', 
-            title: 'إذن صرف صيانة جديد', 
-            message: `تم إرسال إذن صرف صيانة جماعي من ${fromBranchName} - رقم ${result.orderNumber} يحتوي على ${serialNumbers.length} ماكينة - بوليصة: ${waybillNumber}`, 
-            data: { 
-                orderId: result.id, 
-                orderNumber: result.orderNumber, 
-                fromBranchName, 
-                fromBranchId, 
-                machineCount: serialNumbers.length, 
-                waybillNumber 
-            }, 
-            link: `/receive-orders?orderId=${result.id}` 
+
+        await createNotification({
+            branchId: toBranchId,
+            type: 'TRANSFER_ORDER',
+            title: 'إذن صرف صيانة جديد',
+            message: `تم إرسال إذن صرف صيانة جماعي من ${fromBranchName} - رقم ${result.orderNumber} يحتوي على ${serialNumbers.length} ماكينة - بوليصة: ${waybillNumber}`,
+            data: {
+                orderId: result.id,
+                orderNumber: result.orderNumber,
+                fromBranchName,
+                fromBranchId,
+                machineCount: serialNumbers.length,
+                waybillNumber
+            },
+            link: `/receive-orders?orderId=${result.id}`
         });
     } catch (notifErr) {
         console.warn('Failed to create notification for bulk transfer', notifErr);
@@ -418,7 +419,7 @@ async function listTransferOrders({ branchId, status, type, fromDate, toDate, q,
     // Apply branch scoping (from/to) based on user role or provided branchId
     where = applyTransferBranchFilter(where, user, branchId || externalBranchId);
 
-    const orders = await db.transferOrder.findMany({ where, include: { fromBranch: true, toBranch: true, items: true, _count: { select: { items: true } } }, orderBy: { createdAt: 'desc' }, __allow_unscoped: true });
+    const orders = await db.transferOrder.findMany({ where, include: { fromBranch: true, toBranch: true, items: true, _count: { select: { items: true } } }, orderBy: { createdAt: 'desc' } });
     return orders;
 }
 
@@ -428,7 +429,7 @@ async function getPendingOrders({ branchId, type }, user, req) {
 
     where = applyTransferBranchFilter(where, user, branchId);
 
-    const orders = await db.transferOrder.findMany({ where, include: { fromBranch: true, toBranch: true, items: true }, orderBy: { createdAt: 'desc' }, __allow_unscoped: true });
+    const orders = await db.transferOrder.findMany({ where, include: { fromBranch: true, toBranch: true, items: true }, orderBy: { createdAt: 'desc' } });
     return orders;
 }
 
@@ -445,16 +446,16 @@ async function getTransferOrderById(id, user) {
     const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
     let order;
     if (isAdmin) {
-        order = await db.transferOrder.findUnique({ where: { id }, include: { fromBranch: true, toBranch: true, items: true }, __allow_unscoped: true });
+        order = await db.transferOrder.findUnique({ where: { id }, include: { fromBranch: true, toBranch: true, items: true } });
     } else {
         if (!user.branchId) { const err = new Error('Access denied'); err.status = 403; throw err; }
-        order = await db.transferOrder.findFirst({ 
-            where: { 
-                id, 
+        order = await db.transferOrder.findFirst({
+            where: {
+                id,
                 branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }] 
-            }, 
-            include: { fromBranch: true, toBranch: true, items: true } 
+                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+            },
+            include: { fromBranch: true, toBranch: true, items: true }
         });
     }
 
@@ -499,27 +500,26 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
     const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
     let order;
     if (isAdmin) {
-        order = await db.transferOrder.findUnique({ where: { id }, __allow_unscoped: true });
+        order = await db.transferOrder.findUnique({ where: { id } });
     } else {
         if (!user.branchId) { const err = new Error('Access denied'); err.status = 403; throw err; }
-        order = await db.transferOrder.findFirst({ 
-            where: { 
-                id, 
+        order = await db.transferOrder.findFirst({
+            where: {
+                id,
                 branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }] 
-            } 
+                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+            }
         });
     }
     if (!order) { const err = new Error('الإذن غير موجود'); err.status = 404; throw err; }
     if (order.status !== 'PENDING') { const err = new Error('الإذن ليس في حالة انتظار'); err.status = 400; throw err; }
 
-    const orderWithItems = isAdmin ? await db.transferOrder.findUnique({ where: { id }, include: { items: true }, __allow_unscoped: true }) : await db.transferOrder.findFirst({ 
-        where: { 
-            id, 
-            branchId: user.branchId,
-            OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }] 
-        }, 
-        include: { items: true } 
+    const orderWithItems = isAdmin ? await db.transferOrder.findUnique({ where: { id }, include: { items: true } }) : await db.transferOrder.findFirst({
+        where: {
+            id,
+            OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+        },
+        include: { items: true }
     });
     const serialNumbers = orderWithItems.items.map(i => i.serialNumber).filter(s => s);
 
@@ -529,11 +529,11 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
                 const machine = await tx.warehouseMachine.findUnique({ where: { serialNumber: serial } });
                 const st = machine?.status;
                 const isAnyMaintenanceState = st === 'IN_TRANSIT' || st === 'AT_CENTER' || st === 'RECEIVED_AT_CENTER' || st === 'UNDER_MAINTENANCE' || st === 'ASSIGNED';
-                    if (machine && machine.branchId === orderWithItems.fromBranchId && isAnyMaintenanceState) {
+                if (machine && machine.branchId === orderWithItems.fromBranchId && isAnyMaintenanceState) {
                     let restoredStatus = 'NEW';
                     if (orderWithItems.type === 'MAINTENANCE') restoredStatus = machine.customerId ? 'CLIENT_REPAIR' : 'DEFECTIVE';
                     await tx.warehouseMachine.update({ where: { id: machine.id }, data: { status: restoredStatus } });
-                        await tx.maintenanceRequest.updateMany({ where: { serialNumber: serial, status: 'PENDING_TRANSFER', branchId: orderWithItems.fromBranchId }, data: { status: 'Open' } });
+                    await tx.maintenanceRequest.updateMany({ where: { serialNumber: serial, status: 'PENDING_TRANSFER', branchId: orderWithItems.fromBranchId }, data: { status: 'Open' } });
                 }
             }
         } else if (orderWithItems.type === 'SIM') {
@@ -542,19 +542,19 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
     });
 
     const updated = await db.$transaction(async (tx) => {
-        const u = await tx.transferOrder.update({ 
-            where: { 
+        const u = await tx.transferOrder.update({
+            where: {
                 id,
-                branchId: orderWithItems.branchId 
-            }, 
-            data: { 
-                status: 'REJECTED', 
-                rejectionReason, 
-                receivedBy, 
-                receivedByName, 
-                receivedAt: new Date() 
-            }, 
-            include: { items: true, fromBranch: true, toBranch: true } 
+                branchId: orderWithItems.branchId
+            },
+            data: {
+                status: 'REJECTED',
+                rejectionReason,
+                receivedBy,
+                receivedByName,
+                receivedAt: new Date()
+            },
+            include: { items: true, fromBranch: true, toBranch: true }
         });
         return u;
     });
@@ -566,21 +566,21 @@ async function cancelOrder(id, user) {
     const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS'].includes(user.role);
     let order;
     if (isAdmin) {
-        order = await db.transferOrder.findUnique({ where: { id }, include: { items: true }, __allow_unscoped: true });
+        order = await db.transferOrder.findUnique({ where: { id }, include: { items: true } });
     } else {
         if (!user.branchId) { const err = new Error('Access denied'); err.status = 403; throw err; }
-        order = await db.transferOrder.findFirst({ 
-            where: { 
-                id, 
+        order = await db.transferOrder.findFirst({
+            where: {
+                id,
                 branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }] 
-            }, 
-            include: { items: true } 
+                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+            },
+            include: { items: true }
         });
     }
     if (!order) { const err = new Error('الإذن غير موجود'); err.status = 404; throw err; }
     const isCreator = user.id === order.createdByUserId;
-    
+
     const isAdminOrAffairs = isAdmin;
     if (!isCreator && !isAdmin) { const err = new Error('غير مصرح لك بإلغاء هذا الإذن'); err.status = 403; throw err; }
     if (order.status !== 'PENDING') { const err = new Error('لا يمكن إلغاء إذن غير معلق'); err.status = 400; throw err; }
@@ -594,17 +594,17 @@ async function cancelOrder(id, user) {
             await tx.warehouseSim.updateMany({ where: { serialNumber: { in: serialNumbers }, branchId: order.fromBranchId, status: 'IN_TRANSIT' }, data: { status: 'ACTIVE' } });
         }
 
-        await tx.transferOrder.update({ 
-            where: { 
+        await tx.transferOrder.update({
+            where: {
                 id,
-                branchId: order.branchId 
-            }, 
-            data: { 
-                status: 'CANCELLED', 
-                receivedBy: user.id, 
-                receivedByName: user.displayName || user.name, 
-                rejectionReason: 'تم الإلغاء من قبل المرسل' 
-            } 
+                branchId: order.branchId
+            },
+            data: {
+                status: 'CANCELLED',
+                receivedBy: user.id,
+                receivedByName: user.displayName || user.name,
+                rejectionReason: 'تم الإلغاء من قبل المرسل'
+            }
         });
 
         if (order.type === 'MAINTENANCE') {

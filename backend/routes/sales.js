@@ -12,19 +12,20 @@ const getBranchFilter = (req) => {
     if (!req.user || !req.user.branchId) return {};
     return { branchId: req.user.branchId };
 };
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 // GET All Sales
 router.get('/', authenticateToken, async (req, res) => {
     try {
         const where = getBranchFilter(req);
-        const sales = await db.machineSale.findMany({
+        const sales = await db.machineSale.findMany(ensureBranchWhere({
             where,
             include: {
                 customer: true,
                 installments: true
             },
             orderBy: { saleDate: 'desc' }
-        });
+        }, req));
         res.json(sales);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch sales' });
@@ -47,7 +48,7 @@ router.get('/installments', authenticateToken, async (req, res) => {
         // Apply branch filter
         Object.assign(where, getBranchFilter(req));
 
-        const installments = await db.installment.findMany({
+        const installments = await db.installment.findMany(ensureBranchWhere({
             where,
             include: {
                 sale: {
@@ -55,7 +56,7 @@ router.get('/installments', authenticateToken, async (req, res) => {
                 }
             },
             orderBy: { dueDate: 'asc' }
-        });
+        }, req));
         res.json(installments);
     } catch (error) {
         console.error('Failed to fetch installments:', error);
@@ -98,22 +99,20 @@ router.post('/', authenticateToken, async (req, res) => {
 
         // 1. Validate Receipt Number (Backend Check) - BEFORE transaction
         if (req.body.receiptNumber) {
-            const existingReceipt = await db.payment.findFirst({
-                where: { receiptNumber: req.body.receiptNumber },
-                __allow_unscoped: true
-            });
+            const existingReceipt = await db.payment.findFirst(ensureBranchWhere({
+                where: { receiptNumber: req.body.receiptNumber }
+            }, req));
             if (existingReceipt) {
                 return res.status(400).json({ error: 'Receipt number already exists' });
             }
         }
 
         // 2. Verify Machine - BEFORE transaction
-        const machine = await db.warehouseMachine.findFirst({
-            where: { 
-                serialNumber,
-                branchId
+        const machine = await db.warehouseMachine.findFirst(ensureBranchWhere({
+            where: {
+                serialNumber
             }
-        });
+        }, req));
         if (!machine) {
             return res.status(404).json({ error: 'Machine not found' });
         }
@@ -133,13 +132,12 @@ router.post('/', authenticateToken, async (req, res) => {
         if (!customerBkcode) {
             return res.status(400).json({ error: 'Customer ID required' });
         }
-        
-        const customer = await db.customer.findFirst({
+
+        const customer = await db.customer.findFirst(ensureBranchWhere({
             where: {
-                bkcode: customerBkcode,
-                branchId
+                bkcode: customerBkcode
             }
-        });
+        }, req));
 
         if (!customer) {
             return res.status(404).json({ error: 'Customer not found' });
@@ -315,12 +313,12 @@ router.post('/installments/:id/pay', authenticateToken, async (req, res) => {
                 return res.status(400).json({ error: 'رقم الإيصال مستخدم من قبل' });
             }
 
-            const existingInstallment = await db.installment.findFirst({
+            const existingInstallment = await db.installment.findFirst(ensureBranchWhere({
                 where: {
                     receiptNumber: receiptNumber.trim(),
                     isPaid: true
                 }
-            });
+            }, req));
             if (existingInstallment) {
                 return res.status(400).json({ error: 'رقم الإيصال مستخدم من قبل' });
             }

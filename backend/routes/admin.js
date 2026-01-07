@@ -15,6 +15,7 @@ const { createLimiter, updateLimiter, deleteLimiter } = require('../middleware/r
 const { asyncHandler, AppError, NotFoundError } = require('../utils/errorHandler');
 const { logAction } = require('../utils/logger');
 const logger = require('../utils/logger');
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 // ===================== VALIDATION SCHEMAS =====================
 
@@ -72,22 +73,22 @@ router.get(
   validateQuery(listQuerySchema),
   asyncHandler(async (req, res) => {
     const validated = req.query;
-    
+
     // Build filter
     const where = {};
-    
+
     if (validated.branchId) {
       where.branchId = validated.branchId;
     }
-    
+
     if (validated.entityType) {
       where.entityType = validated.entityType;
     }
-    
+
     if (validated.action) {
       where.action = validated.action;
     }
-    
+
     // Date range filtering
     if (validated.startDate || validated.endDate) {
       where.createdAt = {};
@@ -98,10 +99,10 @@ router.get(
         where.createdAt.lte = validated.endDate;
       }
     }
-    
+
     const limit = Math.min(validated.limit, 100);
     const offset = Math.max(0, validated.offset);
-    
+
     // Fetch logs
     const [logs, total] = await Promise.all([
       db.systemLog.findMany({
@@ -112,7 +113,7 @@ router.get(
       }),
       db.systemLog.count({ where })
     ]);
-    
+
     res.json({
       data: logs,
       pagination: { total, limit, offset, pages: Math.ceil(total / limit) }
@@ -133,15 +134,15 @@ router.get(
   requireSuperAdmin,
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
-    
+
     const log = await db.systemLog.findUnique({
       where: { id }
     });
-    
+
     if (!log) {
       throw new NotFoundError('Audit log');
     }
-    
+
     res.json(log);
   })
 );
@@ -160,19 +161,19 @@ router.delete(
   deleteLimiter,
   asyncHandler(async (req, res) => {
     const days = parseInt(req.params.days);
-    
+
     if (isNaN(days) || days < 1 || days > 365) {
       throw new AppError('Days must be between 1 and 365', 400, 'INVALID_DAYS');
     }
-    
+
     const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    
+
     const result = await db.systemLog.deleteMany({
       where: {
         createdAt: { lt: cutoffDate }
       }
     });
-    
+
     // Log the cleanup action
     await logAction({
       entityType: 'SYSTEM',
@@ -182,7 +183,7 @@ router.delete(
       userId: req.user.id,
       performedBy: req.user.displayName
     });
-    
+
     res.json({
       message: `Deleted ${result.count} audit logs`,
       deletedCount: result.count
@@ -204,7 +205,7 @@ router.get(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const settings = await db.systemSettings.findFirst();
-    
+
     if (!settings) {
       // Return defaults if not found
       return res.json({
@@ -216,7 +217,7 @@ router.get(
         backupSchedule: '0 2 * * *'
       });
     }
-    
+
     res.json(settings);
   })
 );
@@ -235,10 +236,10 @@ router.put(
   validateRequest(systemSettingsSchema),
   asyncHandler(async (req, res) => {
     const validated = req.validated;
-    
+
     // Get or create settings
     let settings = await db.systemSettings.findFirst();
-    
+
     if (!settings) {
       settings = await db.systemSettings.create({
         data: validated
@@ -251,13 +252,13 @@ router.put(
           updateData[key] = value;
         }
       });
-      
+
       settings = await db.systemSettings.update({
         where: { id: settings.id },
         data: updateData
       });
     }
-    
+
     // Audit logging
     await logAction({
       entityType: 'SYSTEM',
@@ -267,7 +268,7 @@ router.put(
       userId: req.user.id,
       performedBy: req.user.displayName
     });
-    
+
     res.json(settings);
   })
 );
@@ -294,19 +295,19 @@ router.get(
       openRequests,
       recentLogs
     ] = await Promise.all([
-      db.user.count(),
-      db.customer.count(),
-      db.maintenanceRequest.count(),
-      db.posMachine.count(),
-      db.branch.count(),
-      db.maintenanceRequest.count({ where: { status: 'Open' } }),
-      db.systemLog.count({
+      db.user.count(ensureBranchWhere({}, req)),
+      db.customer.count(ensureBranchWhere({}, req)),
+      db.maintenanceRequest.count(ensureBranchWhere({}, req)),
+      db.posMachine.count(ensureBranchWhere({}, req)),
+      db.branch.count(), // Branches are global
+      db.maintenanceRequest.count(ensureBranchWhere({ where: { status: 'Open' } }, req)),
+      db.systemLog.count(ensureBranchWhere({
         where: {
           createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
         }
-      })
+      }, req))
     ]);
-    
+
     res.json({
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -346,7 +347,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const hours = Math.min(parseInt(req.query.hours) || 24, 168); // Max 7 days
     const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
-    
+
     const logs = await db.systemLog.findMany({
       where: {
         createdAt: { gte: cutoffTime }
@@ -354,7 +355,7 @@ router.get(
       orderBy: { createdAt: 'desc' },
       take: 500
     });
-    
+
     res.json(logs);
   })
 );
@@ -383,7 +384,7 @@ router.get(
       },
       orderBy: { name: 'asc' }
     });
-    
+
     res.json(branches);
   })
 );
@@ -403,18 +404,18 @@ router.post(
   validateRequest(createBranchSchema),
   asyncHandler(async (req, res) => {
     const validated = req.validated;
-    
+
     // Check if branch code already exists (if provided)
     if (validated.code) {
       const existing = await db.branch.findFirst({
         where: { code: validated.code }
       });
-      
+
       if (existing) {
         throw new AppError('Branch code already exists', 409, 'DUPLICATE_BRANCH_CODE');
       }
     }
-    
+
     // Create branch
     const branch = await db.branch.create({
       data: {
@@ -426,7 +427,7 @@ router.post(
         code: validated.code || null
       }
     });
-    
+
     // Audit logging
     await logAction({
       entityType: 'BRANCH',
@@ -436,7 +437,7 @@ router.post(
       userId: req.user.id,
       performedBy: req.user.displayName
     });
-    
+
     res.status(201).json(branch);
   })
 );
@@ -458,16 +459,16 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
     const validated = req.validated;
-    
+
     // Find existing
     const existing = await db.branch.findUnique({
       where: { id }
     });
-    
+
     if (!existing) {
       throw new NotFoundError('Branch');
     }
-    
+
     // Build update data
     const updateData = {};
     Object.entries(validated).forEach(([key, value]) => {

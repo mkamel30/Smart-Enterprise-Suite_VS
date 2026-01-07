@@ -5,6 +5,7 @@ const { z } = require('zod');
 // Database and services
 const db = require('../db');
 const requestService = require('../services/requestService');
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 // Middleware
 const { authenticateToken, requireManager } = require('../middleware/auth');
@@ -69,11 +70,11 @@ const monthlyCountQuerySchema = z.object({
  */
 const buildWhereClause = (validated, user) => {
   const where = {};
-  
+
   // Apply branch filter for non-super-admins
   const branchFilter = getBranchFilter(user);
   Object.assign(where, branchFilter);
-  
+
   // Admin-only branch filtering
   if (validated.branchId) {
     if (!['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(user.role)) {
@@ -81,17 +82,17 @@ const buildWhereClause = (validated, user) => {
     }
     where.branchId = validated.branchId;
   }
-  
+
   // Status filtering
   if (validated.status) {
     where.status = validated.status;
   }
-  
+
   // Customer filtering
   if (validated.customerId) {
     where.customerId = validated.customerId;
   }
-  
+
   return where;
 };
 
@@ -113,14 +114,14 @@ router.get(
   validateQuery(listQuerySchema),
   asyncHandler(async (req, res) => {
     const validated = req.query;
-    
+
     // Build filter with security checks
     const where = buildWhereClause(validated, req.user);
-    
+
     // Safe pagination (max 100 per request)
     const limit = Math.min(validated.limit, 100);
     const offset = Math.max(0, validated.offset);
-    
+
     // Determine if we should include relationships
     const shouldIncludeRelations = validated.includeRelations === 'true';
     const include = shouldIncludeRelations ? {
@@ -142,19 +143,19 @@ router.get(
         }
       }
     } : undefined;
-    
+
     // Fetch data in parallel
     const [requests, total] = await Promise.all([
-      db.maintenanceRequest.findMany({
+      db.maintenanceRequest.findMany(ensureBranchWhere({
         where,
         include,
         orderBy: { [validated.sortBy]: validated.sortOrder },
         take: limit,
         skip: offset
-      }),
-      db.maintenanceRequest.count({ where })
+      }, req)),
+      db.maintenanceRequest.count(ensureBranchWhere({ where }, req))
     ]);
-    
+
     res.json({
       data: requests,
       pagination: {
@@ -180,7 +181,7 @@ router.get(
   authenticateToken,
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
-    
+
     const request = await db.maintenanceRequest.findUnique({
       where: { id },
       include: {
@@ -191,16 +192,16 @@ router.get(
         vouchers: true
       }
     });
-    
+
     if (!request) {
       throw new NotFoundError('Maintenance request');
     }
-    
+
     // Branch isolation check
     if (req.user.branchId && request.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
-    
+
     res.json(request);
   })
 );
@@ -220,22 +221,22 @@ router.post(
   validateRequest(createRequestSchema),
   asyncHandler(async (req, res) => {
     const validated = req.validated;
-    
+
     // Determine branch
     const branchId = req.user.branchId || validated.branchId;
     if (!branchId) {
       throw new AppError('Branch ID is required', 400, 'MISSING_BRANCH');
     }
-    
+
     // Verify customer exists
     const customer = await db.customer.findUnique({
       where: { bkcode: validated.customerId }
     });
-    
+
     if (!customer) {
       throw new NotFoundError('Customer');
     }
-    
+
     // Verify machine if provided
     let machine = null;
     if (validated.machineId) {
@@ -246,7 +247,7 @@ router.post(
         throw new NotFoundError('Machine');
       }
     }
-    
+
     // Create request within transaction
     const request = await db.$transaction(async (tx) => {
       const newRequest = await tx.maintenanceRequest.create({
@@ -263,7 +264,7 @@ router.post(
           createdAt: new Date()
         }
       });
-      
+
       // If taking machine to warehouse
       if (validated.takeMachine && machine) {
         await requestService.receiveMachineToWarehouse(tx, {
@@ -275,10 +276,10 @@ router.post(
           performedBy: req.user.displayName
         });
       }
-      
+
       return newRequest;
     });
-    
+
     // Audit logging
     await logAction({
       entityType: 'REQUEST',
@@ -289,7 +290,7 @@ router.post(
       performedBy: req.user.displayName,
       branchId
     });
-    
+
     res.status(201).json(request);
   })
 );
@@ -311,32 +312,32 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
     const validated = req.validated;
-    
+
     // Find existing request
     const existing = await db.maintenanceRequest.findUnique({
       where: { id }
     });
-    
+
     if (!existing) {
       throw new NotFoundError('Request');
     }
-    
+
     // Branch isolation
     if (req.user.branchId && existing.branchId !== req.user.branchId) {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
-    
+
     // Build update data
     const updateData = {};
     if (validated.status) updateData.status = validated.status;
     if (validated.problemDescription) updateData.complaint = validated.problemDescription;
     if (validated.technician) updateData.technician = validated.technician;
-    
+
     const updated = await db.maintenanceRequest.update({
       where: { id },
       data: updateData
     });
-    
+
     // Audit logging
     await logAction({
       entityType: 'REQUEST',
@@ -347,7 +348,7 @@ router.put(
       performedBy: req.user.displayName,
       branchId: req.user.branchId
     });
-    
+
     res.json(updated);
   })
 );
@@ -369,26 +370,26 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
     const validated = req.validated;
-    
+
     // Find and verify request
     const existing = await db.maintenanceRequest.findUnique({
       where: { id }
     });
-    
+
     if (!existing) {
       throw new NotFoundError('Request');
     }
-    
+
     // Branch isolation
     if (req.user.branchId && existing.branchId !== req.user.branchId) {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
-    
+
     // Prevent closing already closed requests
     if (existing.status === 'Closed') {
       throw new AppError('Request is already closed', 400, 'REQUEST_ALREADY_CLOSED');
     }
-    
+
     // Close via service
     const request = await requestService.closeRequest(
       id,
@@ -400,7 +401,7 @@ router.put(
       },
       validated.receiptNumber
     );
-    
+
     // Audit logging
     await logAction({
       entityType: 'REQUEST',
@@ -411,7 +412,7 @@ router.put(
       performedBy: req.user.displayName,
       branchId: req.user.branchId
     });
-    
+
     res.json(request);
   })
 );
@@ -431,7 +432,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { serialNumber } = req.params;
     const query = monthlyCountQuerySchema.parse(req.query);
-    
+
     // Validate serial number format
     if (!serialNumber || serialNumber.length < 3) {
       throw new AppError('Invalid serial number format', 400, 'INVALID_SERIAL

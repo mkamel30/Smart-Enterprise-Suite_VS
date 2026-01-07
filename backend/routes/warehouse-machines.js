@@ -9,6 +9,7 @@ const transferService = require('../services/transferService');
 const warehouseService = require('../services/warehouseService');
 const { detectMachineParams } = require('../utils/machine-validation');
 const { normalizeSerial } = require('../services/serialService');
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 
 // GET Machines by Status
@@ -35,10 +36,10 @@ router.get('/', authenticateToken, async (req, res) => {
             }
         }
 
-        const machines = await db.warehouseMachine.findMany({
+        const machines = await db.warehouseMachine.findMany(ensureBranchWhere({
             where: whereClause,
             orderBy: { importDate: 'desc' }
-        });
+        }, req));
 
         res.json(machines);
     } catch (error) {
@@ -61,13 +62,13 @@ router.get('/counts', authenticateToken, async (req, res) => {
             whereClause.branchId = targetBranchId;
         }
 
-        const counts = await db.warehouseMachine.groupBy({
+        const counts = await db.warehouseMachine.groupBy(ensureBranchWhere({
             by: ['status'],
             where: whereClause,
             _count: {
                 status: true
             }
-        });
+        }, req));
 
         // Format: { NEW: 10, STANDBY: 5, ... }
         const formattedCounts = counts.reduce((acc, curr) => {
@@ -153,11 +154,11 @@ router.get('/logs', authenticateToken, async (req, res) => {
         // TODO: Implement strict log filtering by joining with WarehouseMachine history if needed.
 
         const branchFilter = getBranchFilter(req);
-        const logs = await db.machineMovementLog.findMany({
+        const logs = await db.machineMovementLog.findMany(ensureBranchWhere({
             where: branchFilter,
             orderBy: { createdAt: 'desc' },
             take: 100 // Limit to last 100 logs
-        });
+        }, req));
         res.json(logs);
     } catch (error) {
         console.error('Failed to fetch machine logs:', error);
@@ -209,22 +210,22 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
 
         const result = await db.$transaction(async (tx) => {
             // Get machines with READY_FOR_RETURN status
-            const machines = await tx.warehouseMachine.findMany({
+            const machines = await tx.warehouseMachine.findMany(ensureBranchWhere({
                 where: {
                     serialNumber: { in: serialNumbers },
                     branchId: fromBranchId,
                     status: 'READY_FOR_RETURN'
                 },
-                select: { 
-                    id: true, 
-                    serialNumber: true, 
-                    model: true, 
-                    manufacturer: true, 
+                select: {
+                    id: true,
+                    serialNumber: true,
+                    model: true,
+                    manufacturer: true,
                     requestId: true,
                     originBranchId: true,
                     resolution: true
                 }
-            });
+            }, req));
 
             if (machines.length !== serialNumbers.length) {
                 const found = machines.map(m => m.serialNumber);
@@ -295,7 +296,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                 if (machine.requestId) {
                     await tx.maintenanceRequest.update({
                         where: { id: machine.requestId },
-                        data: { 
+                        data: {
                             status: 'RETURNING_FROM_CENTER',
                             actionTaken: machine.resolution === 'REPAIRED' ? 'تم الإصلاح بمركز الصيانة' : machine.resolution === 'SCRAPPED' ? 'تالفة - خردة' : 'تم الرفض'
                         }
@@ -361,9 +362,8 @@ router.put('/update-by-prefix', authenticateToken, async (req, res) => {
         }
 
         // Find all machines with this prefix that don't have a model set AND belong to branch
-        const machines = await db.warehouseMachine.findMany({
+        const machines = await db.warehouseMachine.findMany(ensureBranchWhere({
             where: {
-                ...branchFilter,
                 serialNumber: { startsWith: prefix },
                 OR: [
                     { model: null },
@@ -371,7 +371,7 @@ router.put('/update-by-prefix', authenticateToken, async (req, res) => {
                     { model: '-' }
                 ]
             }
-        });
+        }, req));
 
         // Update all matching machines
         const updateResult = await db.warehouseMachine.updateMany({
@@ -406,7 +406,7 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
     try {
         const { performedBy } = req.body;
         const machineId = req.params.id;
-        
+
         const result = await db.$transaction(async (tx) => {
             // Get machine
             const machine = await tx.warehouseMachine.findUnique({
@@ -455,8 +455,8 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
                 await tx.maintenanceRequest.update({
                     where: { id: machine.requestId },
                     data: {
-                        status: machine.resolution === 'REPAIRED' ? 'READY_FOR_DELIVERY' : 
-                                machine.resolution === 'SCRAPPED' ? 'Closed' : 
+                        status: machine.resolution === 'REPAIRED' ? 'READY_FOR_DELIVERY' :
+                            machine.resolution === 'SCRAPPED' ? 'Closed' :
                                 'READY_FOR_DELIVERY'
                     }
                 });
@@ -487,8 +487,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
         // VALIDATION: Prevent manual status change to IN_TRANSIT
         // IN_TRANSIT can only be set through transfer orders
         if (data.status === 'IN_TRANSIT' && existing.status !== 'IN_TRANSIT') {
-            return res.status(400).json({ 
-                error: 'لا يمكن تغيير الحالة إلى "قيد النقل" يدوياً. يجب إنشاء إذن تحويل.' 
+            return res.status(400).json({
+                error: 'لا يمكن تغيير الحالة إلى "قيد النقل" يدوياً. يجب إنشاء إذن تحويل.'
             });
         }
 

@@ -4,6 +4,7 @@ const db = require('../db');
 const authenticateToken = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
 const { generateTemplate, parseExcelFile, exportToExcel } = require('../utils/excel');
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -58,12 +59,11 @@ router.post('/simcards/import', authenticateToken, upload.single('file'), async 
             }
 
             // Check if already exists in client sim cards (branch-scoped)
-            const existingClient = await db.simCard.findFirst({
-                where: { 
-                    serialNumber: serialNumber.toString(),
-                    branchId
+            const existingClient = await db.simCard.findFirst(ensureBranchWhere({
+                where: {
+                    serialNumber: serialNumber.toString()
                 }
-            });
+            }, req));
 
             if (existingClient) {
                 skippedCount++;
@@ -71,12 +71,11 @@ router.post('/simcards/import', authenticateToken, upload.single('file'), async 
             }
 
             // Check if exists in warehouse (branch-scoped)
-            const existingWarehouse = await db.warehouseSim.findFirst({
-                where: { 
-                    serialNumber: serialNumber.toString(),
-                    branchId
+            const existingWarehouse = await db.warehouseSim.findFirst(ensureBranchWhere({
+                where: {
+                    serialNumber: serialNumber.toString()
                 }
-            });
+            }, req));
 
             if (existingWarehouse) {
                 errors.push({ row, error: 'Serial exists in warehouse' });
@@ -86,7 +85,7 @@ router.post('/simcards/import', authenticateToken, upload.single('file'), async 
             // Validate customer if provided (branch-scoped)
             if (customerId) {
                 const customer = await db.customer.findFirst({
-                    where: { 
+                    where: {
                         bkcode: customerId.toString(),
                         branchId
                     }
@@ -130,7 +129,7 @@ router.post('/simcards/import', authenticateToken, upload.single('file'), async 
 router.get('/simcards/export', authenticateToken, async (req, res) => {
     try {
         const where = getBranchFilter(req);
-        const simCards = await db.simCard.findMany({
+        const simCards = await db.simCard.findMany(ensureBranchWhere({
             where: {
                 ...where
             },
@@ -138,7 +137,7 @@ router.get('/simcards/export', authenticateToken, async (req, res) => {
                 customer: true
             },
             orderBy: { serialNumber: 'asc' }
-        });
+        }, req));
 
         const data = simCards.map(sim => ({
             serialNumber: sim.serialNumber,
@@ -170,7 +169,7 @@ router.get('/simcards/export', authenticateToken, async (req, res) => {
 router.get('/simcards', authenticateToken, async (req, res) => {
     try {
         const where = getBranchFilter(req);
-        const simCards = await db.simCard.findMany({
+        const simCards = await db.simCard.findMany(ensureBranchWhere({
             where: {
                 ...where
             },
@@ -183,7 +182,7 @@ router.get('/simcards', authenticateToken, async (req, res) => {
                 }
             },
             orderBy: { serialNumber: 'asc' }
-        });
+        }, req));
 
         res.json(simCards);
     } catch (error) {
@@ -196,10 +195,10 @@ router.get('/simcards', authenticateToken, async (req, res) => {
 router.get('/customers/:customerId/simcards', authenticateToken, async (req, res) => {
     try {
         const { customerId } = req.params;
-        const simCards = await db.simCard.findMany({
+        const simCards = await db.simCard.findMany(ensureBranchWhere({
             where: { customerId },
             orderBy: { assignedAt: 'desc' }
-        });
+        }, req));
         res.json(simCards);
     } catch (error) {
         console.error('Failed to fetch customer SimCards:', error);
@@ -212,13 +211,13 @@ router.get('/customers/:customerId/sim-history', authenticateToken, async (req, 
     try {
         const { customerId } = req.params;
         const where = getBranchFilter(req);
-        const history = await db.simMovementLog.findMany({
+        const history = await db.simMovementLog.findMany(ensureBranchWhere({
             where: {
                 customerId,
                 ...where
             },
             orderBy: { createdAt: 'desc' }
-        });
+        }, req));
         res.json(history);
     } catch (error) {
         console.error('Failed to fetch SIM history:', error);

@@ -88,7 +88,7 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
                 // Validate customer if provided (branch-scoped)
                 if (customerId) {
                     const customer = await tx.customer.findFirst({
-                        where: { 
+                        where: {
                             bkcode: customerId.toString(),
                             branchId
                         }
@@ -106,7 +106,7 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
                 try {
                     // Check if machine already exists (branch-scoped)
                     const existing = await tx.posMachine.findFirst({
-                        where: { 
+                        where: {
                             serialNumber: serialNumber.toString(),
                             branchId
                         }
@@ -125,19 +125,6 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
                         });
                         updatedCount++;
                     } else {
-                        // Before creating customer machine, check if it exists in warehouse
-                        const existsInWarehouse = await tx.warehouseMachine.findFirst({
-                            where: { 
-                                serialNumber: serialNumber.toString(),
-                                branchId
-                            }
-                        });
-
-                        if (existsInWarehouse) {
-                            errors.push({ row, error: `Machine ${serialNumber} exists in warehouse, cannot assign to customer` });
-                            continue;
-                        }
-
                         // Create new machine with auto-detected model and manufacturer
                         await tx.posMachine.create({
                             data: {

@@ -12,8 +12,7 @@ async function createRequest(data, user) {
     return await db.$transaction(async (tx) => {
         // Validate customer
         const customer = await tx.customer.findUnique({
-            where: { bkcode: data.customerId },
-            __allow_unscoped: true
+            where: { bkcode: data.customerId }
         });
 
         if (!customer) {
@@ -23,8 +22,7 @@ async function createRequest(data, user) {
         // Validate machine if provided
         if (data.posMachineId) {
             const machine = await tx.posMachine.findUnique({
-                where: { id: data.posMachineId },
-                __allow_unscoped: true
+                where: { id: data.posMachineId }
             });
 
             if (!machine) {
@@ -78,8 +76,7 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
         // 1. Get request with customer
         const request = await tx.maintenanceRequest.findUnique({
             where: { id: requestId },
-            include: { customer: true },
-            __allow_unscoped: true
+            include: { customer: true }
         });
         console.log('DEBUG: closeRequest fetched:', request);
 
@@ -240,14 +237,12 @@ async function updateStatus(requestId, status, user) {
 async function receiveMachineToWarehouse(tx, { serialNumber, customerId, customerName, requestId, branchId, performedBy }) {
     // 1. Find if machine exists in warehouse already
     const existingWarehouse = await tx.warehouseMachine.findUnique({
-        where: { serialNumber },
-        __allow_unscoped: true
+        where: { serialNumber }
     });
 
     // 2. Find machine details from PosMachine if not in warehouse
     const posMachine = await tx.posMachine.findUnique({
-        where: { serialNumber },
-        __allow_unscoped: true
+        where: { serialNumber }
     });
 
     if (existingWarehouse) {

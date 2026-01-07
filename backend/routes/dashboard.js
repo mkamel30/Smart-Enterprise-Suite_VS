@@ -24,8 +24,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
         // 1. Financial Stats (This Month)
         // Check Payment table for unified revenue
-        const monthlyRevenue = await db.payment.aggregate({
-            __allow_unscoped: true,
+        const monthlyRevenue = await db.payment.aggregate(ensureBranchWhere({
             where: {
                 ...branchFilter,
                 createdAt: {
@@ -34,7 +33,7 @@ router.get('/', authenticateToken, async (req, res) => {
                 }
             },
             _sum: { amount: true }
-        });
+        }, req));
 
         // Calculate Weekly Trend for this month
         const paymentsThisMonth = await db.payment.findMany(ensureBranchWhere({
@@ -67,15 +66,13 @@ router.get('/', authenticateToken, async (req, res) => {
         ];
 
         // 2. Request Stats
-        const openRequests = await db.maintenanceRequest.count({
-            where: { ...branchFilter, status: 'Open' },
-            __allow_unscoped: true
-        });
+        const openRequests = await db.maintenanceRequest.count(ensureBranchWhere({
+            where: { ...branchFilter, status: 'Open' }
+        }, req));
 
-        const inProgressRequests = await db.maintenanceRequest.count({
-            where: { ...branchFilter, status: 'In Progress' },
-            __allow_unscoped: true
-        });
+        const inProgressRequests = await db.maintenanceRequest.count(ensureBranchWhere({
+            where: { ...branchFilter, status: 'In Progress' }
+        }, req));
 
         const requestsByStatus = await db.maintenanceRequest.groupBy({
             by: ['status'],
@@ -132,28 +129,26 @@ router.get('/', authenticateToken, async (req, res) => {
             const paidRequestIds = maintenancePayments.map(p => p.requestId).filter(id => id);
 
             // Replaced Parts count (Paid)
-            const paidPartsCount = await db.stockMovement.aggregate({
+            const paidPartsCount = await db.stockMovement.aggregate(ensureBranchWhere({
                 where: {
                     ...branchFilter,
                     type: 'OUT',
                     requestId: { in: paidRequestIds },
                     createdAt: { gte: startOfMonth, lte: endOfMonth }
                 },
-                _sum: { quantity: true },
-                __allow_unscoped: true
-            });
+                _sum: { quantity: true }
+            }, req));
 
             // Replaced Parts count (Free/Warranty)
-            const freePartsCount = await db.stockMovement.aggregate({
+            const freePartsCount = await db.stockMovement.aggregate(ensureBranchWhere({
                 where: {
                     ...branchFilter,
                     type: 'OUT',
                     requestId: { notIn: paidRequestIds },
                     createdAt: { gte: startOfMonth, lte: endOfMonth }
                 },
-                _sum: { quantity: true },
-                __allow_unscoped: true
-            });
+                _sum: { quantity: true }
+            }, req));
 
             maintenanceStats = {
                 revenue: maintenancePayments.reduce((sum, p) => sum + p.amount, 0),
@@ -171,13 +166,12 @@ router.get('/', authenticateToken, async (req, res) => {
                 { toBranchId: req.user.branchId }
             ];
         }
-        const pendingTransfers = await db.transferOrder.count({
+        const pendingTransfers = await db.transferOrder.count(ensureBranchWhere({
             where: {
                 ...transferFilter,
                 status: 'PENDING'
-            },
-            __allow_unscoped: true
-        });
+            }
+        }, req));
 
         res.json({
             revenue: {
@@ -240,7 +234,6 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
 
         const performanceData = await Promise.all(branches.map(async (branch) => {
             const revenue = await db.payment.aggregate({
-                __allow_unscoped: true,
                 where: {
                     branchId: branch.id,
                     createdAt: { gte: startOfMonth }
@@ -253,8 +246,7 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
                     branchId: branch.id,
                     createdAt: { gte: startOfMonth },
                     status: 'Done'
-                },
-                __allow_unscoped: true
+                }
             });
 
             return {
@@ -270,12 +262,10 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
 
         const adminAffairsStats = await Promise.all(adminAffairs.map(async (branch) => {
             const machineTransfers = await db.transferOrder.count({
-                where: { fromBranchId: branch.id, type: 'MACHINE', status: 'RECEIVED', updatedAt: { gte: startOfMonth } },
-                __allow_unscoped: true
+                where: { fromBranchId: branch.id, type: 'MACHINE', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
             });
             const simTransfers = await db.transferOrder.count({
-                where: { fromBranchId: branch.id, type: 'SIM', status: 'RECEIVED', updatedAt: { gte: startOfMonth } },
-                __allow_unscoped: true
+                where: { fromBranchId: branch.id, type: 'SIM', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
             });
 
             return { id: branch.id, name: branch.name, machineTransfers, simTransfers };
@@ -283,8 +273,7 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
 
         const maintenanceCenterStats = await Promise.all(maintenanceCenters.map(async (center) => {
             const partTransfers = await db.transferOrder.count({
-                where: { fromBranchId: center.id, type: 'SPARE_PART', status: 'RECEIVED', updatedAt: { gte: startOfMonth } },
-                __allow_unscoped: true
+                where: { fromBranchId: center.id, type: 'SPARE_PART', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
             });
 
             const machinesInRepair = await db.warehouseMachine.count({

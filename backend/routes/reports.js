@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const authenticateToken = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 // GET Current Inventory Report
 router.get('/reports/inventory', authenticateToken, async (req, res) => {
@@ -49,26 +50,24 @@ router.get('/reports/movements', authenticateToken, async (req, res) => {
         }
 
         // Get OUT movements
-        const movements = await db.stockMovement.findMany({
+        const movements = await db.stockMovement.findMany(ensureBranchWhere({
             where: {
                 type: 'OUT',
                 createdAt: dateFilter,
                 ...getBranchFilter(req)
             },
-            orderBy: { createdAt: 'desc' },
-            __allow_unscoped: true
-        });
+            orderBy: { createdAt: 'desc' }
+        }, req));
 
         // Get related requests manually
         const requestIds = [...new Set(movements.map(m => m.requestId).filter(id => id))];
-        const requests = await db.maintenanceRequest.findMany({
+        const requests = await db.maintenanceRequest.findMany(ensureBranchWhere({
             where: { id: { in: requestIds } },
-            __allow_unscoped: true,
             include: {
                 posMachine: true,
                 customer: true
             }
-        });
+        }, req));
         const requestMap = Object.fromEntries(requests.map(r => [r.id, r]));
 
         // Get parts details
@@ -228,9 +227,8 @@ router.get('/reports/performance', authenticateToken, async (req, res) => {
             }
         }
 
-        const requests = await db.maintenanceRequest.findMany({
+        const requests = await db.maintenanceRequest.findMany(ensureBranchWhere({
             where: whereClause,
-            __allow_unscoped: true,
             select: {
                 id: true,
                 technician: true,
@@ -240,7 +238,7 @@ router.get('/reports/performance', authenticateToken, async (req, res) => {
                 totalCost: true,
                 usedParts: true
             }
-        });
+        }, req));
 
         const technicianStats = {};
 
@@ -339,7 +337,7 @@ const executiveHandler = async (req, res) => {
         if (Object.keys(dateFilter).length > 0) salesWhere.saleDate = dateFilter;
 
         // 2. Fetch Data
-        const payments = await db.payment.findMany({ where: paymentWhere, __allow_unscoped: true });
+        const payments = await db.payment.findMany(ensureBranchWhere({ where: paymentWhere }, req));
         const machineSales = await db.machineSale.findMany({ where: salesWhere });
 
         // 3. Calculate Categorized Collections (Breakdown)
@@ -381,7 +379,7 @@ const executiveHandler = async (req, res) => {
         // 5. Branch Performance Analysis
         const branches = await db.branch.findMany();
         const branchPerformance = await Promise.all(branches.map(async (branch) => {
-            const bPayments = await db.payment.findMany({ where: { branchId: branch.id, createdAt: dateFilter }, __allow_unscoped: true });
+            const bPayments = await db.payment.findMany({ where: { branchId: branch.id, createdAt: dateFilter } });
             const bSales = await db.machineSale.findMany({ where: { branchId: branch.id, saleDate: dateFilter } });
 
             const bCollected = bPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -417,13 +415,12 @@ const executiveHandler = async (req, res) => {
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-        const trendPayments = await db.payment.findMany({
+        const trendPayments = await db.payment.findMany(ensureBranchWhere({
             where: {
                 createdAt: { gte: sixMonthsAgo },
                 branchId: branchId || undefined
-            },
-            __allow_unscoped: true
-        });
+            }
+        }, req));
 
         const trendSales = await db.machineSale.findMany({
             where: {
