@@ -1,0 +1,1 @@
+node backend/scripts/create_admin.js

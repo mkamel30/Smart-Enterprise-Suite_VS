@@ -1,0 +1,97 @@
+{
+  "saleId": "cmjmz5zgf000pi55lsselda8z",
+  "sale": {
+    "id": "cmjmz5zgf000pi55lsselda8z",
+    "serialNumber": "3C111111",
+    "customerId": "010002",
+    "saleDate": "2025-12-26T14:36:36.160Z",
+    "type": "INSTALLMENT",
+    "totalPrice": 12060,
+    "paidAmount": 3000,
+    "status": "ONGOING",
+    "notes": "مقدم قسط",
+    "branchId": "cmjjzaflw0002hgc2dokf1yen",
+    "installments": [
+      {
+        "id": "cmjniy1hb0014fqtsbml2krzr",
+        "saleId": "cmjmz5zgf000pi55lsselda8z",
+        "dueDate": "2026-01-26T23:50:17.851Z",
+        "amount": 1510,
+        "isPaid": false,
+        "paidAt": null,
+        "description": "القسط رقم 1 من 6",
+        "paidAmount": null,
+        "paymentPlace": null,
+        "receiptNumber": null,
+        "branchId": null
+      },
+      {
+        "id": "cmjniy1hf0016fqtsfzvv8sck",
+        "saleId": "cmjmz5zgf000pi55lsselda8z",
+        "dueDate": "2026-02-26T23:50:17.851Z",
+        "amount": 1510,
+        "isPaid": false,
+        "paidAt": null,
+        "description": "القسط رقم 2 من 6",
+        "paidAmount": null,
+        "paymentPlace": null,
+        "receiptNumber": null,
+        "branchId": null
+      },
+      {
+        "id": "cmjniy1hi0018fqtsy8fw5eiz",
+        "saleId": "cmjmz5zgf000pi55lsselda8z",
+        "dueDate": "2026-03-26T23:50:17.851Z",
+        "amount": 1510,
+        "isPaid": false,
+        "paidAt": null,
+        "description": "القسط رقم 3 من 6",
+        "paidAmount": null,
+        "paymentPlace": null,
+        "receiptNumber": null,
+        "branchId": null
+      },
+      {
+        "id": "cmjniy1hm001afqtsb4hfp38n",
+        "saleId": "cmjmz5zgf000pi55lsselda8z",
+        "dueDate": "2026-04-26T22:50:17.851Z",
+        "amount": 1510,
+        "isPaid": false,
+        "paidAt": null,
+        "description": "القسط رقم 4 من 6",
+        "paidAmount": null,
+        "paymentPlace": null,
+        "receiptNumber": null,
+        "branchId": null
+      },
+      {
+        "id": "cmjniy1ho001cfqts5d3c6b55",
+        "saleId": "cmjmz5zgf000pi55lsselda8z",
+        "dueDate": "2026-05-26T22:50:17.851Z",
+        "amount": 1510,
+        "isPaid": false,
+        "paidAt": null,
+        "description": "القسط رقم 5 من 6",
+        "paidAmount": null,
+        "paymentPlace": null,
+        "receiptNumber": null,
+        "branchId": null
+      },
+      {
+        "id": "cmjniy1hs001efqtswowslk7i",
+        "saleId": "cmjmz5zgf000pi55lsselda8z",
+        "dueDate": "2026-06-26T22:50:17.851Z",
+        "amount": 1510,
+        "isPaid": false,
+        "paidAt": null,
+        "description": "القسط رقم 6 من 6",
+        "paidAmount": null,
+        "paymentPlace": null,
+        "receiptNumber": null,
+        "branchId": null
+      }
+    ]
+  },
+  "userBranchId": null,
+  "targetBranchId": "cmjjzaflw0002hgc2dokf1yen"
+}

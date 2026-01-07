@@ -1,0 +1,334 @@
+@import "tailwindcss";
+
+@theme {
+  /* Smart Enterprise Suite Brand Colors */
+  --color-primary: #0A2472;
+  --color-primary-foreground: #ffffff;
+  --color-background: hsl(210 20% 98%);
+  --color-foreground: hsl(222 47% 11%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(222 47% 11%);
+  --color-muted: hsl(210 20% 96%);
+  --color-muted-foreground: hsl(215 16% 47%);
+  --color-accent: hsl(229 100% 96%);
+  --color-accent-foreground: #0A2472;
+  --color-border: hsl(214 32% 91%);
+  --color-brand-orange: #E86B3A;
+  --font-sans: 'Inter', var(--font-arabic);
+  --font-inter: 'Inter', sans-serif;
+}
+
+:root {
+  /* --- SMART ENTERPRISE SUITE BRAND COLORS --- */
+  /* Primary Navy Blue (from logo) */
+  --primary: 225 86% 25%;        /* #0A2472 */
+  --primary-foreground: 0 0% 100%;
+
+  /* Brand Accent Colors (PANTONE Palette) */
+  --brand-cyan: #6CE4F0;         /* PANTONE 2727 C */
+  --brand-purple: #7E5BAB;       /* PANTONE 525 C */
+  --brand-pink: #C85C8E;         /* PANTONE 674 C */
+  --brand-orange: #E86B3A;       /* PANTONE 7578 C */
+  --brand-yellow: #F5C451;       /* PANTONE 141 C */
+  --brand-green: #80C646;        /* PANTONE 367 C */
+  --brand-teal: #31625C;         /* PANTONE 555 C */
+
+  --background: 210 20% 98%;
+  --foreground: 222 47% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  /* Muted / Surface Colors */
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 229 100% 96%;
+  --accent-foreground: 225 86% 25%;  /* Match primary */
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 225 86% 25%;
+
+  /* --- ATOMIC TOKENS: LAYOUT --- */
+  --radius-xs: 0.25rem;
+  /* 4px */
+  --radius-sm: 0.5rem;
+  /* 8px - Atoms (Buttons, Inputs) */
+  --radius-md: 0.75rem;
+  /* 12px - Molecules */
+  --radius-lg: 1.25rem;
+  /* 20px - Organisms (Cards, Modals) */
+  --radius-xl: 2rem;
+  /* 32px - Layout Containers */
+
+  --font-arabic: 'IBM Plex Sans Arabic', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+
+  /* Standardized Shadows with Smart Brand Touch */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-smart-glow: 0 0 20px rgba(108, 228, 240, 0.3);
+  --shadow-smart-card: 0 10px 15px -3px rgba(10, 36, 114, 0.1);
+}
+
+/* Global Container Cleanup */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--font-inter), var(--font-arabic), sans-serif;
+}
+
+/* Atomic Component Overrides */
+input,
+select,
+textarea {
+  border-radius: var(--radius-sm);
+  background-color: hsl(var(--card));
+}
+
+button {
+  border-radius: var(--radius-sm);
+}
+
+.ltr-text {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: embed;
+}
+
+.carbody,
+html {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-arabic);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.card {
+  background-color: hsl(var(--card));
+  border-radius: var(--radius-lg);
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-sm);
+}
+
+/* RTL Helper Classes */
+/* Use these for consistent RTL layouts: icon on left, text on right */
+.rtl-flex {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rtl-flex-start {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Section headers with icon on left */
+.section-header {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Font Size System */
+html[data-font-size="small"] {
+  font-size: 14px;
+}
+
+html[data-font-size="medium"] {
+  font-size: 16px;
+}
+
+html[data-font-size="large"] {
+  font-size: 18px;
+}
+
+/* Highlight Animation for Notifications */
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 12px hsl(var(--primary) / 0);
+    transform: scale(1.02);
+  }
+}
+
+.animate-highlight-pulse {
+  animation: highlight-pulse 1.5s ease-in-out 2;
+}
+
+/* ===== SMART ENTERPRISE SUITE DEFAULT DESIGN SYSTEM ===== */
+/* These classes apply the professional design language across all components */
+
+/* Headers - Dark Navy Gradient with White Text */
+.smart-header {
+  @apply bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white;
+}
+
+.smart-header-text {
+  @apply text-white font-black;
+}
+
+/* Cards & Content Areas - White with Professional Borders */
+.smart-card {
+  @apply bg-white border-2 border-[#0A2472]/10 rounded-lg shadow-md;
+}
+
+.smart-card-header {
+  @apply border-b-2 border-[#0A2472]/10 pb-4;
+}
+
+.smart-card-footer {
+  @apply border-t-2 border-[#0A2472]/10 pt-4;
+}
+
+/* Labels & Text - Professional Navy Styling */
+.smart-label {
+  @apply font-black text-[#0A2472];
+}
+
+.smart-description {
+  @apply text-slate-600 text-sm;
+}
+
+/* Input Fields - Consistent Styling */
+.smart-input,
+.smart-textarea,
+.smart-select {
+  @apply w-full border-2 border-[#0A2472]/10 rounded-lg bg-white focus:ring-2 focus:ring-[#0A2472] focus:border-[#0A2472] outline-none transition-colors;
+}
+
+.smart-input::placeholder,
+.smart-textarea::placeholder {
+  @apply text-slate-400;
+}
+
+/* Buttons - Consistent Styling */
+.smart-btn-primary {
+  @apply bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 hover:from-[#0A2472]/90 hover:to-[#0A2472]/80 text-white font-bold shadow-md hover:shadow-lg transition-all h-11 px-6 rounded-lg;
+}
+
+.smart-btn-secondary {
+  @apply border-2 border-[#0A2472]/20 text-[#0A2472] hover:bg-[#0A2472]/5 hover:border-[#0A2472]/30 font-bold transition-colors h-11 px-6 rounded-lg;
+}
+
+.smart-btn-success {
+  @apply bg-gradient-to-r from-[#80C646] to-[#6DB840] hover:from-[#6DB840] hover:to-[#5CA630] text-white font-bold shadow-md hover:shadow-lg transition-all h-11 px-6 rounded-lg;
+}
+
+.smart-btn-danger {
+  @apply bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-md hover:shadow-lg transition-all h-11 px-6 rounded-lg;
+}
+
+/* Checkboxes & Radio Buttons */
+.smart-checkbox,
+.smart-radio {
+  @apply w-4 h-4 text-[#0A2472] rounded border-[#0A2472]/20 focus:ring-[#0A2472] accent-[#0A2472];
+}
+
+/* Select Fields */
+.smart-select {
+  @apply appearance-none pl-4 pr-10 py-2;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A2472' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 0.5rem center;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  padding-left: 2.5rem;
+}
+
+/* Badge & Status Elements */
+.smart-badge {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold;
+}
+
+.smart-badge-primary {
+  @apply bg-[#0A2472]/10 text-[#0A2472];
+}
+
+.smart-badge-success {
+  @apply bg-[#80C646]/10 text-[#80C646];
+}
+
+.smart-badge-danger {
+  @apply bg-red-100 text-red-700;
+}
+
+.smart-badge-warning {
+  @apply bg-[#F5C451]/20 text-[#F5C451];
+}
+
+/* Info/Error Messages */
+.smart-alert {
+  @apply rounded-lg border-2 p-4 flex items-start gap-3 font-bold;
+}
+
+.smart-alert-error {
+  @apply bg-red-50 border-red-200 text-red-700;
+}
+
+.smart-alert-success {
+  @apply bg-[#80C646]/10 border-[#80C646]/20 text-[#80C646];
+}
+
+.smart-alert-warning {
+  @apply bg-[#F5C451]/10 border-[#F5C451]/20 text-[#F5C451];
+}
+
+.smart-alert-info {
+  @apply bg-[#6CE4F0]/10 border-[#6CE4F0]/20 text-[#0A2472];
+}
+
+/* Dividers & Separators */
+.smart-divider {
+  @apply h-px bg-gradient-to-r from-[#0A2472]/0 via-[#0A2472]/10 to-[#0A2472]/0;
+}
+
+/* Hover Effects */
+.smart-hover {
+  @apply hover:bg-[#0A2472]/3 transition-colors;
+}
+
+.smart-hover-lift {
+  @apply hover:shadow-lg hover:-translate-y-1 transition-all;
+}
+
+/* Loading State */
+.smart-loading {
+  @apply relative opacity-50 pointer-events-none;
+}
+
+.smart-loading::after {
+  content: '';
+  @apply absolute inset-0 bg-white/30 rounded-lg animate-pulse;
+}
+
+/* RTL Adjustments for Smart Design */
+[dir="rtl"] .smart-select {
+  background-position: right 0.5rem center;
+}

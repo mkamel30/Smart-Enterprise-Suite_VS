@@ -1,0 +1,68 @@
+// Prisma middleware to require branchId filtering on sensitive models
+// This middleware throws if a query on a protected model does not include any branchId filter.
+const protectedModels = new Set([
+  'Customer',
+  'InventoryItem',
+  'MaintenanceRequest',
+  'TransferOrder',
+  'StockMovement',
+  'Payment',
+]);
+
+function containsBranchId(obj) {
+  if (!obj || typeof obj !== 'object') return false;
+  if (Object.prototype.hasOwnProperty.call(obj, 'branchId')) return true;
+  // traverse logical operators
+  const keys = Object.keys(obj);
+  for (const k of keys) {
+    const v = obj[k];
+    if (Array.isArray(v)) {
+      for (const item of v) if (containsBranchId(item)) return true;
+    } else if (typeof v === 'object') {
+      if (containsBranchId(v)) return true;
+    }
+  }
+  return false;
+}
+
+function attachBranchEnforcer(prisma, opts = {}) {
+  const models = opts.models || protectedModels;
+
+  prisma.$use(async (params, next) => {
+    try {
+      // Only enforce on certain actions that accept `where`
+      const actionsToCheck = new Set(['findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete', 'deleteMany', 'count', 'aggregate']);
+      if (!actionsToCheck.has(params.action)) return next(params);
+
+      if (!models.has(params.model)) return next(params);
+
+      const args = params.args || {};
+
+      // Allow explicit bypass via a special flag `__allow_unscoped` in args (dev-only)
+      if (args.__allow_unscoped) {
+        // Remove the flag before passing to Prisma (it's not a valid Prisma argument)
+        delete args.__allow_unscoped;
+        return next(params);
+      }
+
+      // If there is no `where` argument, block it
+      if (!args.where) {
+        throw new Error(`Branch filter required: missing 'where' for ${params.model}.${params.action}`);
+      }
+
+      if (!containsBranchId(args.where)) {
+        throw new Error(`Branch filter required: '${params.model}.${params.action}' must filter by branchId`);
+      }
+
+      return next(params);
+    } catch (err) {
+      // Surface a helpful error so failures are easy to find during CI/dev
+      throw err;
+    }
+  });
+}
+
+module.exports = {
+  attachBranchEnforcer,
+  protectedModels,
+};

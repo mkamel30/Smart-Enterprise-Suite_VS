@@ -1,0 +1,101 @@
+// MOVED TO backend/ops - guarded execution
+// To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
+if (process.env.LEGACY_OPS_ALLOW !== '1') {
+  console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
+  process.exit(1);
+}
+
+// Migration script to create payments from old closed requests
+const db = require('./db');
+
+async function migrateOldRequestsToPayments() {
+    console.log('🔄 Starting migration: Creating payments from old closed requests...\n');
+
+    try {
+        // Get all closed requests with payments
+        const closedRequests = await db.maintenanceRequest.findMany({
+            where: {
+                status: 'Closed',
+                usedParts: { not: null }
+            },
+            include: {
+                customer: true
+            }
+        });
+
+        console.log(`Found ${closedRequests.length} closed requests to process\n`);
+
+        let created = 0;
+        let skipped = 0;
+        let errors = 0;
+
+        for (const request of closedRequests) {
+            try {
+                // Parse usedParts
+                const usedPartsData = JSON.parse(request.usedParts);
+                const totalCost = usedPartsData.totalCost || 0;
+                const parts = usedPartsData.parts || [];
+
+                // Skip if no cost
+                if (totalCost <= 0) {
+                    skipped++;
+                    continue;
+                }
+
+                // Check if payment already exists for this request
+                const existingPayment = await db.payment.findFirst({
+                    where: {
+                        requestId: request.id
+                    }
+                });
+
+                if (existingPayment) {
+                    console.log(`⏭️  Request ${request.id} - Payment already exists, skipping`);
+                    skipped++;
+                    continue;
+                }
+
+                // Create payment
+                const payment = await db.payment.create({
+                    data: {
+                        customerId: request.customerId,
+                        customerName: request.customer?.client_name || 'Unknown',
+                        requestId: request.id,
+                        amount: parseFloat(totalCost),
+                        type: 'MAINTENANCE',
+                        reason: 'قطع غيار صيانة (Migration)',
+                        paymentPlace: 'ضامن',
+                        receiptNumber: request.receiptNumber || null,
+                        notes: `Migrated from request. Parts: ${parts.map(p => p.name).join(', ')}`,
+                        userId: request.closingUserId || null,
+                        userName: request.closingUserName || 'System',
+                        createdAt: request.closingTimestamp || request.createdAt
+                    }
+                });
+
+                console.log(`✅ Created payment: ${payment.amount} ج.م for ${payment.customerName} (Request: ${request.id.substring(0, 8)}...)`);
+                created++;
+
+            } catch (err) {
+                console.error(`❌ Error processing request ${request.id}:`, err.message);
+                errors++;
+            }
+        }
+
+        console.log('\n' + '='.repeat(60));
+        console.log('📊 Migration Complete!');
+        console.log('='.repeat(60));
+        console.log(`✅ Payments created: ${created}`);
+        console.log(`⏭️  Skipped (no cost or exists): ${skipped}`);
+        console.log(`❌ Errors: ${errors}`);
+        console.log('='.repeat(60));
+
+    } catch (error) {
+        console.error('❌ Migration failed:', error);
+    } finally {
+        await db.$disconnect();
+    }
+}
+
+// Run migration
+migrateOldRequestsToPayments();

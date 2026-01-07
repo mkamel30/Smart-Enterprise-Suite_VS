@@ -2,6 +2,5 @@
     "github.copilot.chat.notebook.enhancedNextEditSuggestions.enabled": true,
     "github.copilot.chat.agent.autoFix": true,
     "github.copilot.chat.alternateGeminiModelFPrompt.enabled": true,
-    "github.copilot.chat.alternateGptPrompt.enabled": true,
-    // "perplexityProAI.apiKey": "REMOVED"
+    "github.copilot.chat.alternateGptPrompt.enabled": true
 }
