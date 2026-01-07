@@ -1,17 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
-const multer = require('multer');
-const ExcelJS = require('exceljs');
+const bcrypt = require('bcryptjs');
 
-// Database and services
+// Database
 const db = require('../db');
 
 // Middleware
-const { authenticateToken, requireManager } = require('../middleware/auth');
+const { authenticateToken, requireManager, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
 const { validateRequest, validateQuery } = require('../middleware/validation');
-const { createLimiter, updateLimiter, deleteLimiter, uploadLimiter } = require('../middleware/rateLimits');
+const { createLimiter, updateLimiter, deleteLimiter } = require('../middleware/rateLimits');
 
 // Utilities
 const { asyncHandler, AppError, NotFoundError } = require('../utils/errorHandler');
@@ -22,57 +21,45 @@ const logger = require('../utils/logger');
 
 const listQuerySchema = z.object({
   branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
-  limit: z.string().regex(/^\d+$/).transform(Number).refine(n => n > 0 && n <= 100, 'Limit must be between 1 and 100').optional().default('50'),
-  offset: z.string().regex(/^\d+$/).transform(Number).refine(n => n >= 0, 'Offset must be non-negative').optional().default('0'),
-  sortBy: z.enum(['client_name', 'bkcode', 'telephone_1', 'createdAt']).default('client_name'),
+  role: z.enum(['TECHNICIAN', 'SUPERVISOR', 'MANAGER', 'CENTER_MANAGER', 'ADMIN', 'SUPER_ADMIN']).optional(),
+  limit: z.string().regex(/^\d+$/).transform(Number).refine(n => n > 0 && n <= 100).optional().default('50'),
+  offset: z.string().regex(/^\d+$/).transform(Number).refine(n => n >= 0).optional().default('0'),
+  sortBy: z.enum(['displayName', 'email', 'role', 'createdAt']).default('displayName'),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
-  search: z.string().max(50).optional()
+  search: z.string().max(100).optional()
 });
 
-const createCustomerSchema = z.object({
-  bkcode: z.string().min(3, 'Customer code required').max(50),
-  client_name: z.string().min(2, 'Customer name required').max(255),
-  supply_office: z.string().max(255).optional(),
-  operating_date: z.string().datetime().optional(),
-  address: z.string().max(500).optional(),
-  contact_person: z.string().max(100).optional(),
-  scanned_id_path: z.string().max(500).optional(),
-  national_id: z.string().max(20).optional(),
-  dept: z.string().max(100).optional(),
-  telephone_1: z.string().regex(/^[0-9\+\-\s]{1,20}$/).optional(),
-  telephone_2: z.string().regex(/^[0-9\+\-\s]{1,20}$/).optional(),
-  has_gates: z.boolean().optional().default(false),
-  bk_type: z.string().max(50).optional(),
-  clienttype: z.string().max(100).optional(),
-  notes: z.string().max(1000).optional(),
-  papers_date: z.string().datetime().optional(),
-  isSpecial: z.boolean().optional().default(false),
-  branchId: z.string().regex(/^[a-z0-9]{25}$/).optional()
+const createTechnicianSchema = z.object({
+  displayName: z.string().min(2, 'Name required').max(100),
+  email: z.string().email('Valid email required'),
+  password: z.string().min(8, 'Password must be at least 8 characters').regex(/[A-Z]/, 'Must contain uppercase').regex(/[0-9]/, 'Must contain number'),
+  role: z.enum(['TECHNICIAN', 'SUPERVISOR', 'MANAGER', 'CENTER_MANAGER']),
+  branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
+  canDoMaintenance: z.boolean().optional().default(true),
+  phoneNumber: z.string().regex(/^[0-9\+\-\s]{1,20}$/).optional()
 });
 
-const updateCustomerSchema = createCustomerSchema.partial();
+const updateTechnicianSchema = z.object({
+  displayName: z.string().min(2).max(100).optional(),
+  email: z.string().email().optional(),
+  role: z.enum(['TECHNICIAN', 'SUPERVISOR', 'MANAGER', 'CENTER_MANAGER']).optional(),
+  branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
+  canDoMaintenance: z.boolean().optional(),
+  phoneNumber: z.string().regex(/^[0-9\+\-\s]{1,20}$/).optional()
+});
+
+const passwordResetSchema = z.object({
+  newPassword: z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/)
+});
 
 const idParamSchema = z.object({
-  id: z.string().min(3).max(50)
-});
-
-// ===================== MULTER CONFIG =====================
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-  fileFilter: (req, file, cb) => {
-    if (!file.originalname.match(/\.(xlsx|xls)$/)) {
-      return cb(new AppError('Only Excel files are allowed', 400, 'INVALID_FILE_TYPE'));
-    }
-    cb(null, true);
-  }
+  id: z.string().regex(/^[a-z0-9]{25}$/)
 });
 
 // ===================== HELPER FUNCTIONS =====================
 
 /**
- * Build where clause with proper search and filtering
+ * Build where clause with proper filtering
  */
 const buildWhereClause = (validated, user) => {
   const where = {};
@@ -81,261 +68,278 @@ const buildWhereClause = (validated, user) => {
   const branchFilter = getBranchFilter(user);
   Object.assign(where, branchFilter);
   
-  // Admin-only branch filtering
+  // Super-admin branch filtering
   if (validated.branchId) {
-    if (!['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(user.role)) {
-      throw new AppError('Insufficient permissions to filter by branch', 403, 'FORBIDDEN');
+    if (user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Only super admins can filter by branch', 403, 'FORBIDDEN');
     }
     where.branchId = validated.branchId;
   }
   
-  // Search functionality
+  // Role filtering
+  if (validated.role) {
+    where.role = validated.role;
+  }
+  
+  // Search by name or email
   if (validated.search && validated.search.trim()) {
     const searchTerm = validated.search.trim();
     where.OR = [
-      { client_name: { contains: searchTerm, mode: 'insensitive' } },
-      { bkcode: { contains: searchTerm, mode: 'insensitive' } },
-      { telephone_1: { contains: searchTerm } },
-      { national_id: { contains: searchTerm } }
+      { displayName: { contains: searchTerm, mode: 'insensitive' } },
+      { email: { contains: searchTerm, mode: 'insensitive' } }
     ];
   }
   
   return where;
 };
 
-// ===================== GET ALL CUSTOMERS =====================
+// ===================== GET ALL TECHNICIANS/USERS =====================
 /**
- * @route GET /customers
- * @summary Get all customers with pagination and search
+ * @route GET /technicians
+ * @summary Get all technicians/maintenance users with pagination
  * @security bearerAuth
- * @queryParam {number} limit - Results per page (max 100)
+ * @queryParam {number} limit - Results per page
  * @queryParam {number} offset - Page offset
- * @queryParam {string} search - Search by name, code, phone
- * @returns {Object} Paginated customer list
+ * @returns {Object} Paginated technician list
  */
 router.get(
-  '/customers',
+  '/technicians',
   authenticateToken,
   validateQuery(listQuerySchema),
   asyncHandler(async (req, res) => {
     const validated = req.query;
     
-    // Build filter with security checks
-    const where = buildWhereClause(validated, req.user);
+    // Build filter - only get maintenance-capable users
+    const where = {
+      canDoMaintenance: true
+    };
+    
+    // Apply branch filter
+    const branchFilter = getBranchFilter(req.user);
+    Object.assign(where, branchFilter);
+    
+    if (validated.branchId && req.user.role === 'SUPER_ADMIN') {
+      where.branchId = validated.branchId;
+    }
     
     // Safe pagination
     const limit = Math.min(validated.limit, 100);
     const offset = Math.max(0, validated.offset);
     
-    // Fetch data in parallel
-    const [customers, total] = await Promise.all([
-      db.customer.findMany({
+    // Fetch in parallel
+    const [technicians, total] = await Promise.all([
+      db.user.findMany({
         where,
         select: {
-          bkcode: true,
-          client_name: true,
-          supply_office: true,
-          telephone_1: true,
-          telephone_2: true,
-          address: true,
-          national_id: true,
-          contact_person: true,
+          id: true,
+          displayName: true,
+          email: true,
+          role: true,
           branchId: true,
-          isSpecial: true,
+          phoneNumber: true,
           createdAt: true
         },
         orderBy: { [validated.sortBy]: validated.sortOrder },
         take: limit,
         skip: offset
       }),
-      db.customer.count({ where })
+      db.user.count({ where })
     ]);
     
     res.json({
-      data: customers,
-      pagination: {
-        total,
-        limit,
-        offset,
-        pages: Math.ceil(total / limit)
-      }
+      data: technicians,
+      pagination: { total, limit, offset, pages: Math.ceil(total / limit) }
     });
   })
 );
 
-// ===================== GET CUSTOMER - LIGHTWEIGHT =====================
+// ===================== GET ALL USERS =====================
 /**
- * @route GET /customers/lite/all
- * @summary Get lightweight customer list for dropdowns
+ * @route GET /users
+ * @summary Get all users (admins only)
  * @security bearerAuth
- * @returns {Array} Lightweight customer list
+ * @queryParam {number} limit - Results per page
+ * @queryParam {number} offset - Page offset
+ * @returns {Object} Paginated user list
  */
 router.get(
-  '/customers/lite/all',
+  '/users',
   authenticateToken,
+  requireAdmin,
+  validateQuery(listQuerySchema),
   asyncHandler(async (req, res) => {
-    const branchFilter = getBranchFilter(req.user);
+    const validated = req.query;
     
-    const customers = await db.customer.findMany({
-      where: branchFilter,
-      select: {
-        bkcode: true,
-        client_name: true
-      },
-      orderBy: { client_name: 'asc' },
-      take: 1000 // Reasonable limit for dropdown
+    const where = buildWhereClause(validated, req.user);
+    
+    const limit = Math.min(validated.limit, 100);
+    const offset = Math.max(0, validated.offset);
+    
+    const [users, total] = await Promise.all([
+      db.user.findMany({
+        where,
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+          role: true,
+          branchId: true,
+          canDoMaintenance: true,
+          phoneNumber: true,
+          createdAt: true
+        },
+        orderBy: { [validated.sortBy]: validated.sortOrder },
+        take: limit,
+        skip: offset
+      }),
+      db.user.count({ where })
+    ]);
+    
+    res.json({
+      data: users,
+      pagination: { total, limit, offset, pages: Math.ceil(total / limit) }
     });
-    
-    res.json(customers);
   })
 );
 
-// ===================== GET SINGLE CUSTOMER =====================
+// ===================== GET SINGLE USER =====================
 /**
- * @route GET /customers/:id
- * @summary Get specific customer with all details
+ * @route GET /users/:id
+ * @summary Get specific user details
  * @security bearerAuth
- * @param {string} id - Customer code (bkcode)
- * @returns {Object} Complete customer details
+ * @param {string} id - User ID
+ * @returns {Object} User details
  */
 router.get(
-  '/customers/:id',
+  '/users/:id',
   authenticateToken,
+  requireManager,
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
     
-    const customer = await db.customer.findUnique({
-      where: { bkcode: id },
-      include: {
-        machines: {
-          select: {
-            id: true,
-            serialNumber: true,
-            model: true,
-            manufacturer: true,
-            status: true
-          }
-        },
-        simCards: {
-          select: {
-            id: true,
-            serialNumber: true,
-            status: true
-          }
-        }
+    const user = await db.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        displayName: true,
+        email: true,
+        role: true,
+        branchId: true,
+        canDoMaintenance: true,
+        phoneNumber: true,
+        createdAt: true
       }
     });
     
-    if (!customer) {
-      throw new NotFoundError('Customer');
+    if (!user) {
+      throw new NotFoundError('User');
     }
     
-    // Branch isolation check
-    if (req.user.branchId && customer.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
+    // Branch isolation
+    if (req.user.branchId && user.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
     
-    res.json(customer);
+    res.json(user);
   })
 );
 
-// ===================== CREATE CUSTOMER =====================
+// ===================== CREATE USER =====================
 /**
- * @route POST /customers
- * @summary Create new customer
+ * @route POST /users
+ * @summary Create new user/technician
  * @security bearerAuth
- * @body {Object} Customer data
- * @returns {Object} Created customer
+ * @body {Object} User data
+ * @returns {Object} Created user
  */
 router.post(
-  '/customers',
+  '/users',
   authenticateToken,
   requireManager,
   createLimiter,
-  validateRequest(createCustomerSchema),
+  validateRequest(createTechnicianSchema),
   asyncHandler(async (req, res) => {
     const validated = req.validated;
     
-    // Determine branch
-    const branchId = req.user.branchId || validated.branchId;
-    if (!branchId) {
-      throw new AppError('Branch ID is required', 400, 'MISSING_BRANCH');
-    }
-    
-    // Check if customer code already exists
-    const existing = await db.customer.findUnique({
-      where: { bkcode: validated.bkcode }
+    // Check if email already exists
+    const existing = await db.user.findUnique({
+      where: { email: validated.email }
     });
     
     if (existing) {
-      throw new AppError('Customer code already exists', 409, 'DUPLICATE_CUSTOMER');
+      throw new AppError('Email already in use', 409, 'DUPLICATE_EMAIL');
     }
     
-    // Create customer
-    const customer = await db.customer.create({
+    // Determine branch
+    const branchId = req.user.branchId || validated.branchId;
+    if (!branchId && !req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Branch ID is required', 400, 'MISSING_BRANCH');
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(validated.password, 10);
+    
+    // Create user
+    const user = await db.user.create({
       data: {
+        displayName: validated.displayName,
+        email: validated.email,
+        password: hashedPassword,
+        role: validated.role,
         branchId,
-        bkcode: validated.bkcode,
-        client_name: validated.client_name,
-        supply_office: validated.supply_office,
-        operating_date: validated.operating_date,
-        address: validated.address,
-        contact_person: validated.contact_person,
-        scanned_id_path: validated.scanned_id_path,
-        national_id: validated.national_id,
-        dept: validated.dept,
-        telephone_1: validated.telephone_1,
-        telephone_2: validated.telephone_2,
-        has_gates: validated.has_gates,
-        bk_type: validated.bk_type,
-        clienttype: validated.clienttype,
-        notes: validated.notes,
-        papers_date: validated.papers_date,
-        isSpecial: validated.isSpecial
+        canDoMaintenance: validated.canDoMaintenance,
+        phoneNumber: validated.phoneNumber
+      },
+      select: {
+        id: true,
+        displayName: true,
+        email: true,
+        role: true,
+        branchId: true
       }
     });
     
     // Audit logging
     await logAction({
-      entityType: 'CUSTOMER',
-      entityId: customer.bkcode,
+      entityType: 'USER',
+      entityId: user.id,
       action: 'CREATE',
-      details: `Created customer: ${customer.client_name}`,
+      details: `Created user: ${user.displayName} (${user.role})`,
       userId: req.user.id,
       performedBy: req.user.displayName,
-      branchId
+      branchId: branchId || req.user.branchId
     });
     
-    res.status(201).json(customer);
+    res.status(201).json(user);
   })
 );
 
-// ===================== UPDATE CUSTOMER =====================
+// ===================== UPDATE USER =====================
 /**
- * @route PUT /customers/:id
- * @summary Update customer details
+ * @route PUT /users/:id
+ * @summary Update user details
  * @security bearerAuth
- * @param {string} id - Customer code
- * @body {Object} Updated customer data
- * @returns {Object} Updated customer
+ * @param {string} id - User ID
+ * @body {Object} Updated user data
+ * @returns {Object} Updated user
  */
 router.put(
-  '/customers/:id',
+  '/users/:id',
   authenticateToken,
   requireManager,
   updateLimiter,
-  validateRequest(updateCustomerSchema),
+  validateRequest(updateTechnicianSchema),
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
     const validated = req.validated;
     
     // Find existing
-    const existing = await db.customer.findUnique({
-      where: { bkcode: id }
+    const existing = await db.user.findUnique({
+      where: { id }
     });
     
     if (!existing) {
-      throw new NotFoundError('Customer');
+      throw new NotFoundError('User');
     }
     
     // Branch isolation
@@ -343,7 +347,17 @@ router.put(
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
     
-    // Prepare update data (only include provided fields)
+    // Check email uniqueness if changing
+    if (validated.email && validated.email !== existing.email) {
+      const duplicate = await db.user.findUnique({
+        where: { email: validated.email }
+      });
+      if (duplicate) {
+        throw new AppError('Email already in use', 409, 'DUPLICATE_EMAIL');
+      }
+    }
+    
+    // Build update data
     const updateData = {};
     Object.entries(validated).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -351,28 +365,26 @@ router.put(
       }
     });
     
-    // If changing bkcode, check for duplicates
-    if (updateData.bkcode && updateData.bkcode !== existing.bkcode) {
-      const duplicate = await db.customer.findUnique({
-        where: { bkcode: updateData.bkcode }
-      });
-      if (duplicate) {
-        throw new AppError('Customer code already exists', 409, 'DUPLICATE_CUSTOMER');
-      }
-    }
-    
     // Update
-    const updated = await db.customer.update({
-      where: { bkcode: id },
-      data: updateData
+    const updated = await db.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        displayName: true,
+        email: true,
+        role: true,
+        branchId: true,
+        canDoMaintenance: true
+      }
     });
     
     // Audit logging
     await logAction({
-      entityType: 'CUSTOMER',
+      entityType: 'USER',
       entityId: id,
       action: 'UPDATE',
-      details: `Updated customer: ${updated.client_name}`,
+      details: `Updated user: ${updated.displayName}`,
       userId: req.user.id,
       performedBy: req.user.displayName,
       branchId: req.user.branchId
@@ -382,59 +394,53 @@ router.put(
   })
 );
 
-// ===================== DELETE CUSTOMER =====================
+// ===================== RESET USER PASSWORD =====================
 /**
- * @route DELETE /customers/:id
- * @summary Delete customer (with validation)
+ * @route POST /users/:id/reset-password
+ * @summary Reset user password (admin only)
  * @security bearerAuth
- * @param {string} id - Customer code
+ * @param {string} id - User ID
+ * @body {Object} New password
  * @returns {Object} Success message
  */
-router.delete(
-  '/customers/:id',
+router.post(
+  '/users/:id/reset-password',
   authenticateToken,
   requireManager,
-  deleteLimiter,
+  validateRequest(passwordResetSchema),
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
+    const { newPassword } = req.validated;
     
-    // Find customer
-    const customer = await db.customer.findUnique({
-      where: { bkcode: id }
+    // Find user
+    const user = await db.user.findUnique({
+      where: { id }
     });
     
-    if (!customer) {
-      throw new NotFoundError('Customer');
+    if (!user) {
+      throw new NotFoundError('User');
     }
     
     // Branch isolation
-    if (req.user.branchId && customer.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
+    if (req.user.branchId && user.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
     
-    // Check if customer has associated records
-    const machineCount = await db.posMachine.count({
-      where: { customerId: id }
-    });
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     
-    if (machineCount > 0) {
-      throw new AppError('Cannot delete customer with active machines', 400, 'CUSTOMER_HAS_MACHINES');
-    }
-    
-    // Delete
-    await db.customer.delete({
-      where: { bkcode: id }
+    // Update
+    await db.user.update({
+      where: { id },
+      data: { password: hashedPassword }
     });
     
     // Audit logging
     await logAction({
-      entityType: 'CUSTOMER',
+      entityType: 'USER',
       entityId: id,
-      action: 'DELETE',
-      details: `Deleted customer: ${customer.client_name}`,
+      action: 'PASSWORD_RESET',
+      details: `Password reset by admin`,
       userId: req.user.id,
       performedBy: req.user.displayName,
-      branchId: req.user.branchId
-    });
-    
-    res.json({ message: 
+      branch
