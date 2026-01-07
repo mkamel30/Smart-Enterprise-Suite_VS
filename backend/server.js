@@ -185,7 +185,24 @@ app.use('/api/admin', require('./routes/admin'));
 // Settings & Configuration
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/branches-lookup', require('./routes/branches'));
-app.use('/api', require('./routes/branches'));
+app.use('/api/branches', require('./routes/branches'));
+
+// Permissions stub (frontend expects this)
+app.get('/api/permissions', authenticateToken, (req, res) => {
+  // Return role-based permissions
+  const rolePermissions = {
+    SUPER_ADMIN: { all: true },
+    MANAGEMENT: { dashboard: true, reports: true, settings: true },
+    CENTER_MANAGER: { maintenance: true, inventory: true },
+    BRANCH_MANAGER: { customers: true, requests: true },
+    CS_SUPERVISOR: { customers: true, requests: true },
+    CS_AGENT: { customers: true, requests: true },
+    CENTER_TECH: { maintenance: true },
+    BRANCH_TECH: { requests: true },
+    ADMIN_AFFAIRS: { transfers: true, inventory: true }
+  };
+  res.json(rolePermissions[req.user.role] || {});
+});
 
 // Inventory & Warehouse
 app.use('/api', require('./routes/inventory'));
@@ -195,7 +212,8 @@ app.use('/api/warehouse-sims', require('./routes/warehouseSims'));
 
 // Machines & SimCards
 app.use('/api/machines', require('./routes/machines'));
-app.use('/api/machine-parameters', require('./routes/settings'));
+// Mount settings at /api to expose /api/machine-parameters correctly
+app.use('/api', require('./routes/settings'));
 app.use('/api', require('./routes/simcards'));
 
 // Sales
@@ -220,6 +238,14 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/backup', require('./routes/backup'));
 app.use('/api/db', require('./routes/db'));
 app.use('/api/db-health', require('./routes/db-health'));
+
+// Self-test / Health-check route
+app.use('/api/dev/self-test', require('./routes/self-test'));
+
+// Redirect /api/reports/executive to /api/executive-dashboard for frontend compatibility
+app.get('/api/reports/executive', authenticateToken, (req, res) => {
+  res.redirect(307, `/api/executive-dashboard?${new URLSearchParams(req.query).toString()}`);
+});
 
 // ===================== HEALTH CHECK =====================
 

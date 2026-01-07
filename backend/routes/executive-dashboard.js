@@ -72,25 +72,26 @@ router.get('/', authenticateToken, async (req, res) => {
             _sum: { amount: true }
         }, req));
 
-        // Pending Debts
-        const pendingDebts = await db.branchDebt.aggregate(ensureBranchWhere({
+        // Pending Debts - BranchDebt uses debtorBranchId, not branchId
+        const debtFilter = branchId ? { debtorBranchId: branchId } : { debtorBranchId: { not: '' } };
+        const pendingDebts = await db.branchDebt.aggregate({
             where: {
-                ...branchFilter,
+                ...debtFilter,
                 status: 'PENDING_PAYMENT'
             },
             _sum: { amount: true }
-        }, req));
+        });
 
         // Overdue Debts (> 30 days)
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const overdueDebts = await db.branchDebt.aggregate(ensureBranchWhere({
+        const overdueDebts = await db.branchDebt.aggregate({
             where: {
-                ...branchFilter,
+                ...debtFilter,
                 status: 'PENDING_PAYMENT',
                 createdAt: { lt: thirtyDaysAgo }
             },
             _sum: { amount: true }
-        }, req));
+        });
 
         // ===================== 2. OPERATIONAL KPIs =====================
 
@@ -285,12 +286,14 @@ router.get('/', authenticateToken, async (req, res) => {
 
         // ===================== 7. ALERTS & NOTIFICATIONS =====================
 
-        const pendingApprovals = await db.maintenanceApprovalRequest.count(ensureBranchWhere({
+        // Pending Approvals - MaintenanceApprovalRequest uses originBranchId
+        const approvalFilter = branchId ? { originBranchId: branchId } : { originBranchId: { not: '' } };
+        const pendingApprovals = await db.maintenanceApprovalRequest.count({
             where: {
-                ...branchFilter,
+                ...approvalFilter,
                 status: 'PENDING'
             }
-        }, req));
+        });
 
         const pendingTransfers = await db.transferOrder.count(ensureBranchWhere({
             where: {

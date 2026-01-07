@@ -93,13 +93,13 @@ router.get('/', authenticateToken, async (req, res) => {
         // 4. Overdue Installments
         // Hide for Center roles
         const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH'].includes(req.user.role);
-        const overdueInstallmentsCount = isCenterRole ? 0 : await db.installment.count({
+        const overdueInstallmentsCount = isCenterRole ? 0 : await db.installment.count(ensureBranchWhere({
             where: {
                 ...branchFilter,
                 isPaid: false,
                 dueDate: { lt: today }
             }
-        });
+        }, req));
 
         // 5. Recent Activity (Latest 5 payments/actions)
         // Using Payment for activity stream
@@ -223,7 +223,7 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
         });
         const totalMachines = await db.warehouseMachine.count(ensureBranchWhere({}, req));
         const dailyOps = await db.systemLog.count(ensureBranchWhere({
-            where: { createdAt: { gte: startOfToday } }
+            where: { createdAt: { gte: startOfToday }, branchId: { not: null } }
         }, req));
 
         // 2. Branch Performance
@@ -296,10 +296,11 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
         // 4. Advanced Intelligence
         // A. Real System Health (based on recent logs)
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const totalRecentLogs = await db.systemLog.count({ where: { createdAt: { gte: twentyFourHoursAgo } } });
+        const totalRecentLogs = await db.systemLog.count({ where: { createdAt: { gte: twentyFourHoursAgo }, branchId: { not: null } } });
         const errorLogs = await db.systemLog.count({
             where: {
                 createdAt: { gte: twentyFourHoursAgo },
+                branchId: { not: null },
                 OR: [
                     { action: { contains: 'ERROR' } },
                     { details: { contains: 'failed' } },
