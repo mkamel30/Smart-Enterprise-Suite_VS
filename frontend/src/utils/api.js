@@ -62,3 +62,16 @@ api.interceptors.response.use(
     if (response?.status === 429) {
       // Rate limit exceeded
       const retryAfter = response.data?.error?.retryAfter
+ || 60;
+      const errorMsg = `Too many requests. Please wait ${retryAfter} seconds.`;
+      return Promise.reject({
+        ...error,
+        message: errorMsg
+      });
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;
