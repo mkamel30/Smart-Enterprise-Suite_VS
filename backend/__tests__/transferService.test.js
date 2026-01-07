@@ -1,4 +1,4 @@
-// Mock db before importing the service
+﻿// Mock db before importing the service
 const mockDb = {
   transferOrder: { create: jest.fn(), findUnique: jest.fn() },
   warehouseMachine: { findMany: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },

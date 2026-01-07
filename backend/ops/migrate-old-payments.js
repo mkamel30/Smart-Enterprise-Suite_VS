@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -9,7 +9,7 @@ if (process.env.LEGACY_OPS_ALLOW !== '1') {
 const db = require('./db');
 
 async function migrateOldRequestsToPayments() {
-    console.log('🔄 Starting migration: Creating payments from old closed requests...\n');
+    console.log('ًں”„ Starting migration: Creating payments from old closed requests...\n');
 
     try {
         // Get all closed requests with payments
@@ -50,7 +50,7 @@ async function migrateOldRequestsToPayments() {
                 });
 
                 if (existingPayment) {
-                    console.log(`⏭️  Request ${request.id} - Payment already exists, skipping`);
+                    console.log(`âڈ­ï¸ڈ  Request ${request.id} - Payment already exists, skipping`);
                     skipped++;
                     continue;
                 }
@@ -63,8 +63,8 @@ async function migrateOldRequestsToPayments() {
                         requestId: request.id,
                         amount: parseFloat(totalCost),
                         type: 'MAINTENANCE',
-                        reason: 'قطع غيار صيانة (Migration)',
-                        paymentPlace: 'ضامن',
+                        reason: 'ظ‚ط·ط¹ ط؛ظٹط§ط± طµظٹط§ظ†ط© (Migration)',
+                        paymentPlace: 'ط¶ط§ظ…ظ†',
                         receiptNumber: request.receiptNumber || null,
                         notes: `Migrated from request. Parts: ${parts.map(p => p.name).join(', ')}`,
                         userId: request.closingUserId || null,
@@ -73,25 +73,25 @@ async function migrateOldRequestsToPayments() {
                     }
                 });
 
-                console.log(`✅ Created payment: ${payment.amount} ج.م for ${payment.customerName} (Request: ${request.id.substring(0, 8)}...)`);
+                console.log(`âœ… Created payment: ${payment.amount} ط¬.ظ… for ${payment.customerName} (Request: ${request.id.substring(0, 8)}...)`);
                 created++;
 
             } catch (err) {
-                console.error(`❌ Error processing request ${request.id}:`, err.message);
+                console.error(`â‌Œ Error processing request ${request.id}:`, err.message);
                 errors++;
             }
         }
 
         console.log('\n' + '='.repeat(60));
-        console.log('📊 Migration Complete!');
+        console.log('ًں“ٹ Migration Complete!');
         console.log('='.repeat(60));
-        console.log(`✅ Payments created: ${created}`);
-        console.log(`⏭️  Skipped (no cost or exists): ${skipped}`);
-        console.log(`❌ Errors: ${errors}`);
+        console.log(`âœ… Payments created: ${created}`);
+        console.log(`âڈ­ï¸ڈ  Skipped (no cost or exists): ${skipped}`);
+        console.log(`â‌Œ Errors: ${errors}`);
         console.log('='.repeat(60));
 
     } catch (error) {
-        console.error('❌ Migration failed:', error);
+        console.error('â‌Œ Migration failed:', error);
     } finally {
         await db.$disconnect();
     }

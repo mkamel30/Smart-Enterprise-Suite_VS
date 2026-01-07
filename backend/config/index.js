@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 
 const config = {
   // Environment
@@ -79,7 +79,7 @@ const missingVars = requiredEnvVars.filter(
 
 if (missingVars.length > 0) {
   console.error(
-    `❌ Missing required environment variables: ${missingVars.join(', ')}`
+    `â‌Œ Missing required environment variables: ${missingVars.join(', ')}`
   );
   if (config.isProduction) {
     process.exit(1);

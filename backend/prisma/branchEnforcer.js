@@ -1,17 +1,47 @@
-// Prisma middleware to require branchId filtering on sensitive models
+﻿// Prisma middleware to require branchId filtering on sensitive models
 // This middleware throws if a query on a protected model does not include any branchId filter.
 const protectedModels = new Set([
+  'User',
   'Customer',
-  'InventoryItem',
+  'MachineSale',
+  'Installment',
   'MaintenanceRequest',
-  'TransferOrder',
+  'WarehouseMachine',
+  'WarehouseSim',
+  'PosMachine',
+  'InventoryItem',
   'StockMovement',
   'Payment',
+  'BranchDebt',
+  'TransferOrder',
+  'MaintenanceApproval',
+  'MaintenanceApprovalRequest',
+  'ServiceAssignment',
+  'StockMovement',
+  'UsedPartLog',
+  'MachineMovementLog',
+  'SimMovementLog',
+  'SystemLog',
+  'RepairVoucher',
 ]);
+
+const branchFieldNames = [
+  'branchId',
+  'originBranchId',
+  'centerBranchId',
+  'fromBranchId',
+  'toBranchId',
+  'debtorBranchId',
+  'creditorBranchId',
+  'servicedByBranchId',
+];
 
 function containsBranchId(obj) {
   if (!obj || typeof obj !== 'object') return false;
-  if (Object.prototype.hasOwnProperty.call(obj, 'branchId')) return true;
+
+  if (branchFieldNames.some(field => Object.prototype.hasOwnProperty.call(obj, field))) {
+    return true;
+  }
   // traverse logical operators
   const keys = Object.keys(obj);
   for (const k of keys) {
@@ -34,16 +64,9 @@ function attachBranchEnforcer(prisma, opts = {}) {
       const actionsToCheck = new Set(['findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete', 'deleteMany', 'count', 'aggregate']);
       if (!actionsToCheck.has(params.action)) return next(params);
 
-      if (!models.has(params.model)) return next(params);
-
       const args = params.args || {};
 
-      // Allow explicit bypass via a special flag `__allow_unscoped` in args (dev-only)
-      if (args.__allow_unscoped) {
-        // Remove the flag before passing to Prisma (it's not a valid Prisma argument)
-        delete args.__allow_unscoped;
-        return next(params);
-      }
+      if (!models.has(params.model)) return next(params);
 
       // If there is no `where` argument, block it
       if (!args.where) {

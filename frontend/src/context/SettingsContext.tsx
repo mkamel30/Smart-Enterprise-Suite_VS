@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { api } from '../api/client';
 import axios from 'axios';
 
 interface UserPreferences {
@@ -80,12 +81,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/user/preferences', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setPreferences(response.data);
+      const data = await api.get<UserPreferences>('/user/preferences');
+      setPreferences(data);
     } catch (error) {
       console.error('Failed to fetch preferences:', error);
       // Set defaults if fetch fails
@@ -104,16 +101,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const updatePreferences = async (updates: Partial<UserPreferences>) => {
     try {
-      const response = await axios.put(
-        'http://localhost:5000/api/user/preferences',
-        updates,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
-      setPreferences(response.data);
+      const data = await api.put<UserPreferences>('/user/preferences', updates);
+      setPreferences(data);
     } catch (error) {
       console.error('Failed to update preferences:', error);
       throw error;

@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -10,7 +10,7 @@ const db = new PrismaClient();
 
 async function check() {
     const user = await db.user.findFirst({
-        where: { displayName: { contains: 'عصام جمال' } }
+        where: { displayName: { contains: 'ط¹طµط§ظ… ط¬ظ…ط§ظ„' } }
     });
     console.log('User:', JSON.stringify(user, null, 2));
 

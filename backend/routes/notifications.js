@@ -1,7 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
@@ -35,7 +35,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(notifications);
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
-        res.status(500).json({ error: 'فشل في جلب الإشعارات' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ' });
     }
 });
 
@@ -61,7 +61,7 @@ router.get('/count', authenticateToken, async (req, res) => {
         res.json({ count });
     } catch (error) {
         console.error('Failed to count notifications:', error);
-        res.status(500).json({ error: 'فشل في جلب عدد الإشعارات' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط¹ط¯ط¯ ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ' });
     }
 });
 
@@ -70,14 +70,14 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
     try {
         // Fetch first to enforce ownership/branch manually
         const notif = await db.notification.findUnique({ where: { id: req.params.id } });
-        if (!notif) return res.status(404).json({ error: 'الإشعار غير موجود' });
+        if (!notif) return res.status(404).json({ error: 'ط§ظ„ط¥ط´ط¹ط§ط± ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
 
         // Authorization: allow if same branch or targeted user
         const sameBranch = notif.branchId && req.user.branchId && notif.branchId === req.user.branchId;
         const sameUser = notif.userId && notif.userId === req.user.id;
         const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
         if (!(sameBranch || sameUser || isAdmin)) {
-            return res.status(403).json({ error: 'لا تملك صلاحية تحديث هذا الإشعار' });
+            return res.status(403).json({ error: 'ظ„ط§ طھظ…ظ„ظƒ طµظ„ط§ط­ظٹط© طھط­ط¯ظٹط« ظ‡ط°ط§ ط§ظ„ط¥ط´ط¹ط§ط±' });
         }
 
         const notification = await db.notification.update({
@@ -87,7 +87,7 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
         res.json(notification);
     } catch (error) {
         console.error('Failed to mark notification as read:', error);
-        res.status(500).json({ error: 'فشل في تحديث الإشعار' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ طھط­ط¯ظٹط« ط§ظ„ط¥ط´ط¹ط§ط±' });
     }
 });
 
@@ -105,10 +105,10 @@ router.put('/read-all', authenticateToken, async (req, res) => {
             data: { isRead: true }
         }, req));
 
-        res.json({ message: 'تم تعليم كل الإشعارات كمقروءة' });
+        res.json({ message: 'طھظ… طھط¹ظ„ظٹظ… ظƒظ„ ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ ظƒظ…ظ‚ط±ظˆط،ط©' });
     } catch (error) {
         console.error('Failed to mark all as read:', error);
-        res.status(500).json({ error: 'فشل في تحديث الإشعارات' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ طھط­ط¯ظٹط« ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ' });
     }
 });
 
@@ -121,7 +121,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         });
 
         if (!notification) {
-            return res.status(404).json({ error: 'الإشعار غير موجود' });
+            return res.status(404).json({ error: 'ط§ظ„ط¥ط´ط¹ط§ط± ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
         }
 
         // Authorization check
@@ -130,17 +130,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
 
         if (!(sameBranch || sameUser || isAdmin)) {
-            return res.status(403).json({ error: 'لا تملك صلاحية حذف هذا الإشعار' });
+            return res.status(403).json({ error: 'ظ„ط§ طھظ…ظ„ظƒ طµظ„ط§ط­ظٹط© ط­ط°ظپ ظ‡ط°ط§ ط§ظ„ط¥ط´ط¹ط§ط±' });
         }
 
         await db.notification.delete({
             where: { id: req.params.id }
         });
 
-        res.json({ message: 'تم حذف الإشعار' });
+        res.json({ message: 'طھظ… ط­ط°ظپ ط§ظ„ط¥ط´ط¹ط§ط±' });
     } catch (error) {
         console.error('Failed to delete notification:', error);
-        res.status(500).json({ error: 'فشل في حذف الإشعار' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط­ط°ظپ ط§ظ„ط¥ط´ط¹ط§ط±' });
     }
 });
 

@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -20,11 +20,11 @@ async function deleteRecentImport() {
             }
         });
 
-        console.log(`تم العثور على ${machines.length} ماكينة في آخر 30 دقيقة:`);
+        console.log(`طھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ${machines.length} ظ…ط§ظƒظٹظ†ط© ظپظٹ ط¢ط®ط± 30 ط¯ظ‚ظٹظ‚ط©:`);
         machines.forEach(m => console.log(`  - ${m.serialNumber} | ${m.status}`));
 
         if (machines.length === 0) {
-            console.log('لا توجد ماكينات للحذف');
+            console.log('ظ„ط§ طھظˆط¬ط¯ ظ…ط§ظƒظٹظ†ط§طھ ظ„ظ„ط­ط°ظپ');
             return;
         }
 
@@ -42,7 +42,7 @@ async function deleteRecentImport() {
             }
         });
 
-        console.log(`\n✅ تم حذف ${deleted.count} ماكينة بنجاح!`);
+        console.log(`\nâœ… طھظ… ط­ط°ظپ ${deleted.count} ظ…ط§ظƒظٹظ†ط© ط¨ظ†ط¬ط§ط­!`);
 
     } catch (error) {
         console.error('Error:', error);

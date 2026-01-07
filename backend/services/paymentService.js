@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 
 /**
  * Helper to round money values (2 decimal places) - CRITICAL for financial precision
@@ -34,7 +34,7 @@ async function createMaintenancePayment(parts, requestId, customer, user, receip
 
     // Build detailed reason string
     const partsList = paidParts
-        .map(p => `${p.name} (${p.quantity}×${p.cost})`)
+        .map(p => `${p.name} (${p.quantity}أ—${p.cost})`)
         .join(' + ');
 
     // Create payment
@@ -45,8 +45,8 @@ async function createMaintenancePayment(parts, requestId, customer, user, receip
             requestId: requestId,
             amount: totalCost,
             type: 'MAINTENANCE',
-            reason: `قطع غيار: ${partsList}`,
-            paymentPlace: 'ضامن',
+            reason: `ظ‚ط·ط¹ ط؛ظٹط§ط±: ${partsList}`,
+            paymentPlace: 'ط¶ط§ظ…ظ†',
             receiptNumber: receiptNumber,
             userId: user.id,
             userName: user.name,
@@ -72,7 +72,7 @@ async function createManualPayment(data, user) {
         });
 
         if (!customer) {
-            throw new Error('العميل غير موجود');
+            throw new Error('ط§ظ„ط¹ظ…ظٹظ„ ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
         }
 
         // Create payment

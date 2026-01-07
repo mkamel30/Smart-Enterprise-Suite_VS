@@ -1,4 +1,4 @@
-// Test reports API
+﻿// Test reports API
 const http = require('http');
 
 function request(method, path, headers = {}, body = null) {
@@ -32,7 +32,7 @@ function request(method, path, headers = {}, body = null) {
 
 async function testReports() {
     try {
-        console.log('🔐 Logging in...');
+        console.log('ًں”گ Logging in...');
         const loginRes = await request('POST', '/api/auth/login', {}, {
             email: 'admin@csdept.com',
             password: 'admin123'
@@ -40,7 +40,7 @@ async function testReports() {
         
         const token = loginRes.data.token;
         const headers = { Authorization: `Bearer ${token}` };
-        console.log('✅ Login successful\n');
+        console.log('âœ… Login successful\n');
         
         const reports = [
             { name: 'Executive Report', path: '/api/reports/executive?startDate=2025-01-01&endDate=2026-01-01' },
@@ -53,13 +53,13 @@ async function testReports() {
             try {
                 const res = await request('GET', report.path, headers);
                 if (res.status === 200) {
-                    console.log(`✅ ${report.name}`);
+                    console.log(`âœ… ${report.name}`);
                 } else {
-                    console.log(`❌ ${report.name} - Status ${res.status}`);
+                    console.log(`â‌Œ ${report.name} - Status ${res.status}`);
                     console.log(`   Error: ${JSON.stringify(res.data).substring(0, 200)}`);
                 }
             } catch (err) {
-                console.log(`❌ ${report.name} - ${err.message}`);
+                console.log(`â‌Œ ${report.name} - ${err.message}`);
             }
         }
         

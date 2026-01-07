@@ -1,4 +1,4 @@
-// We'll require the service after setting up doMock/jest mocks so the mocked Prisma client is used.
+﻿// We'll require the service after setting up doMock/jest mocks so the mocked Prisma client is used.
 
 // Use shared mock helper
 const { createMockPrismaClient } = require('./helpers/mockPrismaClient');
@@ -200,7 +200,7 @@ describe('transferService', () => {
 
             db.transferOrder.findUnique.mockResolvedValue(null);
 
-            await expect(receiveTransferOrder(transferOrderId, {}, mockUser)).rejects.toThrow('الإذن غير موجود');
+            await expect(receiveTransferOrder(transferOrderId, {}, mockUser)).rejects.toThrow('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
             expect(db.$transaction).toHaveBeenCalledTimes(0); // No transaction should start if order not found
         });
 
@@ -283,7 +283,7 @@ describe('transferService', () => {
 
             db.transferOrder.findUnique.mockResolvedValue(null);
 
-            await expect(rejectOrder(transferOrderId, {}, mockUser)).rejects.toThrow('الإذن غير موجود');
+            await expect(rejectOrder(transferOrderId, {}, mockUser)).rejects.toThrow('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
             expect(db.$transaction).toHaveBeenCalledTimes(0);
         });
 
@@ -387,7 +387,7 @@ describe('transferService', () => {
                 const result = await cancelOrder(transferOrderId, mockUser);
                 expect(txUsed.warehouseMachine.updateMany).toHaveBeenCalled();
                 // cancelOrder returns a success message, not the updated order
-                expect(result.message).toBe('تم إلغاء الإذن بنجاح');
+                expect(result.message).toBe('طھظ… ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط°ظ† ط¨ظ†ط¬ط§ط­');
         });
 
         it('should throw if order not found for cancellation', async () => {
@@ -396,7 +396,7 @@ describe('transferService', () => {
 
             db.transferOrder.findUnique.mockResolvedValue(null);
 
-            await expect(cancelOrder(transferOrderId, mockUser)).rejects.toThrow('الإذن غير موجود');
+            await expect(cancelOrder(transferOrderId, mockUser)).rejects.toThrow('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
             expect(db.$transaction).toHaveBeenCalledTimes(0);
         });
 

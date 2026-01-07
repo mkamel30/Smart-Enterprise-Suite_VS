@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AppError - Custom error class for API errors
  */
 class AppError extends Error {

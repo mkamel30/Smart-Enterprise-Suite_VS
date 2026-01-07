@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 require('express-async-errors');
 
 const express = require('express');
@@ -62,8 +62,31 @@ app.use(express.urlencoded({
 }));
 
 // 6. CSRF Protection (must come after body parser)
-app.use(csrfMiddleware);
-app.use(injectCsrfToken);
+if (config.security.csrfEnabled) {
+  // 1. Always use cookie parser first
+  app.use(csrfMiddleware[0]);
+
+  // 2. Conditional CSRF protection
+  app.use((req, res, next) => {
+    const excludedPaths = ['/api/auth/login', '/health', '/api/health'];
+    if (excludedPaths.some(path => req.path === path)) {
+      return next();
+    }
+    // Validation happens here for POST/PUT/DELETE
+    return csrfMiddleware[1](req, res, next);
+  });
+
+  // 3. Inject token into responses
+  app.use((req, res, next) => {
+    // Only inject if csurf has been initialized on this request
+    // (csurf initializes on GET or if validation passes/is skipped)
+    if (typeof req.csrfToken === 'function') {
+      injectCsrfToken(req, res, next);
+    } else {
+      next();
+    }
+  });
+}
 
 // 7. Request sanitization
 app.use(sanitizeRequest);
@@ -144,15 +167,16 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ===================== API ROUTES =====================
 
-// Auth Routes
+// Auth & User Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/auth'));
+app.use('/api/user', require('./routes/user-preferences'));
 
 // Main Routes
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/executive-dashboard', require('./routes/executive-dashboard'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api', require('./routes/requests'));
-app.use('/api/users', require('./routes/auth'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/pending-payments', require('./routes/pending-payments'));
 app.use('/api/reports', require('./routes/reports'));
@@ -228,9 +252,9 @@ app.use(errorHandler);
 const PORT = config.port;
 
 const server = app.listen(PORT, () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
-  logger.info(`📚 API Docs: http://localhost:${PORT}/api-docs`);
-  logger.info(`🔒 Environment: ${config.nodeEnv}`);
+  logger.info(`ًںڑ€ Server running on port ${PORT}`);
+  logger.info(`ًں“ڑ API Docs: http://localhost:${PORT}/api-docs`);
+  logger.info(`ًں”’ Environment: ${config.nodeEnv}`);
 });
 
 // ===================== SOCKET.IO FOR REAL-TIME =====================

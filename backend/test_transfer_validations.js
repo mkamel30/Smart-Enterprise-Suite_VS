@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Test Transfer Order Validations
- * اختبار شامل للـ validations الجديدة
+ * ط§ط®طھط¨ط§ط± ط´ط§ظ…ظ„ ظ„ظ„ظ€ validations ط§ظ„ط¬ط¯ظٹط¯ط©
  */
 
 const http = require('http');
@@ -54,11 +54,11 @@ function apiRequest(method, path, data = null) {
 }
 
 async function runTests() {
-    console.log('\n🧪 TESTING TRANSFER ORDER VALIDATIONS\n');
+    console.log('\nًں§ھ TESTING TRANSFER ORDER VALIDATIONS\n');
     console.log('='.repeat(80));
 
     // Step 1: Login
-    console.log('\n1️⃣ Logging in as admin...');
+    console.log('\n1ï¸ڈâƒ£ Logging in as admin...');
     try {
         const loginRes = await apiRequest('POST', '/auth/login', {
             email: 'admin@csdept.com',
@@ -66,22 +66,22 @@ async function runTests() {
         });
         
         if (!loginRes.success) {
-            console.error('❌ Login failed:', loginRes.error);
+            console.error('â‌Œ Login failed:', loginRes.error);
             return;
         }
         
         authToken = loginRes.data.token;
-        console.log('✅ Login successful');
+        console.log('âœ… Login successful');
     } catch (error) {
-        console.error('❌ Login failed:', error.message);
+        console.error('â‌Œ Login failed:', error.message);
         return;
     }
 
     // Step 2: Get branches
-    console.log('\n2️⃣ Getting branches...');
+    console.log('\n2ï¸ڈâƒ£ Getting branches...');
     const branchesRes = await apiRequest('GET', '/branches');
     if (!branchesRes.success) {
-        console.error('❌ Failed to get branches');
+        console.error('â‌Œ Failed to get branches');
         return;
     }
 
@@ -90,7 +90,7 @@ async function runTests() {
     const regularBranch = branchesRes.data.find(b => b.type === 'BRANCH');
 
     if (!adminAffairs || !maintenanceCenter || !regularBranch) {
-        console.error('❌ Missing required branches');
+        console.error('â‌Œ Missing required branches');
         return;
     }
 
@@ -98,16 +98,16 @@ async function runTests() {
     centerBranchId = maintenanceCenter.id;
     branch2Id = regularBranch.id;
 
-    console.log(`✅ Admin Affairs: ${adminAffairs.name} (${adminAffairs.id})`);
-    console.log(`✅ Maintenance Center: ${maintenanceCenter.name} (${maintenanceCenter.id})`);
-    console.log(`✅ Regular Branch: ${regularBranch.name} (${regularBranch.id})`);
+    console.log(`âœ… Admin Affairs: ${adminAffairs.name} (${adminAffairs.id})`);
+    console.log(`âœ… Maintenance Center: ${maintenanceCenter.name} (${maintenanceCenter.id})`);
+    console.log(`âœ… Regular Branch: ${regularBranch.name} (${regularBranch.id})`);
 
     // Step 3: Get available machines from Admin Affairs
-    console.log('\n3️⃣ Getting machines from Admin Affairs...');
+    console.log('\n3ï¸ڈâƒ£ Getting machines from Admin Affairs...');
     const inventoryRes = await apiRequest('GET', `/inventory?branchId=${adminBranchId}&type=MACHINE`);
     if (!inventoryRes.success || !inventoryRes.data.length) {
-        console.error('❌ No machines available in Admin Affairs');
-        console.log('💡 Creating test machines...');
+        console.error('â‌Œ No machines available in Admin Affairs');
+        console.log('ًں’، Creating test machines...');
         
         // Create test machines
         const testMachines = [
@@ -122,11 +122,11 @@ async function runTests() {
                 branchId: adminBranchId
             });
         }
-        console.log('✅ Test machines created');
+        console.log('âœ… Test machines created');
     }
 
     const availableMachines = inventoryRes.data.slice(0, 3);
-    console.log(`✅ Found ${availableMachines.length} available machines`);
+    console.log(`âœ… Found ${availableMachines.length} available machines`);
 
     // ========== VALIDATION TESTS ==========
     console.log('\n' + '='.repeat(80));
@@ -134,7 +134,7 @@ async function runTests() {
     console.log('='.repeat(80));
 
     // Test 1: Valid transfer
-    console.log('\n✅ TEST 1: Valid Transfer (Admin Affairs → Regular Branch)');
+    console.log('\nâœ… TEST 1: Valid Transfer (Admin Affairs â†’ Regular Branch)');
     const validTransfer = await apiRequest('POST', '/transfer-orders', {
         fromBranchId: adminBranchId,
         toBranchId: branch2Id,
@@ -144,10 +144,10 @@ async function runTests() {
     });
     
     if (validTransfer.success) {
-        console.log(`   ✅ PASS - Transfer created: ${validTransfer.data.orderNumber}`);
+        console.log(`   âœ… PASS - Transfer created: ${validTransfer.data.orderNumber}`);
         
         // Test 2: Try to transfer same machine again (should FAIL - IN_TRANSIT)
-        console.log('\n❌ TEST 2: Duplicate Transfer (Same machine - should FAIL)');
+        console.log('\nâ‌Œ TEST 2: Duplicate Transfer (Same machine - should FAIL)');
         const duplicateTransfer = await apiRequest('POST', '/transfer-orders', {
             fromBranchId: adminBranchId,
             toBranchId: centerBranchId,
@@ -157,16 +157,16 @@ async function runTests() {
         });
         
         if (!duplicateTransfer.success) {
-            console.log(`   ✅ PASS - Transfer blocked: ${duplicateTransfer.error}`);
+            console.log(`   âœ… PASS - Transfer blocked: ${duplicateTransfer.error}`);
         } else {
-            console.log(`   ❌ FAIL - Transfer should have been blocked!`);
+            console.log(`   â‌Œ FAIL - Transfer should have been blocked!`);
         }
     } else {
-        console.log(`   ❌ FAIL - Valid transfer failed: ${validTransfer.error}`);
+        console.log(`   â‌Œ FAIL - Valid transfer failed: ${validTransfer.error}`);
     }
 
     // Test 3: Transfer to same branch (should FAIL)
-    console.log('\n❌ TEST 3: Transfer to Same Branch (should FAIL)');
+    console.log('\nâ‌Œ TEST 3: Transfer to Same Branch (should FAIL)');
     const sameBranch = await apiRequest('POST', '/transfer-orders', {
         fromBranchId: adminBranchId,
         toBranchId: adminBranchId,
@@ -176,13 +176,13 @@ async function runTests() {
     });
     
     if (!sameBranch.success) {
-        console.log(`   ✅ PASS - Transfer blocked: ${sameBranch.error}`);
+        console.log(`   âœ… PASS - Transfer blocked: ${sameBranch.error}`);
     } else {
-        console.log(`   ❌ FAIL - Should not allow transfer to same branch!`);
+        console.log(`   â‌Œ FAIL - Should not allow transfer to same branch!`);
     }
 
     // Test 4: Transfer non-existent machine (should FAIL)
-    console.log('\n❌ TEST 4: Transfer Non-Existent Machine (should FAIL)');
+    console.log('\nâ‌Œ TEST 4: Transfer Non-Existent Machine (should FAIL)');
     const nonExistent = await apiRequest('POST', '/transfer-orders', {
         fromBranchId: adminBranchId,
         toBranchId: branch2Id,
@@ -192,13 +192,13 @@ async function runTests() {
     });
     
     if (!nonExistent.success) {
-        console.log(`   ✅ PASS - Transfer blocked: ${nonExistent.error}`);
+        console.log(`   âœ… PASS - Transfer blocked: ${nonExistent.error}`);
     } else {
-        console.log(`   ❌ FAIL - Should not allow non-existent machine!`);
+        console.log(`   â‌Œ FAIL - Should not allow non-existent machine!`);
     }
 
     // Test 5: Transfer machine from wrong branch (should FAIL)
-    console.log('\n❌ TEST 5: Transfer from Wrong Branch (should FAIL)');
+    console.log('\nâ‌Œ TEST 5: Transfer from Wrong Branch (should FAIL)');
     const wrongBranch = await apiRequest('POST', '/transfer-orders', {
         fromBranchId: branch2Id, // Machine is in Admin Affairs, not Branch 2
         toBranchId: centerBranchId,
@@ -208,13 +208,13 @@ async function runTests() {
     });
     
     if (!wrongBranch.success) {
-        console.log(`   ✅ PASS - Transfer blocked: ${wrongBranch.error}`);
+        console.log(`   âœ… PASS - Transfer blocked: ${wrongBranch.error}`);
     } else {
-        console.log(`   ❌ FAIL - Should not allow transfer from wrong branch!`);
+        console.log(`   â‌Œ FAIL - Should not allow transfer from wrong branch!`);
     }
 
     // Test 6: Empty items (should FAIL)
-    console.log('\n❌ TEST 6: Empty Items List (should FAIL)');
+    console.log('\nâ‌Œ TEST 6: Empty Items List (should FAIL)');
     const emptyItems = await apiRequest('POST', '/transfer-orders', {
         fromBranchId: adminBranchId,
         toBranchId: branch2Id,
@@ -224,13 +224,13 @@ async function runTests() {
     });
     
     if (!emptyItems.success) {
-        console.log(`   ✅ PASS - Transfer blocked: ${emptyItems.error}`);
+        console.log(`   âœ… PASS - Transfer blocked: ${emptyItems.error}`);
     } else {
-        console.log(`   ❌ FAIL - Should not allow empty items!`);
+        console.log(`   â‌Œ FAIL - Should not allow empty items!`);
     }
 
     // Test 7: Valid transfer to maintenance center
-    console.log('\n✅ TEST 7: Valid Transfer to Maintenance Center');
+    console.log('\nâœ… TEST 7: Valid Transfer to Maintenance Center');
     const toCenter = await apiRequest('POST', '/transfer-orders', {
         fromBranchId: adminBranchId,
         toBranchId: centerBranchId,
@@ -240,31 +240,31 @@ async function runTests() {
     });
     
     if (toCenter.success) {
-        console.log(`   ✅ PASS - Maintenance transfer created: ${toCenter.data.orderNumber}`);
+        console.log(`   âœ… PASS - Maintenance transfer created: ${toCenter.data.orderNumber}`);
     } else {
-        console.log(`   ❌ FAIL - Maintenance transfer failed: ${toCenter.error}`);
+        console.log(`   â‌Œ FAIL - Maintenance transfer failed: ${toCenter.error}`);
     }
 
     // Test 8: Check pending serials
-    console.log('\n✅ TEST 8: Check Pending Serials Endpoint');
+    console.log('\nâœ… TEST 8: Check Pending Serials Endpoint');
     const pendingRes = await apiRequest('GET', '/transfer-orders/pending-serials');
     if (pendingRes.success) {
-        console.log(`   ✅ PASS - Found ${pendingRes.data.length} pending serials`);
+        console.log(`   âœ… PASS - Found ${pendingRes.data.length} pending serials`);
         console.log(`   Pending: ${pendingRes.data.join(', ')}`);
     } else {
-        console.log(`   ❌ FAIL - Could not get pending serials`);
+        console.log(`   â‌Œ FAIL - Could not get pending serials`);
     }
 
     // Summary
     console.log('\n' + '='.repeat(80));
-    console.log('✅ VALIDATION TESTS COMPLETE');
+    console.log('âœ… VALIDATION TESTS COMPLETE');
     console.log('='.repeat(80));
-    console.log('\n💡 Key Points:');
-    console.log('   • Machines are FROZEN (IN_TRANSIT) during transfer');
-    console.log('   • Cannot transfer same machine twice');
-    console.log('   • Cannot transfer from wrong branch');
-    console.log('   • Cannot transfer to same branch');
-    console.log('   • Comprehensive validations applied');
+    console.log('\nًں’، Key Points:');
+    console.log('   â€¢ Machines are FROZEN (IN_TRANSIT) during transfer');
+    console.log('   â€¢ Cannot transfer same machine twice');
+    console.log('   â€¢ Cannot transfer from wrong branch');
+    console.log('   â€¢ Cannot transfer to same branch');
+    console.log('   â€¢ Comprehensive validations applied');
     console.log('\n');
 }
 

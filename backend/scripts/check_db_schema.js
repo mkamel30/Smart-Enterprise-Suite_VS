@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 // Guarded raw SQL: use safe wrappers from backend/prisma/safeRaw.js
 const { queryRawUnsafeSafe, executeRawUnsafeSafe } = require('../prisma/safeRaw');

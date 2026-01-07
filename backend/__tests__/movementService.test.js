@@ -1,4 +1,4 @@
-const movementService = require('../services/movementService');
+﻿const movementService = require('../services/movementService');
 
 test('movementService exports expected functions', () => {
   expect(typeof movementService.logMachineMovement).toBe('function');

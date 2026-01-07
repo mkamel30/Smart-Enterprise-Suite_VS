@@ -1,4 +1,4 @@
-// Safe wrappers for raw SQL usage. Prevents accidental use of unsafe raw queries
+﻿// Safe wrappers for raw SQL usage. Prevents accidental use of unsafe raw queries
 // in request handlers. To allow intentionally, set env `ALLOW_UNSAFE_RAW=1`.
 const db = require('../db');
 

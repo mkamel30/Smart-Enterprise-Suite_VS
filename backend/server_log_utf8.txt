@@ -1,0 +1,69 @@
+﻿node : iconv-lite warning: 
+javascript files use 
+encoding different from 
+utf-8. See https://github.co
+m/ashtuchkin/iconv-lite/wiki
+/Javascript-source-file-enco
+dings for more info.
+At line:1 char:1
++ node server.js > 
+server_output.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (iconv  
+  -lite warn... for more    
+ info.:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+C:\Users\mkame\OneDrive\Docu
+ments\GitHub\Smart-Enterpris
+e-Suite_VS\backend\node_modu
+les\validator\lib\alpha.js:1
+0
+  'bg-BG': 
+/^[╪░┌»-╪░┬»]+$/i,
+           ^^^^^^^^^^^^^
+
+SyntaxError: Invalid 
+regular expression: 
+/^[╪░┌»-╪░┬»]+$/i: Range 
+out of order in character 
+class
+    at wrapSafe (node:intern
+al/modules/cjs/loader:1620:1
+8)
+    at Module._compile (node
+:internal/modules/cjs/loader
+:1662:20)
+    at Object..js (node:inte
+rnal/modules/cjs/loader:1820
+:10)
+    at Module.load (node:int
+ernal/modules/cjs/loader:142
+3:32)
+    at Function._load (node:
+internal/modules/cjs/loader:
+1246:12)
+    at 
+TracingChannel.traceSync (no
+de:diagnostics_channel:322:1
+4)
+    at wrapModuleLoad (node:
+internal/modules/cjs/loader:
+235:24)
+    at Module.require (node:
+internal/modules/cjs/loader:
+1445:12)
+    at require (node:interna
+l/modules/helpers:135:16)
+    at Object.<anonymous> (C
+:\Users\mkame\OneDrive\Docum
+ents\GitHub\Smart-Enterprise
+-Suite_VS\backend\node_modul
+es\validator\lib\isFloat.js:
+10:14)
+
+Node.js v22.18.0

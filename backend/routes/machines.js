@@ -1,7 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { generateTemplate, parseExcelFile, exportToExcel } = require('../utils/excel');
 const { logAction } = require('../utils/logger');
 const multer = require('multer');
@@ -151,7 +151,7 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
             entityType: 'POS_MACHINE',
             entityId: 'BULK_IMPORT',
             action: 'IMPORT',
-            details: `استيراد ماكينات - جديد: ${result.successCount}, محدث: ${result.updatedCount}, أخطاء: ${result.errors.length}`,
+            details: `ط§ط³طھظٹط±ط§ط¯ ظ…ط§ظƒظٹظ†ط§طھ - ط¬ط¯ظٹط¯: ${result.successCount}, ظ…ط­ط¯ط«: ${result.updatedCount}, ط£ط®ط·ط§ط،: ${result.errors.length}`,
             userId: req.user?.id,
             performedBy: req.user?.displayName || 'System',
             branchId

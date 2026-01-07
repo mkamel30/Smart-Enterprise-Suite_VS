@@ -1,8 +1,8 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { logAction } = require('../utils/logger');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter, requirePermission, PERMISSIONS } = require('../middleware/permissions');
 const asyncHandler = require('../utils/asyncHandler');
 const { z } = require('zod');

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Structured Logger Module
  * 
  * Provides a configured pino logger instance for structured logging across the application.
@@ -22,7 +22,7 @@ const config = require('../config');
  */
 const loggerOptions = {
     level: config.logging.level || 'info',
-    
+
     // Base properties included in every log
     base: {
         name: 'cs-dept-console',
@@ -210,7 +210,7 @@ logger.metric = (metric, value, unit = '') => {
 async function logAction({ entityType, entityId, action, details, userId, performedBy, branchId }) {
     try {
         const db = require('../db');
-        
+
         await db.systemLog.create({
             data: {
                 entityType,
@@ -222,7 +222,7 @@ async function logAction({ entityType, entityId, action, details, userId, perfor
                 branchId
             }
         });
-        
+
         // Also log to structured logger for observability
         logger.event('audit.log', {
             entityType,

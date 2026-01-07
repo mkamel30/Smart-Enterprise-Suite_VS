@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 
 /**
  * Exchange machine between customer and warehouse
@@ -18,11 +18,11 @@ async function exchangeMachine(customerId, oldSerial, newSerial, newStatus, note
         });
 
         if (!oldMachine) {
-            throw new Error(`الماكينة القديمة ${oldSerial} غير موجودة`);
+            throw new Error(`ط§ظ„ظ…ط§ظƒظٹظ†ط© ط§ظ„ظ‚ط¯ظٹظ…ط© ${oldSerial} ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©`);
         }
 
         if (oldMachine.customerId !== customerId) {
-            throw new Error('الماكينة القديمة غير مسجلة لهذا العميل');
+            throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ط§ظ„ظ‚ط¯ظٹظ…ط© ط؛ظٹط± ظ…ط³ط¬ظ„ط© ظ„ظ‡ط°ط§ ط§ظ„ط¹ظ…ظٹظ„');
         }
 
         // 2. Get new machine
@@ -31,11 +31,11 @@ async function exchangeMachine(customerId, oldSerial, newSerial, newStatus, note
         });
 
         if (!newMachine) {
-            throw new Error(`الماكينة الجديدة ${newSerial} غير موجودة`);
+            throw new Error(`ط§ظ„ظ…ط§ظƒظٹظ†ط© ط§ظ„ط¬ط¯ظٹط¯ط© ${newSerial} ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©`);
         }
 
         if (newMachine.customerId) {
-            throw new Error('الماكينة الجديدة مسجلة لعميل آخر');
+            throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ط§ظ„ط¬ط¯ظٹط¯ط© ظ…ط³ط¬ظ„ط© ظ„ط¹ظ…ظٹظ„ ط¢ط®ط±');
         }
 
         // 3. Update old machine
@@ -121,11 +121,11 @@ async function returnMachine(serial, customerId, reason, incomingStatus, notes, 
         });
 
         if (!machine) {
-            throw new Error(`الماكينة ${serial} غير موجودة`);
+            throw new Error(`ط§ظ„ظ…ط§ظƒظٹظ†ط© ${serial} ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©`);
         }
 
         if (machine.customerId !== customerId) {
-            throw new Error('الماكينة غير مسجلة لهذا العميل');
+            throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ط؛ظٹط± ظ…ط³ط¬ظ„ط© ظ„ظ‡ط°ط§ ط§ظ„ط¹ظ…ظٹظ„');
         }
 
         // 2. Get customer for logging

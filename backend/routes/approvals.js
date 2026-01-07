@@ -1,8 +1,8 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { createNotification } = require('./notifications');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { logAction } = require('../utils/logger');
 
 // Import roundMoney from centralized payment service
@@ -14,20 +14,20 @@ const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // Get approval by Request ID
 router.get('/request/:requestId', authenticateToken, async (req, res) => {
     try {
-        const approval = await db.maintenanceApproval.findUnique({
-            where: { requestId: req.params.requestId }
+        const approval = await db.maintenanceApproval.findFirst({
+            where: { requestId: req.params.requestId, branchId: { not: null } }
         });
-        
+
         if (!approval) {
             return res.status(404).json({ error: 'Approval not found' });
         }
-        
+
         // Authorization check
         const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
         if (!isAdmin && approval.branchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied' });
         }
-        
+
         res.json(approval);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch approval' });
@@ -39,11 +39,11 @@ router.post('/', authenticateToken, async (req, res) => {
     try {
         const { requestId, cost, parts, notes } = req.body;
 
-        const request = await db.maintenanceRequest.findUnique({
-            where: { id: requestId },
+        const request = await db.maintenanceRequest.findFirst({
+            where: { id: requestId, branchId: { not: null } },
             include: { branch: true } // Origin branch
         });
-        
+
         // Authorization check
         const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
         if (!isAdmin && request && request.branchId !== req.user.branchId) {
@@ -80,7 +80,7 @@ router.post('/', authenticateToken, async (req, res) => {
             entityType: 'MAINTENANCE_APPROVAL',
             entityId: approval.id,
             action: 'CREATE',
-            details: `إنشاء طلب موافقة - التكلفة: ${roundMoney(cost)} - الطلب: ${requestId}`,
+            details: `ط¥ظ†ط´ط§ط، ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط© - ط§ظ„طھظƒظ„ظپط©: ${roundMoney(cost)} - ط§ظ„ط·ظ„ط¨: ${requestId}`,
             userId: req.user?.id,
             performedBy: req.user?.displayName || 'System',
             branchId: request.branchId
@@ -91,8 +91,8 @@ router.post('/', authenticateToken, async (req, res) => {
             await createNotification({
                 branchId: request.branchId,
                 type: 'APPROVAL_REQUEST',
-                title: 'طلب موافقة على صيانة',
-                message: `مطلوب موافقة على تكلفة صيانة للطلب رقم ${requestId} بقيمة ${cost}`,
+                title: 'ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ طµظٹط§ظ†ط©',
+                message: `ظ…ط·ظ„ظˆط¨ ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ طھظƒظ„ظپط© طµظٹط§ظ†ط© ظ„ظ„ط·ظ„ط¨ ط±ظ‚ظ… ${requestId} ط¨ظ‚ظٹظ…ط© ${cost}`,
                 data: { requestId, approvalId: approval.id },
                 link: `/requests/${requestId}`
             });
@@ -113,12 +113,15 @@ router.put('/:id/respond', authenticateToken, async (req, res) => {
         const responderName = req.user?.displayName || 'Admin';
 
         // Fetch previous approval to append response notes safely
-        const previousApproval = await db.maintenanceApproval.findUnique({ where: { id } });
-        
+        // Fetch previous approval - RULE 1
+        const previousApproval = await db.maintenanceApproval.findFirst({
+            where: { id, branchId: { not: null } }
+        });
+
         if (!previousApproval) {
             return res.status(404).json({ error: 'Approval not found' });
         }
-        
+
         // Authorization check
         const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
         if (!isAdmin && previousApproval.branchId !== req.user.branchId) {
@@ -139,9 +142,9 @@ router.put('/:id/respond', authenticateToken, async (req, res) => {
             });
 
             // 2. Reload with related request
-            const approvalWithRequest = await tx.maintenanceApproval.findUnique({ 
-                where: { id }, 
-                include: { request: true } 
+            const approvalWithRequest = await tx.maintenanceApproval.findUnique({
+                where: { id },
+                include: { request: true }
             });
 
             // 3. Update Request Status
@@ -158,7 +161,7 @@ router.put('/:id/respond', authenticateToken, async (req, res) => {
             entityType: 'MAINTENANCE_APPROVAL',
             entityId: id,
             action: status === 'APPROVED' ? 'APPROVE' : 'REJECT',
-            details: `${status === 'APPROVED' ? 'موافقة' : 'رفض'} على الصيانة - الطلب: ${previousApproval.requestId}${responseNotes ? ' - ' + responseNotes : ''}`,
+            details: `${status === 'APPROVED' ? 'ظ…ظˆط§ظپظ‚ط©' : 'ط±ظپط¶'} ط¹ظ„ظ‰ ط§ظ„طµظٹط§ظ†ط© - ط§ظ„ط·ظ„ط¨: ${previousApproval.requestId}${responseNotes ? ' - ' + responseNotes : ''}`,
             userId: req.user?.id,
             performedBy: responderName,
             branchId: previousApproval?.branchId
@@ -169,8 +172,8 @@ router.put('/:id/respond', authenticateToken, async (req, res) => {
             await createNotification({
                 branchId: result.request.servicedByBranchId,
                 type: 'APPROVAL_RESPONSE',
-                title: `تم ${status === 'APPROVED' ? 'الموافقة على' : 'رفض'} الصيانة`,
-                message: `تم الرد على طلب الموافقة للطلب ${result.requestId}`,
+                title: `طھظ… ${status === 'APPROVED' ? 'ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰' : 'ط±ظپط¶'} ط§ظ„طµظٹط§ظ†ط©`,
+                message: `طھظ… ط§ظ„ط±ط¯ ط¹ظ„ظ‰ ط·ظ„ط¨ ط§ظ„ظ…ظˆط§ظپظ‚ط© ظ„ظ„ط·ظ„ط¨ ${result.requestId}`,
                 data: { requestId: result.requestId },
                 link: `/requests/${previousApproval.requestId}`
             });

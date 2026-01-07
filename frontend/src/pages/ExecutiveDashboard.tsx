@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api';
+import { api } from '../api/client';
 import {
   LineChart,
   Line,
@@ -36,7 +36,8 @@ import {
   ArrowDownRight,
   Filter,
   RefreshCw,
-  Award
+  Award,
+  PieChart as PieChartIcon
 } from 'lucide-react';
 
 // ===================== TYPES =====================
@@ -357,7 +358,7 @@ const ForecastChart: React.FC<{
             stroke={COLORS.primary}
             fill="url(#totalGradient)"
             strokeWidth={3}
-            strokeDasharray={(d: any) => d?.type === 'forecast' ? '5 5' : '0'}
+            strokeDasharray="5 5"
           />
         </ComposedChart>
       </ResponsiveContainer>
@@ -732,7 +733,7 @@ const ExecutiveDashboard: React.FC = () => {
         {/* Revenue Breakdown */}
         <div className="chart-card">
           <h3 className="chart-title">
-            <PieChart size={20} />
+            <PieChartIcon size={20} />
             توزيع الإيرادات
           </h3>
           <ResponsiveContainer width="100%" height={250}>

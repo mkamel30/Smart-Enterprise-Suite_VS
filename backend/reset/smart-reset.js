@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 
@@ -22,22 +22,22 @@ function createBackup() {
 
     try {
         fs.copyFileSync(DB_PATH, backupPath);
-        console.log('[BACKUP] ✅ Backup created successfully.');
+        console.log('[BACKUP] âœ… Backup created successfully.');
         return true;
     } catch (error) {
-        console.error('[BACKUP] ❌ Failed to create backup:', error);
+        console.error('[BACKUP] â‌Œ Failed to create backup:', error);
         return false;
     }
 }
 
 async function smartReset() {
-    console.log('\n🚀 Starting SMART Database Reset...');
+    console.log('\nًںڑ€ Starting SMART Database Reset...');
     console.log('-----------------------------------');
     console.log('Request: Reset data WITHOUT deleting settings, users, branches, rules, permissions, or parts.');
 
     // Step 1: Backup
     if (!createBackup()) {
-        console.error('⛔ ABORTING: Could not create backup. No data was touched.');
+        console.error('â›” ABORTING: Could not create backup. No data was touched.');
         process.exit(1);
     }
 
@@ -45,7 +45,7 @@ async function smartReset() {
         // Step 2: Clear Transactional Data
         // Order is important to avoid FK violations (though we could use cascade or disable keys, manual order is safer)
 
-        console.log('\n🧹 Clearing Transactional Tables...');
+        console.log('\nًں§¹ Clearing Transactional Tables...');
 
         // -- Maintenance & Operations --
         await prisma.repairVoucher.deleteMany({});
@@ -117,15 +117,15 @@ async function smartReset() {
         // Step 3: Reset Inventory (Smart Reset)
         // We keep the items (linked to branch & part) but zero the quantity
         // However, we preserve minLevel and location as they are "settings"
-        console.log('\n🔄 Resetting Inventory Quantities...');
+        console.log('\nًں”„ Resetting Inventory Quantities...');
         const inventoryResult = await prisma.inventoryItem.updateMany({
             data: { quantity: 0 }
         });
         console.log(`   - InventoryItem: ${inventoryResult.count} items reset to 0 quantity (Settings preserved).`);
 
-        console.log('\n✨ SMART RESET COMPLETE ✨');
+        console.log('\nâœ¨ SMART RESET COMPLETE âœ¨');
         console.log('-----------------------------------');
-        console.log('✅ PRESERVED DATA:');
+        console.log('âœ… PRESERVED DATA:');
         console.log('   - Users & Admins');
         console.log('   - Branches & Hierarchy');
         console.log('   - Spare Parts (Catalog)');
@@ -135,8 +135,8 @@ async function smartReset() {
         console.log('-----------------------------------');
 
     } catch (error) {
-        console.error('\n❌ ERROR during reset:', error);
-        console.log('⚠️  The database might be in a partial state. You can restore from the backup created at start.');
+        console.error('\nâ‌Œ ERROR during reset:', error);
+        console.log('âڑ ï¸ڈ  The database might be in a partial state. You can restore from the backup created at start.');
     } finally {
         await prisma.$disconnect();
     }

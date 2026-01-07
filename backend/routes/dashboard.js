@@ -1,7 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
@@ -74,11 +74,11 @@ router.get('/', authenticateToken, async (req, res) => {
             where: { ...branchFilter, status: 'In Progress' }
         }, req));
 
-        const requestsByStatus = await db.maintenanceRequest.groupBy({
+        const requestsByStatus = await db.maintenanceRequest.groupBy(ensureBranchWhere({
             by: ['status'],
             where: branchFilter,
             _count: { id: true }
-        });
+        }, req));
 
         // 3. Inventory Alerts (Low Stock)
         const lowStockItems = await db.inventoryItem.findMany(ensureBranchWhere({
@@ -110,8 +110,8 @@ router.get('/', authenticateToken, async (req, res) => {
         }, req));
 
         // 6. Special Stats for Admin Affairs & Stock Managers
-        const machinesCount = await db.warehouseMachine.count({ where: branchFilter });
-        const simsCount = await db.warehouseSim.count({ where: branchFilter });
+        const machinesCount = await db.warehouseMachine.count(ensureBranchWhere({ where: branchFilter }, req));
+        const simsCount = await db.warehouseSim.count(ensureBranchWhere({ where: branchFilter }, req));
 
         // 7. Maintenance Stats (Paid vs Free Parts Comparison)
         // This is specifically for Center Dashboards
@@ -217,14 +217,14 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
         // 1. General counts
-        const usersCount = await db.user.count();
+        const usersCount = await db.user.count(ensureBranchWhere({}, req));
         const branchesCount = await db.branch.count({
             where: { type: 'BRANCH' }
         });
-        const totalMachines = await db.warehouseMachine.count();
-        const dailyOps = await db.systemLog.count({
+        const totalMachines = await db.warehouseMachine.count(ensureBranchWhere({}, req));
+        const dailyOps = await db.systemLog.count(ensureBranchWhere({
             where: { createdAt: { gte: startOfToday } }
-        });
+        }, req));
 
         // 2. Branch Performance
         const branches = await db.branch.findMany({
@@ -233,21 +233,21 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
         });
 
         const performanceData = await Promise.all(branches.map(async (branch) => {
-            const revenue = await db.payment.aggregate({
+            const revenue = await db.payment.aggregate(ensureBranchWhere({
                 where: {
                     branchId: branch.id,
                     createdAt: { gte: startOfMonth }
                 },
                 _sum: { amount: true }
-            });
+            }, req));
 
-            const repairs = await db.maintenanceRequest.count({
+            const repairs = await db.maintenanceRequest.count(ensureBranchWhere({
                 where: {
                     branchId: branch.id,
                     createdAt: { gte: startOfMonth },
                     status: 'Done'
                 }
-            });
+            }, req));
 
             return {
                 name: branch.name,
@@ -261,28 +261,28 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
         const maintenanceCenters = await db.branch.findMany({ where: { type: 'MAINTENANCE_CENTER' }, select: { id: true, name: true } });
 
         const adminAffairsStats = await Promise.all(adminAffairs.map(async (branch) => {
-            const machineTransfers = await db.transferOrder.count({
+            const machineTransfers = await db.transferOrder.count(ensureBranchWhere({
                 where: { fromBranchId: branch.id, type: 'MACHINE', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
-            });
-            const simTransfers = await db.transferOrder.count({
+            }, req));
+            const simTransfers = await db.transferOrder.count(ensureBranchWhere({
                 where: { fromBranchId: branch.id, type: 'SIM', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
-            });
+            }, req));
 
             return { id: branch.id, name: branch.name, machineTransfers, simTransfers };
         }));
 
         const maintenanceCenterStats = await Promise.all(maintenanceCenters.map(async (center) => {
-            const partTransfers = await db.transferOrder.count({
+            const partTransfers = await db.transferOrder.count(ensureBranchWhere({
                 where: { fromBranchId: center.id, type: 'SPARE_PART', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
-            });
+            }, req));
 
-            const machinesInRepair = await db.warehouseMachine.count({
+            const machinesInRepair = await db.warehouseMachine.count(ensureBranchWhere({
                 where: { branchId: center.id, status: { in: ['AT_CENTER', 'UNDER_INSPECTION', 'AWAITING_APPROVAL', 'IN_PROGRESS'] } }
-            });
+            }, req));
 
-            const machinesRepaired = await db.warehouseMachine.count({
+            const machinesRepaired = await db.warehouseMachine.count(ensureBranchWhere({
                 where: { branchId: center.id, status: { in: ['READY_FOR_RETURN', 'COMPLETED'] }, updatedAt: { gte: startOfMonth } }
-            });
+            }, req));
 
             return {
                 id: center.id,
@@ -303,7 +303,7 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
                 OR: [
                     { action: { contains: 'ERROR' } },
                     { details: { contains: 'failed' } },
-                    { details: { contains: 'خطأ' } }
+                    { details: { contains: 'ط®ط·ط£' } }
                 ]
             }
         });
@@ -313,13 +313,13 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
             : 100;
 
         // B. Global Inventory Low Stock (Items low across the whole system)
-        const globalLowStock = await db.inventoryItem.groupBy({
+        const globalLowStock = await db.inventoryItem.groupBy(ensureBranchWhere({
             by: ['partId'],
             _sum: { quantity: true },
             having: {
                 quantity: { _sum: { lte: 20 } }
             }
-        });
+        }, req));
 
         const lowStockDetails = await Promise.all(globalLowStock.map(async (item) => {
             const part = await db.sparePart.findUnique({

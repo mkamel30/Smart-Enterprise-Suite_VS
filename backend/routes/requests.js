@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
 
@@ -182,7 +182,22 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
 
-    const request = await db.maintenanceRequest.findUnique({
+    const request = await db.maintenanceRequest.findFirst({
+      where: { id, branchId: { not: null } },
+      include: { branch: true } // Origin branch
+    });
+
+    if (!request) {
+      throw new NotFoundError('Maintenance request');
+    }
+
+    // Branch isolation check
+    if (req.user.branchId && request.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Access denied', 403, 'FORBIDDEN');
+    }
+
+    // Fetch full details after branch isolation check
+    const fullRequest = await db.maintenanceRequest.findUnique({
       where: { id },
       include: {
         customer: true,
@@ -221,73 +236,20 @@ router.post(
   validateRequest(createRequestSchema),
   asyncHandler(async (req, res) => {
     const validated = req.validated;
-
-    // Determine branch
     const branchId = req.user.branchId || validated.branchId;
+
     if (!branchId) {
       throw new AppError('Branch ID is required', 400, 'MISSING_BRANCH');
     }
 
-    // Verify customer exists
-    const customer = await db.customer.findUnique({
-      where: { bkcode: validated.customerId }
-    });
-
-    if (!customer) {
-      throw new NotFoundError('Customer');
-    }
-
-    // Verify machine if provided
-    let machine = null;
-    if (validated.machineId) {
-      machine = await db.posMachine.findUnique({
-        where: { id: validated.machineId }
-      });
-      if (!machine) {
-        throw new NotFoundError('Machine');
-      }
-    }
-
-    // Create request within transaction
-    const request = await db.$transaction(async (tx) => {
-      const newRequest = await tx.maintenanceRequest.create({
-        data: {
-          branchId,
-          customerId: customer.bkcode,
-          customerName: customer.client_name,
-          posMachineId: machine?.id || null,
-          serialNumber: machine?.serialNumber || null,
-          machineModel: machine?.model,
-          machineManufacturer: machine?.manufacturer,
-          complaint: validated.problemDescription,
-          status: validated.status,
-          createdAt: new Date()
-        }
-      });
-
-      // If taking machine to warehouse
-      if (validated.takeMachine && machine) {
-        await requestService.receiveMachineToWarehouse(tx, {
-          serialNumber: machine.serialNumber,
-          customerId: customer.bkcode,
-          customerName: customer.client_name,
-          requestId: newRequest.id,
-          branchId,
-          performedBy: req.user.displayName
-        });
-      }
-
-      return newRequest;
-    });
-
-    // Audit logging
-    await logAction({
-      entityType: 'REQUEST',
-      entityId: request.id,
-      action: 'CREATE',
-      details: `Created maintenance request for ${customer.client_name}`,
-      userId: req.user.id,
-      performedBy: req.user.displayName,
+    const request = await requestService.createRequest({
+      ...validated,
+      branchId,
+      complaint: validated.problemDescription,
+      posMachineId: validated.machineId
+    }, {
+      id: req.user.id,
+      name: req.user.displayName,
       branchId
     });
 
@@ -313,41 +275,37 @@ router.put(
     const { id } = idParamSchema.parse(req.params);
     const validated = req.validated;
 
-    // Find existing request
-    const existing = await db.maintenanceRequest.findUnique({
-      where: { id }
+    // Find existing request to check permissions - RULE 1
+    const existing = await db.maintenanceRequest.findFirst({
+      where: { id, branchId: { not: null } }
     });
 
     if (!existing) {
       throw new NotFoundError('Request');
     }
 
-    // Branch isolation
-    if (req.user.branchId && existing.branchId !== req.user.branchId) {
+    if (req.user.branchId && existing.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
 
-    // Build update data
-    const updateData = {};
-    if (validated.status) updateData.status = validated.status;
-    if (validated.problemDescription) updateData.complaint = validated.problemDescription;
-    if (validated.technician) updateData.technician = validated.technician;
+    // Use service for status updates
+    let updated;
+    if (validated.status) {
+      updated = await requestService.updateStatus(id, validated.status, {
+        id: req.user.id,
+        name: req.user.displayName
+      });
+    } else {
+      // For other fields, use direct update (or extend service)
+      const updateData = {};
+      if (validated.problemDescription) updateData.complaint = validated.problemDescription;
+      if (validated.technician) updateData.technician = validated.technician;
 
-    const updated = await db.maintenanceRequest.update({
-      where: { id },
-      data: updateData
-    });
-
-    // Audit logging
-    await logAction({
-      entityType: 'REQUEST',
-      entityId: id,
-      action: 'UPDATE',
-      details: `Updated request status to ${updateData.status || existing.status}`,
-      userId: req.user.id,
-      performedBy: req.user.displayName,
-      branchId: req.user.branchId
-    });
+      updated = await db.maintenanceRequest.update({
+        where: { id },
+        data: updateData
+      });
+    }
 
     res.json(updated);
   })
@@ -371,9 +329,9 @@ router.put(
     const { id } = idParamSchema.parse(req.params);
     const validated = req.validated;
 
-    // Find and verify request
-    const existing = await db.maintenanceRequest.findUnique({
-      where: { id }
+    // Find and verify request - RULE 1
+    const existing = await db.maintenanceRequest.findFirst({
+      where: { id, branchId: { not: null } }
     });
 
     if (!existing) {
@@ -435,4 +393,12 @@ router.get(
 
     // Validate serial number format
     if (!serialNumber || serialNumber.length < 3) {
-      throw new AppError('Invalid serial number format', 400, 'INVALID_SERIAL
+      throw new AppError('Invalid serial number format', 400, 'INVALID_SERIAL');
+    }
+
+    const { count, trend } = await requestService.getMachineMonthlyRequestCount(serialNumber, query.months);
+    res.json({ count, trend });
+  })
+);
+
+module.exports = router;

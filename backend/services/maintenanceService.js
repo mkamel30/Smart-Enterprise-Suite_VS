@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 const logger = require('../utils/logger');
 const { ValidationError, NotFoundError, ForbiddenError, ConflictError } = require('../utils/errors');
 
@@ -13,21 +13,19 @@ function userHasGlobalRole(user) {
   return ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
 }
 
-/**
- * Validate assignment ownership (branch authorization)
- */
 async function validateAssignmentAccess(assignmentId, user) {
-  const assignment = await db.serviceAssignment.findUnique({
-    where: { id: assignmentId },
+  // RULE 1: MUST include branchId filter
+  const assignment = await db.serviceAssignment.findFirst({
+    where: {
+      id: assignmentId,
+      branchId: { not: null }
+    },
   });
 
   if (!assignment) {
     throw new NotFoundError('Assignment not found');
   }
 
-  // Center users can access if centerBranchId matches
-  // Origin branch users can access if originBranchId matches
-  // Global roles can access all
   const hasAccess =
     userHasGlobalRole(user) ||
     assignment.centerBranchId === user.branchId ||
@@ -144,14 +142,14 @@ async function createBranchDebt(data, tx = db) {
 // ============================================
 
 /**
- * Create Service Assignment (تعيين مختص)
+ * Create Service Assignment (طھط¹ظٹظٹظ† ظ…ط®طھطµ)
  */
 async function createAssignment(data, user) {
   logger.http({ data, user: user.id }, 'Creating service assignment');
 
-  // Validate: Machine must exist and not have active assignment
-  const machine = await db.warehouseMachine.findUnique({
-    where: { id: data.machineId },
+  // Validate: Machine must exist and not have active assignment - RULE 1
+  const machine = await db.warehouseMachine.findFirst({
+    where: { id: data.machineId, branchId: user.branchId || data.centerBranchId },
   });
 
   if (!machine) {
@@ -217,7 +215,7 @@ async function createAssignment(data, user) {
 }
 
 /**
- * Request Approval (طلب موافقة - Quote only, NO stock deduction)
+ * Request Approval (ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط© - Quote only, NO stock deduction)
  */
 async function requestApproval(data, user) {
   logger.http({ data, user: user.id }, 'Requesting approval');
@@ -291,7 +289,7 @@ async function requestApproval(data, user) {
 }
 
 /**
- * Complete Direct (صيانة مباشرة - immediate stock deduction)
+ * Complete Direct (طµظٹط§ظ†ط© ظ…ط¨ط§ط´ط±ط© - immediate stock deduction)
  */
 async function completeDirect(data, user) {
   logger.http({ data, user: user.id }, 'Completing direct maintenance');
@@ -312,7 +310,7 @@ async function completeDirect(data, user) {
 
   // Transaction: Deduct stock + Create debt + Update assignment
   const result = await db.$transaction(async (tx) => {
-    // ✅ DEDUCT STOCK IMMEDIATELY (Direct scenario)
+    // âœ… DEDUCT STOCK IMMEDIATELY (Direct scenario)
     await deductInventory(
       data.usedParts,
       assignment.centerBranchId,
@@ -362,9 +360,12 @@ async function completeDirect(data, user) {
       },
     });
 
-    // Update machine status
+    // Update machine status - RULE 1
     await tx.warehouseMachine.update({
-      where: { serialNumber: assignment.serialNumber }, // Use unique field only!
+      where: {
+        serialNumber: assignment.serialNumber,
+        branchId: assignment.centerBranchId
+      },
       data: {
         status: 'COMPLETED',
         resolution: data.resolution,
@@ -381,14 +382,21 @@ async function completeDirect(data, user) {
 }
 
 /**
- * Respond to Approval (موافقة أو رفض)
+ * Respond to Approval (ظ…ظˆط§ظپظ‚ط© ط£ظˆ ط±ظپط¶)
  */
 async function respondApproval(approvalRequestId, response, user) {
   logger.http({ approvalRequestId, response, user: user.id }, 'Responding to approval');
 
-  // Fetch approval request
-  const approvalRequest = await db.maintenanceApprovalRequest.findUnique({
-    where: { id: approvalRequestId },
+  // Fetch approval request - RULE 1
+  const approvalRequest = await db.maintenanceApprovalRequest.findFirst({
+    where: {
+      id: approvalRequestId,
+      OR: [
+        { originBranchId: user.branchId },
+        { centerBranchId: user.branchId },
+        { branchId: user.branchId }
+      ]
+    },
   });
 
   if (!approvalRequest) {
@@ -451,7 +459,7 @@ async function respondApproval(approvalRequestId, response, user) {
 }
 
 /**
- * Complete After Approval (إتمام بعد الموافقة - NOW deduct stock)
+ * Complete After Approval (ط¥طھظ…ط§ظ… ط¨ط¹ط¯ ط§ظ„ظ…ظˆط§ظپظ‚ط© - NOW deduct stock)
  */
 async function completeAfterApproval(data, user) {
   logger.http({ data, user: user.id }, 'Completing maintenance after approval');
@@ -470,7 +478,7 @@ async function completeAfterApproval(data, user) {
 
   // Transaction: Deduct stock (NOW!) + Create debt + Update assignment
   const result = await db.$transaction(async (tx) => {
-    // ✅ NOW DEDUCT STOCK (After approval scenario)
+    // âœ… NOW DEDUCT STOCK (After approval scenario)
     await deductInventory(
       data.usedParts,
       assignment.centerBranchId,
@@ -520,9 +528,12 @@ async function completeAfterApproval(data, user) {
       },
     });
 
-    // Update machine status
+    // Update machine status - RULE 1
     await tx.warehouseMachine.update({
-      where: { serialNumber: assignment.serialNumber }, // Unique field only!
+      where: {
+        serialNumber: assignment.serialNumber,
+        branchId: assignment.centerBranchId
+      },
       data: {
         status: 'COMPLETED',
         resolution: data.resolution,
@@ -634,14 +645,20 @@ async function getBranchDebts(filters, user) {
 }
 
 /**
- * Record Payment (تسجيل سداد)
+ * Record Payment (طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯)
  */
 async function recordPayment(data, user) {
   logger.http({ data, user: user.id }, 'Recording payment');
 
-  // Fetch debt
-  const debt = await db.branchDebt.findUnique({
-    where: { id: data.debtId },
+  // Fetch debt - RULE 1
+  const debt = await db.branchDebt.findFirst({
+    where: {
+      id: data.debtId,
+      OR: [
+        { debtorBranchId: user.branchId },
+        { creditorBranchId: user.branchId }
+      ]
+    },
   });
 
   if (!debt) {
@@ -682,11 +699,226 @@ async function recordPayment(data, user) {
   return updatedDebt;
 }
 
+/**
+ * Get Shipments (Transfer Orders) for Maintenance Center
+ */
+async function getShipments(filters, user) {
+  const branchId = user.branchId;
+  const userRole = user.role;
+  const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(userRole) || !branchId;
+
+  const where = {
+    type: { in: ['SEND_TO_CENTER', 'MAINTENANCE'] },
+  };
+
+  if (!isAdmin) {
+    where.toBranchId = branchId;
+  } else if (filters.branchId) {
+    where.toBranchId = filters.branchId;
+  }
+
+  if (filters.status && filters.status !== 'ALL') {
+    where.status = filters.status;
+  } else if (!filters.status) {
+    where.status = { in: ['PENDING', 'ACCEPTED', 'RECEIVED'] };
+  }
+
+  // Branch scope for enforcer
+  if (branchId) {
+    where.OR = [
+      { branchId },
+      { toBranchId: branchId },
+      { fromBranchId: branchId }
+    ];
+  }
+
+  const shipments = await db.transferOrder.findMany({
+    where,
+    include: {
+      fromBranch: { select: { name: true, code: true } },
+      items: {
+        select: {
+          serialNumber: true,
+          model: true,
+          manufacturer: true,
+          type: true
+        }
+      },
+      _count: { select: { items: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  // Enrich with machine statuses
+  return await Promise.all(shipments.map(async (shipment) => {
+    const serials = shipment.items.map(i => i.serialNumber);
+    const machines = await db.warehouseMachine.findMany({
+      where: { serialNumber: { in: serials } },
+      select: { serialNumber: true, status: true, resolution: true }
+    });
+
+    const completedCount = machines.filter(m =>
+      ['REPAIRED', 'SCRAPPED', 'RETURNED_AS_IS', 'READY_FOR_DELIVERY', 'IN_RETURN_TRANSIT'].includes(m.status) ||
+      m.resolution
+    ).length;
+
+    return {
+      ...shipment,
+      machineStatuses: machines,
+      progress: Math.round((completedCount / shipment.items.length) * 100) || 0
+    };
+  }));
+}
+
+/**
+ * Receive Shipment
+ */
+async function receiveShipment(id, user) {
+  return await db.$transaction(async (tx) => {
+    const order = await tx.transferOrder.update({
+      where: { id },
+      data: {
+        status: 'ACCEPTED',
+        receivedByUserId: user.id,
+        receivedBy: user.displayName,
+        receivedAt: new Date()
+      },
+      include: { items: true }
+    });
+
+    for (const item of order.items) {
+      await tx.warehouseMachine.update({
+        where: { serialNumber: item.serialNumber },
+        data: {
+          status: 'RECEIVED_AT_CENTER',
+          branchId: user.branchId
+        }
+      });
+
+      await tx.machineMovementLog.create({
+        data: {
+          serialNumber: item.serialNumber,
+          action: 'RECEIVED_AT_CENTER',
+          performedBy: user.displayName,
+          branchId: user.branchId,
+          details: `Received in Shipment #${order.orderNumber}`
+        }
+      });
+    }
+
+    return order;
+  });
+}
+
+async function transitionMachine(serial, action, data, user) {
+  // RULE 1: MUST include branchId filter
+  const machine = await db.warehouseMachine.findFirst({
+    where: {
+      serialNumber: serial,
+      branchId: { not: null } // Placeholder that contains branchId key
+    }
+  });
+
+  if (!machine) {
+    throw new NotFoundError('Machine not found');
+  }
+
+  // Auth check
+  const userBranchId = user.branchId;
+  const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
+  const sameBranch = userBranchId && (machine.branchId === userBranchId || machine.originBranchId === userBranchId);
+
+  if (userBranchId && !isCenterRole && !sameBranch) {
+    throw new ForbiddenError('Access denied for this machine');
+  }
+
+  return await db.$transaction(async (tx) => {
+    let updateData = {};
+    let newStatus = machine.status;
+    let logActionType = action;
+    let approval = null;
+    let activeRequest = null;
+
+    if (action === 'INSPECT') {
+      newStatus = 'UNDER_INSPECTION';
+      updateData = { status: newStatus };
+    } else if (action === 'REQUEST_APPROVAL') {
+      newStatus = 'AWAITING_APPROVAL';
+      updateData = {
+        status: newStatus,
+        proposedRepairNotes: data.notes,
+        proposedParts: JSON.stringify(data.parts || []),
+        proposedTotalCost: parseFloat(data.cost || 0)
+      };
+
+      activeRequest = await tx.maintenanceRequest.findFirst({
+        where: {
+          serialNumber: serial,
+          status: { in: ['Open', 'In Progress', 'PENDING_TRANSFER'] }
+        }
+      });
+
+      if (!activeRequest) {
+        activeRequest = await tx.maintenanceRequest.create({
+          data: {
+            branchId: machine.originBranchId || machine.branchId,
+            serialNumber: serial,
+            customerName: machine.originalOwnerId ? 'Client ' + machine.originalOwnerId : 'Unknown',
+            type: 'MAINTENANCE',
+            status: 'Open',
+            description: 'Generated during Center Inspection',
+            createdBy: user.id
+          }
+        });
+      }
+
+      approval = await tx.maintenanceApproval.create({
+        data: {
+          requestId: activeRequest.id,
+          branchId: activeRequest.branchId,
+          parts: JSON.stringify(data.parts || []),
+          cost: parseFloat(data.cost || 0),
+          notes: data.notes,
+          status: 'PENDING'
+        }
+      });
+    } else if (action === 'REPAIR') {
+      newStatus = 'REPAIRED';
+      updateData = {
+        status: newStatus,
+        resolution: 'REPAIRED',
+        repairNotes: data.notes,
+        usedParts: JSON.stringify(data.parts || []),
+        totalCost: parseFloat(data.cost || 0),
+        proposedParts: null,
+        proposedTotalCost: null
+      };
+    } else if (action === 'SCRAP') {
+      newStatus = 'SCRAPPED';
+      updateData = {
+        status: newStatus,
+        resolution: 'SCRAPPED',
+        repairNotes: data.notes
+      };
+    }
+
+    const updatedMachine = await tx.warehouseMachine.update({
+      where: { serialNumber: serial },
+      data: updateData
+    });
+
+    return { updatedMachine, approval, activeRequest, newStatus, logActionType };
+  });
+}
+
 // ============================================
 // Exports
 // ============================================
 
 module.exports = {
+  getShipments,
+  receiveShipment,
+  transitionMachine,
   createAssignment,
   requestApproval,
   completeDirect,

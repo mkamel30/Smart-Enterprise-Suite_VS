@@ -1,8 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function migrate() {
-    console.log('🔄 Starting migration to Multi-Branch system...');
+    console.log('ًں”„ Starting migration to Multi-Branch system...');
     console.log('1. Creating Default Branch...');
 
     let defaultBranch = await prisma.branch.findFirst({ where: { code: 'CAIRO_ARMY' } });
@@ -11,14 +11,14 @@ async function migrate() {
         defaultBranch = await prisma.branch.create({
             data: {
                 code: 'CAIRO_ARMY',
-                name: 'القاهرة-الجيش',
-                address: 'القاهرة - شارع الجيش',
+                name: 'ط§ظ„ظ‚ط§ظ‡ط±ط©-ط§ظ„ط¬ظٹط´',
+                address: 'ط§ظ„ظ‚ط§ظ‡ط±ط© - ط´ط§ط±ط¹ ط§ظ„ط¬ظٹط´',
                 isActive: true
             }
         });
-        console.log('✅ Created branch: القاهرة-الجيش');
+        console.log('âœ… Created branch: ط§ظ„ظ‚ط§ظ‡ط±ط©-ط§ظ„ط¬ظٹط´');
     } else {
-        console.log('ℹ️ Branch already exists: القاهرة-الجيش');
+        console.log('â„¹ï¸ڈ Branch already exists: ط§ظ„ظ‚ط§ظ‡ط±ط©-ط§ظ„ط¬ظٹط´');
     }
 
     const branchId = defaultBranch.id;
@@ -30,56 +30,56 @@ async function migrate() {
         where: { branchId: null },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updateCustomers.count} customers`);
+    console.log(`âœ… Updated ${updateCustomers.count} customers`);
 
     // Warehouse Machines
     const updateMachines = await prisma.warehouseMachine.updateMany({
         where: { branchId: null },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updateMachines.count} warehouse machines`);
+    console.log(`âœ… Updated ${updateMachines.count} warehouse machines`);
 
     // Warehouse SIMs
     const updateSims = await prisma.warehouseSim.updateMany({
         where: { branchId: null },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updateSims.count} warehouse sims`);
+    console.log(`âœ… Updated ${updateSims.count} warehouse sims`);
 
     // Inventory Items
     const updateInventory = await prisma.inventoryItem.updateMany({
         where: { branchId: null },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updateInventory.count} inventory items`);
+    console.log(`âœ… Updated ${updateInventory.count} inventory items`);
 
     // Maintenance Requests
     const updateRequests = await prisma.maintenanceRequest.updateMany({
         where: { branchId: null },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updateRequests.count} maintenance requests`);
+    console.log(`âœ… Updated ${updateRequests.count} maintenance requests`);
 
     // Stock Movements
     const updateMovements = await prisma.stockMovement.updateMany({
         where: { branchId: null },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updateMovements.count} stock movements`);
+    console.log(`âœ… Updated ${updateMovements.count} stock movements`);
 
     // Machine Sales
     const updateSales = await prisma.machineSale.updateMany({
         where: { branchId: null },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updateSales.count} machine sales`);
+    console.log(`âœ… Updated ${updateSales.count} machine sales`);
 
     // Payments
     const updatePayments = await prisma.payment.updateMany({
         where: { branchId: null },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updatePayments.count} payments`);
+    console.log(`âœ… Updated ${updatePayments.count} payments`);
 
     // Users
     // Users with role 'Admin' stay null (global), others go to default branch
@@ -90,9 +90,9 @@ async function migrate() {
         },
         data: { branchId }
     });
-    console.log(`✅ Updated ${updateUsers.count} regular users to branch`);
+    console.log(`âœ… Updated ${updateUsers.count} regular users to branch`);
 
-    console.log('🎉 Migration completed successfully!');
+    console.log('ًںژ‰ Migration completed successfully!');
 }
 
 migrate()

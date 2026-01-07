@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Database Health Check Route
  * Provides endpoints for monitoring database status
  */

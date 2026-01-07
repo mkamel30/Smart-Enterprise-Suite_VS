@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcryptjs');
 
@@ -9,7 +9,7 @@ async function fixUsers() {
         // ID seen: cmj70c0bm0000111gfzcg0pu
         // However, I'll search by the email I wrongly assigned to be safe.
         const technician = await prisma.user.findFirst({
-            where: { email: 'admin@system.com', displayName: 'عمرو كمال' }
+            where: { email: 'admin@system.com', displayName: 'ط¹ظ…ط±ظˆ ظƒظ…ط§ظ„' }
         });
 
         if (technician) {

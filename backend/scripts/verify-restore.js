@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
@@ -12,9 +12,9 @@ async function main() {
         console.log(`Machines: ${machineCount}`);
 
         if (userCount > 1) {
-            console.log('✅ Restoration successful (User data found).');
+            console.log('âœ… Restoration successful (User data found).');
         } else {
-            console.log('⚠️ Warning: Only default users found. Restoration might have failed or backup was empty.');
+            console.log('âڑ ï¸ڈ Warning: Only default users found. Restoration might have failed or backup was empty.');
         }
 
     } catch (e) {

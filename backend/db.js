@@ -1,14 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const { attachBranchEnforcer } = require('./prisma/branchEnforcer');
 
 // Initialize Prisma with connection limits and query logging
 const db = new PrismaClient({
-    log: ['error', 'warn'], // Log only errors and warnings
-    datasources: {
-        db: {
-            url: "file:./dev.db?connection_limit=1" // Recommended for SQLite
-        },
-    },
+  log: ['error', 'warn'], // Log only errors and warnings
 });
 
 // Attach branch-enforcement middleware to fail-fast on unscoped queries

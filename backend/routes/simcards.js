@@ -1,7 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
 const { generateTemplate, parseExcelFile, exportToExcel } = require('../utils/excel');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');

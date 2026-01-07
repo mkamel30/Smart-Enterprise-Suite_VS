@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcryptjs');
 
@@ -12,7 +12,7 @@ async function createAdminUser() {
         });
 
         if (existingAdmin) {
-            console.log('✓ Admin user already exists!');
+            console.log('âœ“ Admin user already exists!');
             console.log('\nLogin Credentials:');
             console.log('==================');
             console.log('Email:    admin@csdept.com');
@@ -37,7 +37,7 @@ async function createAdminUser() {
             }
         });
 
-        console.log('✓ Admin user created successfully!');
+        console.log('âœ“ Admin user created successfully!');
         console.log('\nLogin Credentials:');
         console.log('==================');
         console.log('Email:    admin@csdept.com');

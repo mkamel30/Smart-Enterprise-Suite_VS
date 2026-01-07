@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
 const backupFile = 'backend/backups/backup_scheduled_2025-12-26_00-00-00.db';

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Jest setup file for backend tests
  * Automatically runs before all tests to set up common environment
  */

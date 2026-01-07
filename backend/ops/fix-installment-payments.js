@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -14,7 +14,7 @@ const { PrismaClient } = require('@prisma/client');
 const db = new PrismaClient();
 
 async function fixInstallmentPayments() {
-    console.log('🔧 Starting fix for installment payments...\n');
+    console.log('ًں”§ Starting fix for installment payments...\n');
 
     try {
         // Find all INSTALLMENT type payments that are missing reason or paymentPlace
@@ -52,7 +52,7 @@ async function fixInstallmentPayments() {
                 const updateData = {};
 
                 if (!payment.reason || payment.reason === '') {
-                    updateData.reason = installment.description || 'سداد قسط';
+                    updateData.reason = installment.description || 'ط³ط¯ط§ط¯ ظ‚ط³ط·';
                 }
 
                 if (!payment.paymentPlace && installment.paymentPlace) {
@@ -65,21 +65,21 @@ async function fixInstallmentPayments() {
                         data: updateData
                     });
 
-                    console.log(`  ✅ Updated: reason="${updateData.reason || payment.reason}", paymentPlace="${updateData.paymentPlace || payment.paymentPlace}"`);
+                    console.log(`  âœ… Updated: reason="${updateData.reason || payment.reason}", paymentPlace="${updateData.paymentPlace || payment.paymentPlace}"`);
                     fixed++;
                 } else {
-                    console.log(`  ⚠️ No data to update`);
+                    console.log(`  âڑ ï¸ڈ No data to update`);
                 }
             } else {
                 // Try to extract info from notes field
                 const notes = payment.notes || '';
                 let reason = payment.reason;
 
-                if (!reason && notes.includes('سداد')) {
-                    // Extract from notes like "سداد القسط رقم 2 من 12"
+                if (!reason && notes.includes('ط³ط¯ط§ط¯')) {
+                    // Extract from notes like "ط³ط¯ط§ط¯ ط§ظ„ظ‚ط³ط· ط±ظ‚ظ… 2 ظ…ظ† 12"
                     reason = notes;
                 } else if (!reason) {
-                    reason = 'سداد قسط';
+                    reason = 'ط³ط¯ط§ط¯ ظ‚ط³ط·';
                 }
 
                 await db.payment.update({
@@ -87,18 +87,18 @@ async function fixInstallmentPayments() {
                     data: { reason }
                 });
 
-                console.log(`  ⚠️ Installment not found, set reason from notes: "${reason}"`);
+                console.log(`  âڑ ï¸ڈ Installment not found, set reason from notes: "${reason}"`);
                 notFound++;
             }
         }
 
         console.log('\n========================================');
-        console.log(`✅ Fixed: ${fixed} payments`);
-        console.log(`⚠️ Partially fixed (installment not found): ${notFound} payments`);
+        console.log(`âœ… Fixed: ${fixed} payments`);
+        console.log(`âڑ ï¸ڈ Partially fixed (installment not found): ${notFound} payments`);
         console.log('========================================\n');
 
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('â‌Œ Error:', error);
     } finally {
         await db.$disconnect();
     }

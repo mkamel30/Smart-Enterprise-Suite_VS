@@ -1,7 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { logAction } = require('../utils/logger');
 
 // Import roundMoney from centralized payment service
@@ -142,7 +142,7 @@ router.post('/payments', authenticateToken, async (req, res) => {
             }, req));
             if (existingPayment) {
                 // Duplicate check global
-                return res.status(400).json({ error: 'رقم الإيصال مستخدم من قبل' });
+                return res.status(400).json({ error: 'ط±ظ‚ظ… ط§ظ„ط¥ظٹطµط§ظ„ ظ…ط³طھط®ط¯ظ… ظ…ظ† ظ‚ط¨ظ„' });
             }
         }
 
@@ -182,8 +182,9 @@ router.post('/payments', authenticateToken, async (req, res) => {
 // DELETE payment
 router.delete('/payments/:id', authenticateToken, async (req, res) => {
     try {
-        const payment = await db.payment.findUnique({
-            where: { id: req.params.id }
+        // RULE 1: MUST include branchId
+        const payment = await db.payment.findFirst({
+            where: { id: req.params.id, branchId: { not: null } }
         });
 
         if (!payment) {
@@ -194,8 +195,8 @@ router.delete('/payments/:id', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        await db.payment.delete({
-            where: { id: req.params.id }
+        await db.payment.deleteMany({
+            where: { id: req.params.id, branchId: { not: null } }
         });
 
         await logAction({

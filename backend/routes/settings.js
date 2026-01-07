@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
@@ -125,7 +125,7 @@ router.post('/force-update-models', async (req, res) => {
         const machineParams = await db.machineParameter.findMany();
 
         if (machineParams.length === 0) {
-            return res.status(400).json({ error: 'لا توجد باراميترات ماكينات محددة' });
+            return res.status(400).json({ error: 'ظ„ط§ طھظˆط¬ط¯ ط¨ط§ط±ط§ظ…ظٹطھط±ط§طھ ظ…ط§ظƒظٹظ†ط§طھ ظ…ط­ط¯ط¯ط©' });
         }
 
         let warehouseUpdated = 0;
@@ -202,14 +202,14 @@ router.post('/force-update-models', async (req, res) => {
 
         res.json({
             success: true,
-            message: `تم تحديث ${warehouseUpdated} ماكينة مخزن + ${customerUpdated} ماكينة عملاء`,
+            message: `طھظ… طھط­ط¯ظٹط« ${warehouseUpdated} ظ…ط§ظƒظٹظ†ط© ظ…ط®ط²ظ† + ${customerUpdated} ظ…ط§ظƒظٹظ†ط© ط¹ظ…ظ„ط§ط،`,
             warehouseUpdated,
             customerUpdated,
             total: warehouseUpdated + customerUpdated
         });
     } catch (error) {
         console.error('Force update models failed:', error);
-        res.status(500).json({ error: 'فشل تحديث الموديلات' });
+        res.status(500).json({ error: 'ظپط´ظ„ طھط­ط¯ظٹط« ط§ظ„ظ…ظˆط¯ظٹظ„ط§طھ' });
     }
 });
 

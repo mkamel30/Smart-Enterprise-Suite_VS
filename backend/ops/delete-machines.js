@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -11,8 +11,8 @@ async function deleteMachines() {
     const args = process.argv[2];
 
     if (!args) {
-        console.log('استخدام: node delete-machines.js "SERIAL1,SERIAL2,SERIAL3"');
-        console.log('أو لحذف حسب التاريخ: node delete-machines.js --date "2025-12-18"');
+        console.log('ط§ط³طھط®ط¯ط§ظ…: node delete-machines.js "SERIAL1,SERIAL2,SERIAL3"');
+        console.log('ط£ظˆ ظ„ط­ط°ظپ ط­ط³ط¨ ط§ظ„طھط§ط±ظٹط®: node delete-machines.js --date "2025-12-18"');
         process.exit(1);
     }
 
@@ -20,7 +20,7 @@ async function deleteMachines() {
         if (args === '--date') {
             const date = process.argv[3];
             if (!date) {
-                console.log('يرجى تحديد التاريخ');
+                console.log('ظٹط±ط¬ظ‰ طھط­ط¯ظٹط¯ ط§ظ„طھط§ط±ظٹط®');
                 process.exit(1);
             }
 
@@ -37,12 +37,12 @@ async function deleteMachines() {
                 }
             });
 
-            console.log(`تم العثور على ${machines.length} ماكينة في تاريخ ${date}:`);
+            console.log(`طھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ${machines.length} ظ…ط§ظƒظٹظ†ط© ظپظٹ طھط§ط±ظٹط® ${date}:`);
             machines.forEach(m => console.log(`  - ${m.serialNumber}`));
 
             const confirm = process.argv[4] === '--confirm';
             if (!confirm) {
-                console.log('\nلحذف هذه الماكينات أضف --confirm في نهاية الأمر');
+                console.log('\nظ„ط­ط°ظپ ظ‡ط°ظ‡ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ط£ط¶ظپ --confirm ظپظٹ ظ†ظ‡ط§ظٹط© ط§ظ„ط£ظ…ط±');
                 process.exit(0);
             }
 
@@ -60,21 +60,21 @@ async function deleteMachines() {
                 }
             });
 
-            console.log(`✅ تم حذف ${deleted.count} ماكينة`);
+            console.log(`âœ… طھظ… ط­ط°ظپ ${deleted.count} ظ…ط§ظƒظٹظ†ط©`);
 
         } else {
             const serials = args.split(',').map(s => s.trim());
 
-            console.log(`سيتم حذف ${serials.length} ماكينة...`);
+            console.log(`ط³ظٹطھظ… ط­ط°ظپ ${serials.length} ظ…ط§ظƒظٹظ†ط©...`);
 
             for (const serial of serials) {
                 const machine = await db.warehouseMachine.findUnique({ where: { serialNumber: serial } });
                 if (machine) {
                     await db.machineMovementLog.deleteMany({ where: { machineId: machine.id } });
                     await db.warehouseMachine.delete({ where: { serialNumber: serial } });
-                    console.log(`✅ ${serial} - تم الحذف`);
+                    console.log(`âœ… ${serial} - طھظ… ط§ظ„ط­ط°ظپ`);
                 } else {
-                    console.log(`❌ ${serial} - غير موجود`);
+                    console.log(`â‌Œ ${serial} - ط؛ظٹط± ظ…ظˆط¬ظˆط¯`);
                 }
             }
         }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Executive Dashboard Metrics Cache Service
  * 
  * This service pre-calculates and caches dashboard metrics to improve
@@ -62,11 +62,13 @@ async function calculateAllMetrics() {
         const [currentRevenue, previousRevenue, pendingDebts, overdueDebts] = await Promise.all([
             db.payment.aggregate({
                 where: { createdAt: { gte: currentMonthStart, lte: currentMonthEnd } },
-                _sum: { amount: true }
+                _sum: { amount: true },
+                __allow_unscoped: true
             }),
             db.payment.aggregate({
                 where: { createdAt: { gte: lastMonthStart, lte: lastMonthEnd } },
-                _sum: { amount: true }
+                _sum: { amount: true },
+                __allow_unscoped: true
             }),
             db.branchDebt.aggregate({
                 where: { status: 'PENDING_PAYMENT' },
@@ -85,26 +87,30 @@ async function calculateAllMetrics() {
 
         const [totalRequests, closedRequests, overdueRequests] = await Promise.all([
             db.maintenanceRequest.count({
-                where: { createdAt: { gte: currentMonthStart, lte: currentMonthEnd } }
+                where: { createdAt: { gte: currentMonthStart, lte: currentMonthEnd } },
+                __allow_unscoped: true
             }),
             db.maintenanceRequest.count({
                 where: {
                     status: 'Closed',
                     closingTimestamp: { gte: currentMonthStart, lte: currentMonthEnd }
-                }
+                },
+                __allow_unscoped: true
             }),
             db.maintenanceRequest.count({
                 where: {
                     status: { in: ['Open', 'In Progress'] },
                     createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
-                }
+                },
+                __allow_unscoped: true
             })
         ]);
 
         // ===================== INVENTORY HEALTH =====================
 
         const inventoryItems = await db.inventoryItem.findMany({
-            select: { quantity: true, minLevel: true }
+            select: { quantity: true, minLevel: true },
+            __allow_unscoped: true
         });
 
         let inStock = 0, lowStock = 0, critical = 0, outOfStock = 0;
@@ -145,10 +151,10 @@ async function calculateAllMetrics() {
         // ===================== QUICK COUNTS =====================
 
         const [totalMachines, totalCustomers, pendingApprovals, pendingTransfers] = await Promise.all([
-            db.warehouseMachine.count(),
-            db.customer.count(),
-            db.approvalRequest.count({ where: { status: 'PENDING' } }),
-            db.transferOrder.count({ where: { status: 'PENDING' } })
+            db.warehouseMachine.count({ __allow_unscoped: true }),
+            db.customer.count({ __allow_unscoped: true }),
+            db.maintenanceApprovalRequest.count({ where: { status: 'PENDING' } }),
+            db.transferOrder.count({ where: { status: 'PENDING' }, __allow_unscoped: true })
         ]);
 
         // ===================== COMPILE RESULTS =====================

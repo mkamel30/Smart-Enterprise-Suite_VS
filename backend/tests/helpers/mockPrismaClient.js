@@ -1,4 +1,4 @@
-// Shared mock Prisma client for tests
+﻿// Shared mock Prisma client for tests
 // Usage: const { createMockPrismaClient } = require('./helpers/mockPrismaClient');
 // Then call jest.doMock('../db', () => mock) before requiring modules that import db.
 

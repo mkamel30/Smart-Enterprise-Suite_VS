@@ -1,49 +1,49 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcryptjs');
 
 async function seedDatabase() {
     try {
-        console.log('🌱 Starting database seeding...\n');
+        console.log('ًںŒ± Starting database seeding...\n');
 
         // 1. Create Admin Affairs Branch (required for many operations)
-        console.log('1️⃣  Creating Admin Affairs branch...');
+        console.log('1ï¸ڈâƒ£  Creating Admin Affairs branch...');
         const adminAffairs = await prisma.branch.upsert({
             where: { code: 'AA001' },
             update: {},
             create: {
                 code: 'AA001',
-                name: 'شؤون الإدارة',
+                name: 'ط´ط¤ظˆظ† ط§ظ„ط¥ط¯ط§ط±ط©',
                 type: 'ADMIN_AFFAIRS',
                 isActive: true,
                 address: 'Main Office'
             }
         });
-        console.log('   ✅ Admin Affairs created:', adminAffairs.name);
+        console.log('   âœ… Admin Affairs created:', adminAffairs.name);
 
         // 2. Create a Maintenance Center
-        console.log('\n2️⃣  Creating Maintenance Center...');
+        console.log('\n2ï¸ڈâƒ£  Creating Maintenance Center...');
         const maintenanceCenter = await prisma.branch.upsert({
             where: { code: 'MC001' },
             update: {},
             create: {
                 code: 'MC001',
-                name: 'مركز الصيانة الرئيسي',
+                name: 'ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© ط§ظ„ط±ط¦ظٹط³ظٹ',
                 type: 'MAINTENANCE_CENTER',
                 isActive: true,
                 address: 'Service Center Location'
             }
         });
-        console.log('   ✅ Maintenance Center created:', maintenanceCenter.name);
+        console.log('   âœ… Maintenance Center created:', maintenanceCenter.name);
 
         // 3. Create Sample Branches
-        console.log('\n3️⃣  Creating sample branches...');
+        console.log('\n3ï¸ڈâƒ£  Creating sample branches...');
         const branch1 = await prisma.branch.upsert({
             where: { code: 'BR001' },
             update: {},
             create: {
                 code: 'BR001',
-                name: 'فرع القاهرة',
+                name: 'ظپط±ط¹ ط§ظ„ظ‚ط§ظ‡ط±ط©',
                 type: 'BRANCH',
                 isActive: true,
                 address: 'Cairo Branch',
@@ -56,17 +56,17 @@ async function seedDatabase() {
             update: {},
             create: {
                 code: 'BR002',
-                name: 'فرع الإسكندرية',
+                name: 'ظپط±ط¹ ط§ظ„ط¥ط³ظƒظ†ط¯ط±ظٹط©',
                 type: 'BRANCH',
                 isActive: true,
                 address: 'Alexandria Branch',
                 maintenanceCenterId: maintenanceCenter.id
             }
         });
-        console.log('   ✅ Branches created: BR001, BR002');
+        console.log('   âœ… Branches created: BR001, BR002');
 
         // 4. Create Client Types
-        console.log('\n4️⃣  Creating client types...');
+        console.log('\n4ï¸ڈâƒ£  Creating client types...');
         const clientTypes = ['VIP', 'Regular', 'Corporate', 'Government'];
         for (const type of clientTypes) {
             await prisma.clientType.upsert({
@@ -78,16 +78,16 @@ async function seedDatabase() {
                 }
             });
         }
-        console.log('   ✅ Client types created:', clientTypes.join(', '));
+        console.log('   âœ… Client types created:', clientTypes.join(', '));
 
         // 5. Create Sample Customers
-        console.log('\n5️⃣  Creating sample customers...');
+        console.log('\n5ï¸ڈâƒ£  Creating sample customers...');
         const customer1 = await prisma.customer.upsert({
             where: { bkcode: 'CUST001' },
             update: {},
             create: {
                 bkcode: 'CUST001',
-                client_name: 'محمد أحمد',
+                client_name: 'ظ…ط­ظ…ط¯ ط£ط­ظ…ط¯',
                 branchId: branch1.id,
                 clienttype: 'Regular',
                 telephone_1: '01012345678',
@@ -101,7 +101,7 @@ async function seedDatabase() {
             update: {},
             create: {
                 bkcode: 'CUST002',
-                client_name: 'فاطمة حسن',
+                client_name: 'ظپط§ط·ظ…ط© ط­ط³ظ†',
                 branchId: branch2.id,
                 clienttype: 'VIP',
                 telephone_1: '01098765432',
@@ -109,15 +109,15 @@ async function seedDatabase() {
                 isSpecial: true
             }
         });
-        console.log('   ✅ Sample customers created');
+        console.log('   âœ… Sample customers created');
 
         // 6. Create Sample Spare Parts
-        console.log('\n6️⃣  Creating spare parts...');
+        console.log('\n6ï¸ڈâƒ£  Creating spare parts...');
         const spareParts = [
-            { name: 'شاشة LCD', partNumber: 'SP001', price: 500, description: 'LCD Display Screen' },
-            { name: 'لوحة مفاتيح', partNumber: 'SP002', price: 150, description: 'Keyboard' },
-            { name: 'طابعة حرارية', partNumber: 'SP003', price: 800, description: 'Thermal Printer' },
-            { name: 'قارئ بطاقات', partNumber: 'SP004', price: 300, description: 'Card Reader' }
+            { name: 'ط´ط§ط´ط© LCD', partNumber: 'SP001', price: 500, description: 'LCD Display Screen' },
+            { name: 'ظ„ظˆط­ط© ظ…ظپط§طھظٹط­', partNumber: 'SP002', price: 150, description: 'Keyboard' },
+            { name: 'ط·ط§ط¨ط¹ط© ط­ط±ط§ط±ظٹط©', partNumber: 'SP003', price: 800, description: 'Thermal Printer' },
+            { name: 'ظ‚ط§ط±ط¦ ط¨ط·ط§ظ‚ط§طھ', partNumber: 'SP004', price: 300, description: 'Card Reader' }
         ];
 
         for (const part of spareParts) {
@@ -138,10 +138,10 @@ async function seedDatabase() {
                 });
             }
         }
-        console.log('   ✅ Spare parts created');
+        console.log('   âœ… Spare parts created');
 
         // 7. Create Inventory Items for branches
-        console.log('\n7️⃣  Creating inventory items...');
+        console.log('\n7ï¸ڈâƒ£  Creating inventory items...');
         const parts = await prisma.sparePart.findMany();
         for (const part of parts) {
             await prisma.inventoryItem.create({
@@ -153,10 +153,10 @@ async function seedDatabase() {
                 }
             });
         }
-        console.log('   ✅ Inventory items created for BR001');
+        console.log('   âœ… Inventory items created for BR001');
 
         // 8. Update admin user with branch
-        console.log('\n8️⃣  Updating admin user...');
+        console.log('\n8ï¸ڈâƒ£  Updating admin user...');
         const adminUser = await prisma.user.findFirst({
             where: { email: 'admin@csdept.com' }
         });
@@ -166,11 +166,11 @@ async function seedDatabase() {
                 where: { id: adminUser.id },
                 data: { branchId: adminAffairs.id }
             });
-            console.log('   ✅ Admin user linked to Admin Affairs branch');
+            console.log('   âœ… Admin user linked to Admin Affairs branch');
         }
 
         // 9. Create additional users
-        console.log('\n9️⃣  Creating additional users...');
+        console.log('\n9ï¸ڈâƒ£  Creating additional users...');
         const hashedPassword = await bcrypt.hash('user123', 10);
         
         const existingManager = await prisma.user.findFirst({ where: { email: 'manager@csdept.com' } });
@@ -200,28 +200,28 @@ async function seedDatabase() {
                 }
             });
         }
-        console.log('   ✅ Additional users created');
+        console.log('   âœ… Additional users created');
 
-        console.log('\n✅ Database seeding completed successfully!\n');
-        console.log('═══════════════════════════════════════');
-        console.log('📊 Summary:');
-        console.log('───────────────────────────────────────');
+        console.log('\nâœ… Database seeding completed successfully!\n');
+        console.log('â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ');
+        console.log('ًں“ٹ Summary:');
+        console.log('â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€');
         console.log('Branches:        3 (1 Admin Affairs, 1 Center, 2 Branches)');
         console.log('Users:           3 (admin, manager, tech)');
         console.log('Customers:       2');
         console.log('Spare Parts:     4');
         console.log('Client Types:    4');
         console.log('Inventory Items: 4');
-        console.log('═══════════════════════════════════════\n');
+        console.log('â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ\n');
 
-        console.log('🔐 User Credentials:');
+        console.log('ًں”گ User Credentials:');
         console.log('Admin:    admin@csdept.com / admin123');
         console.log('Manager:  manager@csdept.com / user123');
         console.log('Tech:     tech@csdept.com / user123');
-        console.log('═══════════════════════════════════════\n');
+        console.log('â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ\n');
 
     } catch (error) {
-        console.error('❌ Error seeding database:', error);
+        console.error('â‌Œ Error seeding database:', error);
         throw error;
     }
 }

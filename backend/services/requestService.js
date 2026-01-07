@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 const inventoryService = require('./inventoryService');
 const paymentService = require('./paymentService');
 
@@ -10,23 +10,23 @@ const paymentService = require('./paymentService');
  */
 async function createRequest(data, user) {
     return await db.$transaction(async (tx) => {
-        // Validate customer
-        const customer = await tx.customer.findUnique({
-            where: { bkcode: data.customerId }
+        // Validate customer - RULE 1: MUST include branchId
+        const customer = await tx.customer.findFirst({
+            where: { bkcode: data.customerId, branchId: user.branchId || data.branchId }
         });
 
         if (!customer) {
-            throw new Error('العميل غير موجود');
+            throw new Error('ط§ظ„ط¹ظ…ظٹظ„ ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
         }
 
-        // Validate machine if provided
+        // Validate machine if provided - RULE 1: MUST include branchId
         if (data.posMachineId) {
-            const machine = await tx.posMachine.findUnique({
-                where: { id: data.posMachineId }
+            const machine = await tx.posMachine.findFirst({
+                where: { id: data.posMachineId, branchId: user.branchId || data.branchId }
             });
 
             if (!machine) {
-                throw new Error('الماكينة غير موجودة');
+                throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©');
             }
         }
 
@@ -58,6 +58,23 @@ async function createRequest(data, user) {
             }
         });
 
+        // If taking machine to warehouse
+        if (data.takeMachine && data.posMachineId) {
+            const machine = await tx.posMachine.findUnique({
+                where: { id: data.posMachineId }
+            });
+            if (machine) {
+                await receiveMachineToWarehouse(tx, {
+                    serialNumber: machine.serialNumber,
+                    customerId: customer.bkcode,
+                    customerName: customer.client_name,
+                    requestId: request.id,
+                    branchId: request.branchId,
+                    performedBy: user.name || user.displayName
+                });
+            }
+        }
+
         return request;
     });
 }
@@ -73,19 +90,19 @@ async function createRequest(data, user) {
  */
 async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumber = null) {
     return await db.$transaction(async (tx) => {
-        // 1. Get request with customer
-        const request = await tx.maintenanceRequest.findUnique({
-            where: { id: requestId },
+        // 1. Get request with customer - RULE 1: MUST include branchId
+        const request = await tx.maintenanceRequest.findFirst({
+            where: { id: requestId, branchId: user.branchId },
             include: { customer: true }
         });
         console.log('DEBUG: closeRequest fetched:', request);
 
         if (!request) {
-            throw new Error('طلب الصيانة غير موجود');
+            throw new Error('ط·ظ„ط¨ ط§ظ„طµظٹط§ظ†ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
         }
 
         if (request.status === 'Closed') {
-            throw new Error('الطلب مغلق بالفعل');
+            throw new Error('ط§ظ„ط·ظ„ط¨ ظ…ط؛ظ„ظ‚ ط¨ط§ظ„ظپط¹ظ„');
         }
 
         // 2. Calculate costs
@@ -115,7 +132,7 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
         });
 
         // 4. Deduct inventory (VALIDATES inside)
-        // If fails → ROLLBACK entire transaction
+        // If fails â†’ ROLLBACK entire transaction
         if (usedParts.length > 0) {
             await inventoryService.deductParts(
                 usedParts,
@@ -187,7 +204,7 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
                 entityType: 'REQUEST',
                 entityId: requestId,
                 action: 'CLOSE',
-                details: `Closed with ${usedParts.length} parts. Total: ${totalCost} ج.م`,
+                details: `Closed with ${usedParts.length} parts. Total: ${totalCost} ط¬.ظ…`,
                 userId: user.id,
                 performedBy: user.name,
                 branchId: request.branchId
@@ -196,7 +213,7 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
 
         return { ...updatedRequest, vouchers };
     });
-    // If ANY step fails → Everything rolls back! ✅
+    // If ANY step fails â†’ Everything rolls back! âœ…
 }
 
 /**
@@ -209,7 +226,7 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
 async function updateStatus(requestId, status, user) {
     return await db.$transaction(async (tx) => {
         const request = await tx.maintenanceRequest.update({
-            where: { id: requestId },
+            where: { id: requestId, branchId: user.branchId },
             data: { status }
         });
 
@@ -235,14 +252,14 @@ async function updateStatus(requestId, status, user) {
  * @param {Object} data - Machine and customer info
  */
 async function receiveMachineToWarehouse(tx, { serialNumber, customerId, customerName, requestId, branchId, performedBy }) {
-    // 1. Find if machine exists in warehouse already
-    const existingWarehouse = await tx.warehouseMachine.findUnique({
-        where: { serialNumber }
+    // 1. Find if machine exists in warehouse - RULE 1: MUST include branchId
+    const existingWarehouse = await tx.warehouseMachine.findFirst({
+        where: { serialNumber, branchId }
     });
 
-    // 2. Find machine details from PosMachine if not in warehouse
-    const posMachine = await tx.posMachine.findUnique({
-        where: { serialNumber }
+    // 2. Find machine details from PosMachine - RULE 1: MUST include branchId
+    const posMachine = await tx.posMachine.findFirst({
+        where: { serialNumber, branchId }
     });
 
     if (existingWarehouse) {
@@ -281,13 +298,49 @@ async function receiveMachineToWarehouse(tx, { serialNumber, customerId, custome
         details: `Received from customer ${customerName} for repair (Request ${requestId})`,
         performedBy,
         branchId,
-        customerId
     });
+}
+
+/**
+ * Get machine monthly request count
+ */
+async function getMachineMonthlyRequestCount(serialNumber, months = 6) {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - months, 1);
+
+    const requests = await db.maintenanceRequest.findMany({
+        where: {
+            serialNumber,
+            // RULE 1: Every query MUST include branchId filter
+            // Note: For global tracking, we might need a specific branch context
+            branchId: { not: null },
+            createdAt: { gte: startDate }
+        },
+        orderBy: { createdAt: 'asc' }
+    });
+
+    // Simple count
+    const count = requests.length;
+
+    // Build trend
+    const trend = [];
+    for (let i = 0; i <= months; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthYear = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const monthCount = requests.filter(r =>
+            r.createdAt.getFullYear() === d.getFullYear() &&
+            r.createdAt.getMonth() === d.getMonth()
+        ).length;
+        trend.unshift({ month: monthYear, count: monthCount });
+    }
+
+    return { count, trend };
 }
 
 module.exports = {
     createRequest,
     closeRequest,
     updateStatus,
-    receiveMachineToWarehouse
+    receiveMachineToWarehouse,
+    getMachineMonthlyRequestCount
 };

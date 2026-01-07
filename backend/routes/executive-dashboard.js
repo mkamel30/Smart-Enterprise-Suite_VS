@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
@@ -63,14 +63,14 @@ router.get('/', authenticateToken, async (req, res) => {
         }, req));
 
         // Revenue by Type
-        const revenueByType = await db.payment.groupBy({
+        const revenueByType = await db.payment.groupBy(ensureBranchWhere({
             by: ['type'],
             where: {
                 ...branchFilter,
                 createdAt: { gte: dateStart, lte: dateEnd }
             },
             _sum: { amount: true }
-        });
+        }, req));
 
         // Pending Debts
         const pendingDebts = await db.branchDebt.aggregate(ensureBranchWhere({
@@ -261,7 +261,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
         // ===================== 6. TOP PERFORMERS (Technicians) =====================
 
-        const techPerformance = await db.maintenanceRequest.groupBy({
+        const techPerformance = await db.maintenanceRequest.groupBy(ensureBranchWhere({
             by: ['closingUserName'],
             where: {
                 ...branchFilter,
@@ -271,7 +271,7 @@ router.get('/', authenticateToken, async (req, res) => {
             },
             _count: { id: true },
             _sum: { totalCost: true }
-        });
+        }, req));
 
         const topPerformers = techPerformance
             .filter(t => t.closingUserName)
@@ -285,7 +285,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
         // ===================== 7. ALERTS & NOTIFICATIONS =====================
 
-        const pendingApprovals = await db.approvalRequest.count(ensureBranchWhere({
+        const pendingApprovals = await db.maintenanceApprovalRequest.count(ensureBranchWhere({
             where: {
                 ...branchFilter,
                 status: 'PENDING'
@@ -306,7 +306,7 @@ router.get('/', authenticateToken, async (req, res) => {
             criticalAlerts.push({
                 type: 'INVENTORY',
                 severity: outOfStock > 0 ? 'critical' : 'warning',
-                message: `${outOfStock + critical} قطع غيار في حالة حرجة`,
+                message: `${outOfStock + critical} ظ‚ط·ط¹ ط؛ظٹط§ط± ظپظٹ ط­ط§ظ„ط© ط­ط±ط¬ط©`,
                 count: outOfStock + critical
             });
         }
@@ -316,7 +316,7 @@ router.get('/', authenticateToken, async (req, res) => {
             criticalAlerts.push({
                 type: 'REQUESTS',
                 severity: overdueRequests > 5 ? 'critical' : 'warning',
-                message: `${overdueRequests} طلب صيانة متأخر (> 7 أيام)`,
+                message: `${overdueRequests} ط·ظ„ط¨ طµظٹط§ظ†ط© ظ…طھط£ط®ط± (> 7 ط£ظٹط§ظ…)`,
                 count: overdueRequests
             });
         }
@@ -327,7 +327,7 @@ router.get('/', authenticateToken, async (req, res) => {
             criticalAlerts.push({
                 type: 'DEBTS',
                 severity: overdueAmount > 50000 ? 'critical' : 'warning',
-                message: `مديونيات متأخرة: ${overdueAmount.toLocaleString()} ج.م`,
+                message: `ظ…ط¯ظٹظˆظ†ظٹط§طھ ظ…طھط£ط®ط±ط©: ${overdueAmount.toLocaleString()} ط¬.ظ…`,
                 amount: overdueAmount
             });
         }

@@ -1,4 +1,4 @@
-const inventoryService = require('../services/inventoryService');
+﻿const inventoryService = require('../services/inventoryService');
 
 test('inventoryService exports expected functions', () => {
   expect(typeof inventoryService.addStock).toBe('function');

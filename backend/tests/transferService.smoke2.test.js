@@ -1,4 +1,4 @@
-// Mock notifications and movementService
+﻿// Mock notifications and movementService
 jest.mock('../routes/notifications', () => ({ createNotification: jest.fn(async () => ({ /*noop*/ })) }));
 jest.mock('../services/movementService', () => ({ logSimMovement: jest.fn(async () => ({})), logMachineMovement: jest.fn(async () => ({})) }));
 

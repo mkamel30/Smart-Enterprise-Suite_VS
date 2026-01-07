@@ -1,8 +1,8 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const { createBackup, listBackups, restoreBackup, deleteBackup } = require('../utils/backup');
 const { logAction } = require('../utils/logger');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL

@@ -1,4 +1,4 @@
-const { z } = require('zod');
+﻿const { z } = require('zod');
 const logger = require('../utils/logger');
 const { AppError } = require('../utils/errorHandler');
 
@@ -13,10 +13,10 @@ const validateRequest = (schema) => {
     try {
       // Parse and validate the request body
       const validated = schema.parse(req.body);
-      
+
       // Attach validated data to request for use in handlers
       req.validated = validated;
-      
+
       logger.debug({ path: req.path, method: req.method }, 'Request validation passed');
       next();
     } catch (error) {
@@ -63,7 +63,7 @@ const validateQuery = (schema) => {
     try {
       const validated = schema.parse(req.query);
       req.query = validated;
-      
+
       logger.debug({ path: req.path, query: validated }, 'Query validation passed');
       next();
     } catch (error) {
@@ -109,7 +109,7 @@ const validateParams = (schema) => {
     try {
       const validated = schema.parse(req.params);
       req.params = validated;
-      
+
       logger.debug({ path: req.path, params: validated }, 'Parameter validation passed');
       next();
     } catch (error) {
@@ -130,4 +130,25 @@ const validateParams = (schema) => {
             message: 'Invalid parameters',
             code: 'PARAM_VALIDATION_ERROR',
             fields: fieldErrors,
-            timestamp: new Date().toI
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+
+      logger.error({ error }, 'Unexpected error during parameter validation');
+      res.status(500).json({
+        error: {
+          message: 'Parameter validation error',
+          code: 'PARAM_VALIDATION_ERROR',
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+  };
+};
+
+module.exports = {
+  validateRequest,
+  validateQuery,
+  validateParams
+};

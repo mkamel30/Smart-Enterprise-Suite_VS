@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -14,7 +14,7 @@ const SERIAL_NUMBER = '2331947908'; // Serial number of the machine
 const DOWNPAYMENT = 3000; // The actual downpayment that was paid
 
 async function fixSale() {
-    console.log(`🔧 Fixing sale for machine ${SERIAL_NUMBER}...`);
+    console.log(`ًں”§ Fixing sale for machine ${SERIAL_NUMBER}...`);
     console.log(`Setting paidAmount to ${DOWNPAYMENT}...\n`);
 
     try {
@@ -25,7 +25,7 @@ async function fixSale() {
         });
 
         if (!sale) {
-            console.log('❌ Sale not found!');
+            console.log('â‌Œ Sale not found!');
             return;
         }
 
@@ -42,7 +42,7 @@ async function fixSale() {
             data: { paidAmount: DOWNPAYMENT }
         });
 
-        console.log(`\n✅ Updated paidAmount to ${DOWNPAYMENT}`);
+        console.log(`\nâœ… Updated paidAmount to ${DOWNPAYMENT}`);
 
         // Now recalculate installments if needed
         const remaining = sale.totalPrice - DOWNPAYMENT;
@@ -65,11 +65,11 @@ async function fixSale() {
             }
         });
 
-        console.log(`✅ Updated ${result.count} installments`);
+        console.log(`âœ… Updated ${result.count} installments`);
         console.log('\nDone!');
 
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('â‌Œ Error:', error);
     } finally {
         await db.$disconnect();
     }

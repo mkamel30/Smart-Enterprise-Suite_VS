@@ -1,7 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { createNotification } = require('./notifications');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
@@ -23,7 +23,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
         if (status) where.status = status;
 
-        const requests = await db.serviceApprovalRequest.findMany(ensureBranchWhere({
+        const requests = await db.maintenanceApprovalRequest.findMany(ensureBranchWhere({
             where,
             orderBy: { createdAt: 'desc' }
         }, req));
@@ -31,7 +31,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(requests);
     } catch (error) {
         console.error('Failed to fetch approval requests:', error);
-        res.status(500).json({ error: 'فشل في جلب طلبات الموافقة' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط·ظ„ط¨ط§طھ ط§ظ„ظ…ظˆط§ظپظ‚ط©' });
     }
 });
 
@@ -40,7 +40,7 @@ router.get('/pending-count', authenticateToken, async (req, res) => {
     try {
         const branchId = req.query.branchId || req.user.branchId;
 
-        const count = await db.serviceApprovalRequest.count({
+        const count = await db.maintenanceApprovalRequest.count({
             where: {
                 targetBranchId: branchId,
                 status: 'PENDING'
@@ -50,19 +50,19 @@ router.get('/pending-count', authenticateToken, async (req, res) => {
         res.json({ count });
     } catch (error) {
         console.error('Failed to count pending approvals:', error);
-        res.status(500).json({ error: 'فشل في عد الطلبات المعلقة' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¹ط¯ ط§ظ„ط·ظ„ط¨ط§طھ ط§ظ„ظ…ط¹ظ„ظ‚ط©' });
     }
 });
 
 // Get single approval request
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        const request = await db.serviceApprovalRequest.findUnique({
+        const request = await db.maintenanceApprovalRequest.findUnique({
             where: { id: req.params.id }
         });
 
         if (!request) {
-            return res.status(404).json({ error: 'طلب الموافقة غير موجود' });
+            return res.status(404).json({ error: 'ط·ظ„ط¨ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
         }
         
         // Authorization check
@@ -74,19 +74,19 @@ router.get('/:id', authenticateToken, async (req, res) => {
         res.json(request);
     } catch (error) {
         console.error('Failed to fetch approval request:', error);
-        res.status(500).json({ error: 'فشل في جلب طلب الموافقة' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط·ظ„ط¨ ط§ظ„ظ…ظˆط§ظپظ‚ط©' });
     }
 });
 
-// Approve request (الفرع يوافق)
+// Approve request (ط§ظ„ظپط±ط¹ ظٹظˆط§ظپظ‚)
 router.put('/:id/approve', authenticateToken, async (req, res) => {
     try {
-        const approvalRequest = await db.serviceApprovalRequest.findUnique({
+        const approvalRequest = await db.maintenanceApprovalRequest.findUnique({
             where: { id: req.params.id }
         });
 
         if (!approvalRequest) {
-            return res.status(404).json({ error: 'طلب الموافقة غير موجود' });
+            return res.status(404).json({ error: 'ط·ظ„ط¨ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
         }
         
         // Authorization check
@@ -96,7 +96,7 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
         }
 
         if (approvalRequest.status !== 'PENDING') {
-            return res.status(400).json({ error: 'تم الرد على هذا الطلب مسبقاً' });
+            return res.status(400).json({ error: 'طھظ… ط§ظ„ط±ط¯ ط¹ظ„ظ‰ ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹' });
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -137,7 +137,7 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
                         data: {
                             assignmentId: approvalRequest.assignmentId,
                             action: 'APPROVED',
-                            details: 'تمت الموافقة على الصيانة من الفرع',
+                            details: 'طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ ط§ظ„طµظٹط§ظ†ط© ظ…ظ† ط§ظ„ظپط±ط¹',
                             performedBy: req.user.displayName || req.user.email,
                             performedById: req.user.id
                         }
@@ -163,29 +163,29 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
         await createNotification({
             branchId: approvalRequest.centerBranchId,
             type: 'APPROVAL_RESPONSE',
-            title: '✅ تمت الموافقة',
-            message: `تمت الموافقة على صيانة الماكينة ${approvalRequest.machineSerial}`,
+            title: 'âœ… طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط©',
+            message: `طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ طµظٹط§ظ†ط© ط§ظ„ظ…ط§ظƒظٹظ†ط© ${approvalRequest.machineSerial}`,
             link: '/maintenance/shipments'
         });
 
         res.json(result);
     } catch (error) {
         console.error('Failed to approve request:', error);
-        res.status(500).json({ error: 'فشل في الموافقة على الطلب' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ ط§ظ„ط·ظ„ط¨' });
     }
 });
 
-// Reject request (الفرع يرفض)
+// Reject request (ط§ظ„ظپط±ط¹ ظٹط±ظپط¶)
 router.put('/:id/reject', authenticateToken, async (req, res) => {
     try {
         const { rejectionReason } = req.body;
 
-        const approvalRequest = await db.serviceApprovalRequest.findUnique({
+        const approvalRequest = await db.maintenanceApprovalRequest.findUnique({
             where: { id: req.params.id }
         });
 
         if (!approvalRequest) {
-            return res.status(404).json({ error: 'طلب الموافقة غير موجود' });
+            return res.status(404).json({ error: 'ط·ظ„ط¨ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
         }
         
         // Authorization check
@@ -195,7 +195,7 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
         }
 
         if (approvalRequest.status !== 'PENDING') {
-            return res.status(400).json({ error: 'تم الرد على هذا الطلب مسبقاً' });
+            return res.status(400).json({ error: 'طھظ… ط§ظ„ط±ط¯ ط¹ظ„ظ‰ ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹' });
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -239,7 +239,7 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
                         data: {
                             assignmentId: approvalRequest.assignmentId,
                             action: 'REJECTED',
-                            details: `تم رفض الموافقة${rejectionReason ? ': ' + rejectionReason : ''}`,
+                            details: `طھظ… ط±ظپط¶ ط§ظ„ظ…ظˆط§ظپظ‚ط©${rejectionReason ? ': ' + rejectionReason : ''}`,
                             performedBy: req.user.displayName || req.user.email,
                             performedById: req.user.id
                         }
@@ -260,15 +260,15 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
         await createNotification({
             branchId: approvalRequest.centerBranchId,
             type: 'APPROVAL_RESPONSE',
-            title: '❌ تم رفض الموافقة',
-            message: `تم رفض صيانة الماكينة ${approvalRequest.machineSerial}${rejectionReason ? ' - السبب: ' + rejectionReason : ''}`,
+            title: 'â‌Œ طھظ… ط±ظپط¶ ط§ظ„ظ…ظˆط§ظپظ‚ط©',
+            message: `طھظ… ط±ظپط¶ طµظٹط§ظ†ط© ط§ظ„ظ…ط§ظƒظٹظ†ط© ${approvalRequest.machineSerial}${rejectionReason ? ' - ط§ظ„ط³ط¨ط¨: ' + rejectionReason : ''}`,
             link: '/maintenance/shipments'
         });
 
         res.json(result);
     } catch (error) {
         console.error('Failed to reject request:', error);
-        res.status(500).json({ error: 'فشل في رفض الطلب' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط±ظپط¶ ط§ظ„ط·ظ„ط¨' });
     }
 });
 

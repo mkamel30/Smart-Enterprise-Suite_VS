@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
 
@@ -475,3 +475,26 @@ router.put(
       if (value !== undefined) {
         updateData[key] = value;
       }
+    });
+
+    // Update
+    const updated = await db.branch.update({
+      where: { id },
+      data: updateData
+    });
+
+    // Audit logging
+    await logAction({
+      entityType: 'BRANCH',
+      entityId: id,
+      action: 'UPDATE',
+      details: `Updated branch: ${updated.name}`,
+      userId: req.user.id,
+      performedBy: req.user.displayName
+    });
+
+    res.json(updated);
+  })
+);
+
+module.exports = router;

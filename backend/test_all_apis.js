@@ -1,4 +1,4 @@
-// Comprehensive API test
+﻿// Comprehensive API test
 const http = require('http');
 
 function request(method, path, headers = {}, body = null) {
@@ -32,20 +32,20 @@ function request(method, path, headers = {}, body = null) {
 
 async function testAllAPIs() {
     try {
-        console.log('🔐 Logging in...');
+        console.log('ًں”گ Logging in...');
         const loginRes = await request('POST', '/api/auth/login', {}, {
             email: 'admin@csdept.com',
             password: 'admin123'
         });
         
         if (loginRes.status !== 200) {
-            console.log('❌ Login failed:', loginRes.data);
+            console.log('â‌Œ Login failed:', loginRes.data);
             return;
         }
         
         const token = loginRes.data.token;
         const headers = { Authorization: `Bearer ${token}` };
-        console.log('✅ Login successful\n');
+        console.log('âœ… Login successful\n');
         
         const tests = [
             { name: 'Dashboard Admin Summary', path: '/api/dashboard/admin-summary' },
@@ -68,21 +68,21 @@ async function testAllAPIs() {
             try {
                 const res = await request('GET', test.path, headers);
                 if (res.status === 200) {
-                    console.log(`✅ ${test.name}`);
+                    console.log(`âœ… ${test.name}`);
                     passed++;
                 } else {
-                    console.log(`❌ ${test.name} - Status ${res.status}`);
+                    console.log(`â‌Œ ${test.name} - Status ${res.status}`);
                     console.log(`   Error: ${JSON.stringify(res.data)}`);
                     failed++;
                 }
             } catch (err) {
-                console.log(`❌ ${test.name} - ${err.message}`);
+                console.log(`â‌Œ ${test.name} - ${err.message}`);
                 failed++;
             }
         }
         
         console.log(`\n${'='.repeat(60)}`);
-        console.log(`📊 Results: ${passed} passed, ${failed} failed`);
+        console.log(`ًں“ٹ Results: ${passed} passed, ${failed} failed`);
         console.log('='.repeat(60));
         
     } catch (error) {

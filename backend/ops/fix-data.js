@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -8,7 +8,7 @@ if (process.env.LEGACY_OPS_ALLOW !== '1') {
 const db = require('./db');
 
 async function fixMissingSnapshots() {
-    console.log('🔧 Starting data repair...');
+    console.log('ًں”§ Starting data repair...');
 
     try {
         // 1. Fix Customer Names
@@ -59,7 +59,7 @@ async function fixMissingSnapshots() {
             }
         }
 
-        console.log('✅ Data repair completed successfully.');
+        console.log('âœ… Data repair completed successfully.');
 
     } catch (error) {
         console.error('Repair failed:', error);

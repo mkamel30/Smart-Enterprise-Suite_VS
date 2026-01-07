@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 const { logAction } = require('../utils/logger');
 const { roundMoney } = require('./paymentService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
@@ -29,8 +29,8 @@ async function stockIn(req, { partId, quantity, reason, branchId }) {
   let inventoryItem = await db.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: bId } }, req));
 
   if (inventoryItem) {
-    inventoryItem = await db.inventoryItem.update({
-      where: { id: inventoryItem.id },
+    await db.inventoryItem.updateMany({
+      where: { id: inventoryItem.id, branchId: bId },
       data: { quantity: inventoryItem.quantity + quantity }
     });
   } else {
@@ -38,7 +38,7 @@ async function stockIn(req, { partId, quantity, reason, branchId }) {
   }
 
   try {
-    await db.stockMovement.create({ data: { branchId: bId, partId, type: 'IN', quantity, reason: reason || 'تحويل من الإدارة', createdAt: new Date(), userId: req.user?.id, performedBy: req.user?.displayName || 'System' } });
+    await db.stockMovement.create({ data: { branchId: bId, partId, type: 'IN', quantity, reason: reason || 'طھط­ظˆظٹظ„ ظ…ظ† ط§ظ„ط¥ط¯ط§ط±ط©', createdAt: new Date(), userId: req.user?.id, performedBy: req.user?.displayName || 'System' } });
   } catch (e) { /* ignore logging failures */ }
 
   return { newQuantity: inventoryItem.quantity };
@@ -52,16 +52,16 @@ async function importStock(req, items, branchId) {
     if (item.quantity <= 0) continue;
     let inventoryItem = await db.inventoryItem.findFirst(ensureBranchWhere({ where: { partId: item.partId, branchId: bId } }, req));
     if (inventoryItem) {
-      await db.inventoryItem.update({
-        where: { id: inventoryItem.id },
+      await db.inventoryItem.updateMany({
+        where: { id: inventoryItem.id, branchId: bId },
         data: { quantity: inventoryItem.quantity + item.quantity }
       });
     } else {
       await db.inventoryItem.create({ data: { branchId: bId, partId: item.partId, quantity: item.quantity, minLevel: 0 } });
     }
     try {
-      await db.stockMovement.create({ data: { branchId: bId, partId: item.partId, type: 'IN', quantity: item.quantity, reason: 'استيراد من ملف Excel', createdAt: new Date(), performedBy: req.user?.displayName || 'System' } });
-    } catch (e) {}
+      await db.stockMovement.create({ data: { branchId: bId, partId: item.partId, type: 'IN', quantity: item.quantity, reason: 'ط§ط³طھظٹط±ط§ط¯ ظ…ظ† ظ…ظ„ظپ Excel', createdAt: new Date(), performedBy: req.user?.displayName || 'System' } });
+    } catch (e) { }
     updated++;
   }
   return { updated };
@@ -75,8 +75,8 @@ async function updateQuantity(req, partId, quantity, branchId) {
   let oldQuantity = 0;
   if (inventoryItem) {
     oldQuantity = inventoryItem.quantity;
-    inventoryItem = await db.inventoryItem.update({
-      where: { id: inventoryItem.id },
+    await db.inventoryItem.updateMany({
+      where: { id: inventoryItem.id, branchId: bId },
       data: { quantity }
     });
   } else {
@@ -93,20 +93,20 @@ async function stockOut(req, { partId, quantity, reason, requestId, cost, custom
   if (!bId) throw new Error('Branch ID required');
 
   const inventoryItem = await db.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: bId } }, req));
-  if (!inventoryItem || inventoryItem.quantity < quantity) throw new Error('الكمية غير كافية');
+  if (!inventoryItem || inventoryItem.quantity < quantity) throw new Error('ط§ظ„ظƒظ…ظٹط© ط؛ظٹط± ظƒط§ظپظٹط©');
 
   const result = await db.$transaction(async (tx) => {
-    await tx.inventoryItem.update({
-      where: { id: inventoryItem.id },
+    await tx.inventoryItem.updateMany({
+      where: { id: inventoryItem.id, branchId: bId },
       data: { quantity: inventoryItem.quantity - quantity }
     });
     try {
-      await tx.stockMovement.create({ data: { branchId: bId, partId, type: 'OUT', quantity, reason: reason || 'صيانة ماكينة', requestId, createdAt: new Date(), userId, performedBy: userName } });
-    } catch (e) {}
+      await tx.stockMovement.create({ data: { branchId: bId, partId, type: 'OUT', quantity, reason: reason || 'طµظٹط§ظ†ط© ظ…ط§ظƒظٹظ†ط©', requestId, createdAt: new Date(), userId, performedBy: userName } });
+    } catch (e) { }
 
     let payment = null;
     if (cost && cost > 0 && customerId) {
-      payment = await tx.payment.create({ data: { branchId: bId, customerId, customerName, requestId, amount: roundMoney(cost), type: 'MAINTENANCE', reason: 'قطع غيار صيانة', paymentPlace: 'ضامن', notes: reason || 'قطع غيار صيانة', userId, userName } });
+      payment = await tx.payment.create({ data: { branchId: bId, customerId, customerName, requestId, amount: roundMoney(cost), type: 'MAINTENANCE', reason: 'ظ‚ط·ط¹ ط؛ظٹط§ط± طµظٹط§ظ†ط©', paymentPlace: 'ط¶ط§ظ…ظ†', notes: reason || 'ظ‚ط·ط¹ ط؛ظٹط§ط± طµظٹط§ظ†ط©', userId, userName } });
     }
 
     return { newQuantity: inventoryItem.quantity - quantity, payment };
@@ -124,16 +124,16 @@ async function transferStock(req, { partId, quantity, fromBranchId, toBranchId, 
     const sourceItem = await tx.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: fromBranchId } }, req));
     if (!sourceItem || sourceItem.quantity < quantity) throw new Error(`Insufficient stock in source branch. Available: ${sourceItem?.quantity || 0}`);
 
-    await tx.inventoryItem.update({
-      where: { id: sourceItem.id },
+    await tx.inventoryItem.updateMany({
+      where: { id: sourceItem.id, branchId: fromBranchId },
       data: { quantity: sourceItem.quantity - quantity }
     });
     await tx.stockMovement.create({ data: { branchId: fromBranchId, partId, type: 'OUT', quantity, reason: reason || `Transfer to ${toBranchId}`, createdAt: new Date(), userId, performedBy: userName } });
 
     let destItem = await tx.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: toBranchId } }, req));
     if (destItem) {
-      await tx.inventoryItem.update({
-        where: { id: destItem.id },
+      await tx.inventoryItem.updateMany({
+        where: { id: destItem.id, branchId: toBranchId },
         data: { quantity: destItem.quantity + quantity }
       });
     } else {
@@ -151,10 +151,10 @@ async function getMovements(req) {
   if (!db.stockMovement) return [];
   const movements = await db.stockMovement.findMany(ensureBranchWhere({ where: branchFilter, orderBy: { createdAt: 'desc' }, take: 100 }, req));
   const partIds = [...new Set(movements.map(m => m.partId))];
-  // sparePart ليس لديه branchId، لذلك لا نطبق ensureBranchWhere هنا
+  // sparePart ظ„ظٹط³ ظ„ط¯ظٹظ‡ branchIdطŒ ظ„ط°ظ„ظƒ ظ„ط§ ظ†ط·ط¨ظ‚ ensureBranchWhere ظ‡ظ†ط§
   const parts = await db.sparePart.findMany({ where: { id: { in: partIds } }, select: { id: true, name: true, partNumber: true } });
   const partMap = Object.fromEntries(parts.map(p => [p.id, p]));
-  return movements.map(m => ({ ...m, partName: partMap[m.partId]?.name || 'غير معروف', partNumber: partMap[m.partId]?.partNumber || '' }));
+  return movements.map(m => ({ ...m, partName: partMap[m.partId]?.name || 'ط؛ظٹط± ظ…ط¹ط±ظˆظپ', partNumber: partMap[m.partId]?.partNumber || '' }));
 }
 
 // Note: `db` is declared at top of the file; ensure single export at bottom.
@@ -169,66 +169,66 @@ async function getMovements(req) {
  * @throws {Error} If part not found or insufficient quantity
  */
 async function deductParts(parts, requestId, performedBy, branchId, tx = null) {
-    console.log('DEBUG: deductParts called with:', { partsCount: parts.length, requestId, performedBy, branchId, txType: typeof tx });
-    const txOrDb = tx || db;
-    console.log('DEBUG: txOrDb keys:', Object.keys(txOrDb));
-    console.log('DEBUG: txOrDb.stockMovement:', !!txOrDb.stockMovement);
+  console.log('DEBUG: deductParts called with:', { partsCount: parts.length, requestId, performedBy, branchId, txType: typeof tx });
+  const txOrDb = tx || db;
+  console.log('DEBUG: txOrDb keys:', Object.keys(txOrDb));
+  console.log('DEBUG: txOrDb.stockMovement:', !!txOrDb.stockMovement);
 
-    if (!branchId) {
-        throw new Error('Branch ID is required for deducting parts');
+  if (!branchId) {
+    throw new Error('Branch ID is required for deducting parts');
+  }
+
+  const movements = [];
+
+  for (const part of parts) {
+    // 1. Get current stock for THIS BRANCH
+    const invItem = await txOrDb.inventoryItem.findFirst({
+      where: {
+        partId: part.partId,
+        branchId: branchId
+      },
+      include: { part: true }
+    });
+
+    if (!invItem) {
+      throw new Error(`ط§ظ„ظ‚ط·ط¹ط© "${part.name}" ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظ…ط®ط²ظ†`);
     }
 
-    const movements = [];
-
-    for (const part of parts) {
-        // 1. Get current stock for THIS BRANCH
-        const invItem = await txOrDb.inventoryItem.findFirst({
-            where: {
-                partId: part.partId,
-                branchId: branchId
-            },
-            include: { part: true }
-        });
-
-        if (!invItem) {
-            throw new Error(`القطعة "${part.name}" غير موجودة في المخزن`);
-        }
-
-        // 2. VALIDATE quantity
-        if (invItem.quantity < part.quantity) {
-            throw new Error(
-                `الكمية المتاحة من "${part.name}" غير كافية. ` +
-                `متوفر: ${invItem.quantity}، مطلوب: ${part.quantity}`
-            );
-        }
-
-        // 3. Deduct
-        await txOrDb.inventoryItem.update({
-            where: { id: invItem.id },
-            data: {
-                quantity: {
-                    decrement: part.quantity
-                }
-            }
-        });
-
-        // 4. Log movement
-        const movement = await txOrDb.stockMovement.create({
-            data: {
-                partId: part.partId,
-                type: 'OUT',
-                quantity: part.quantity,
-                reason: part.reason || 'قطع غيار صيانة',
-                requestId: requestId,
-                performedBy: performedBy,
-                branchId: branchId
-            }
-        });
-
-        movements.push(movement);
+    // 2. VALIDATE quantity
+    if (invItem.quantity < part.quantity) {
+      throw new Error(
+        `ط§ظ„ظƒظ…ظٹط© ط§ظ„ظ…طھط§ط­ط© ظ…ظ† "${part.name}" ط؛ظٹط± ظƒط§ظپظٹط©. ` +
+        `ظ…طھظˆظپط±: ${invItem.quantity}طŒ ظ…ط·ظ„ظˆط¨: ${part.quantity}`
+      );
     }
 
-    return movements;
+    // 3. Deduct - RULE 1
+    await txOrDb.inventoryItem.updateMany({
+      where: { id: invItem.id, branchId: branchId },
+      data: {
+        quantity: {
+          decrement: part.quantity
+        }
+      }
+    });
+
+    // 4. Log movement
+    const movement = await txOrDb.stockMovement.create({
+      data: {
+        partId: part.partId,
+        type: 'OUT',
+        quantity: part.quantity,
+        reason: part.reason || 'ظ‚ط·ط¹ ط؛ظٹط§ط± طµظٹط§ظ†ط©',
+        requestId: requestId,
+        performedBy: performedBy,
+        branchId: branchId
+      }
+    });
+
+    movements.push(movement);
+  }
+
+  return movements;
 }
 
 /**
@@ -240,51 +240,50 @@ async function deductParts(parts, requestId, performedBy, branchId, tx = null) {
  * @returns {Promise<Object>} Updated inventory item
  */
 async function addStock(partId, quantity, reason, performedBy, branchId) {
-    return await db.$transaction(async (tx) => {
-        // Find or create inventory item for THIS branch
-        let invItem = await tx.inventoryItem.findFirst({
-            where: { partId, branchId },
-            include: { part: true }
-        });
-
-        if (!invItem) {
-            // Create new inventory item
-            invItem = await tx.inventoryItem.create({
-                data: {
-                    partId,
-                    quantity: quantity,
-                    minLevel: 0,
-                    branchId: branchId
-                },
-                include: { part: true }
-            });
-        } else {
-            // Update existing
-            invItem = await tx.inventoryItem.update({
-                where: { id: invItem.id },
-                data: {
-                    quantity: {
-                        increment: quantity
-                    }
-                },
-                include: { part: true }
-            });
-        }
-
-        // Log movement
-        await tx.stockMovement.create({
-            data: {
-                partId,
-                type: 'IN',
-                quantity,
-                reason,
-                performedBy,
-                branchId: branchId
-            }
-        });
-
-        return invItem;
+  return await db.$transaction(async (tx) => {
+    // Find or create inventory item for THIS branch
+    let invItem = await tx.inventoryItem.findFirst({
+      where: { partId, branchId },
+      include: { part: true }
     });
+
+    if (!invItem) {
+      // Create new inventory item
+      invItem = await tx.inventoryItem.create({
+        data: {
+          partId,
+          quantity: quantity,
+          minLevel: 0,
+          branchId: branchId
+        },
+        include: { part: true }
+      });
+    } else {
+      // Update existing - RULE 1
+      invItem = await tx.inventoryItem.updateMany({
+        where: { id: invItem.id, branchId: branchId },
+        data: {
+          quantity: {
+            increment: quantity
+          }
+        }
+      });
+    }
+
+    // Log movement
+    await tx.stockMovement.create({
+      data: {
+        partId,
+        type: 'IN',
+        quantity,
+        reason,
+        performedBy,
+        branchId: branchId
+      }
+    });
+
+    return invItem;
+  });
 }
 
 /**
@@ -293,24 +292,24 @@ async function addStock(partId, quantity, reason, performedBy, branchId) {
  * @returns {Promise<Object>} Inventory item with part details
  */
 async function getCurrentStock(partId, branchId) {
-    const invItem = await db.inventoryItem.findFirst({
-        where: {
-            partId,
-            branchId: branchId || undefined
-        },
-        include: { part: true }
-    });
+  const invItem = await db.inventoryItem.findFirst({
+    where: {
+      partId,
+      branchId: branchId || undefined
+    },
+    include: { part: true }
+  });
 
-    if (!invItem) {
-        return null;
-    }
+  if (!invItem) {
+    return null;
+  }
 
-    return {
-        partId: invItem.partId,
-        quantity: invItem.quantity,
-        minLevel: invItem.minLevel,
-        part: invItem.part
-    };
+  return {
+    partId: invItem.partId,
+    quantity: invItem.quantity,
+    minLevel: invItem.minLevel,
+    part: invItem.part
+  };
 }
 
 /**
@@ -318,20 +317,20 @@ async function getCurrentStock(partId, branchId) {
  * @returns {Promise<Array>} Array of inventory items
  */
 async function getLowStockItems(branchId) {
-    const where = {
-        branchId: branchId || undefined,
-        OR: [
-            { quantity: { lte: 5 } }, // Default threshold
-            { quantity: { lt: 2 } } // Low threshold
-        ]
-    };
+  const where = {
+    branchId: branchId || undefined,
+    OR: [
+      { quantity: { lte: 5 } }, // Default threshold
+      { quantity: { lt: 2 } } // Low threshold
+    ]
+  };
 
-    const items = await db.inventoryItem.findMany({
-        where,
-        include: { part: true }
-    });
+  const items = await db.inventoryItem.findMany({
+    where,
+    include: { part: true }
+  });
 
-    return items;
+  return items;
 }
 
 module.exports = {

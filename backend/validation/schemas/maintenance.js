@@ -1,4 +1,4 @@
-const { z } = require('zod');
+﻿const { z } = require('zod');
 
 // ============================================
 // Enums (matching Prisma schema)
@@ -47,11 +47,11 @@ const PartSchema = z.object({
   quantity: z.number().int().positive('Quantity must be positive'),
   unitPrice: z.number().nonnegative('Unit price cannot be negative'),
   total: z.number().nonnegative('Total cannot be negative'),
-  isPaid: z.boolean().default(true), // true = بمقابل, false = مجاني
+  isPaid: z.boolean().default(true), // true = ط¨ظ…ظ‚ط§ط¨ظ„, false = ظ…ط¬ط§ظ†ظٹ
 });
 
 // ============================================
-// Request Quote Schema (طلب موافقة)
+// Request Quote Schema (ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط©)
 // ============================================
 
 const RequestQuoteSchema = z.object({
@@ -80,7 +80,7 @@ const RequestQuoteSchema = z.object({
 );
 
 // ============================================
-// Complete Direct Schema (صيانة مباشرة)
+// Complete Direct Schema (طµظٹط§ظ†ط© ظ…ط¨ط§ط´ط±ط©)
 // ============================================
 
 const CompleteDirectSchema = z.object({
@@ -98,7 +98,7 @@ const CompleteDirectSchema = z.object({
 });
 
 // ============================================
-// Approve Schema (موافقة على طلب)
+// Approve Schema (ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ ط·ظ„ط¨)
 // ============================================
 
 const ApproveSchema = z.object({
@@ -110,7 +110,7 @@ const ApproveSchema = z.object({
 });
 
 // ============================================
-// Reject Schema (رفض طلب)
+// Reject Schema (ط±ظپط¶ ط·ظ„ط¨)
 // ============================================
 
 const RejectSchema = z.object({
@@ -122,7 +122,7 @@ const RejectSchema = z.object({
 });
 
 // ============================================
-// Complete After Approval Schema (إتمام بعد الموافقة)
+// Complete After Approval Schema (ط¥طھظ…ط§ظ… ط¨ط¹ط¯ ط§ظ„ظ…ظˆط§ظپظ‚ط©)
 // ============================================
 
 const CompleteAfterApprovalSchema = z.object({
@@ -140,7 +140,7 @@ const CompleteAfterApprovalSchema = z.object({
 });
 
 // ============================================
-// Create Assignment Schema (تعيين مختص)
+// Create Assignment Schema (طھط¹ظٹظٹظ† ظ…ط®طھطµ)
 // ============================================
 
 const CreateAssignmentSchema = z.object({
@@ -160,7 +160,7 @@ const CreateAssignmentSchema = z.object({
 });
 
 // ============================================
-// Record Payment Schema (تسجيل سداد)
+// Record Payment Schema (طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯)
 // ============================================
 
 const RecordPaymentSchema = z.object({

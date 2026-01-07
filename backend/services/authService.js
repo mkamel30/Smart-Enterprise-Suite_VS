@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { logAction } = require('../utils/logger');
@@ -50,14 +50,17 @@ async function changePassword(userId, currentPassword, newPassword) {
 
     const hashed = await bcrypt.hash(newPassword, 10);
     await db.user.update({ where: { id: userId }, data: { password: hashed } });
-    return { message: 'تم تغيير كلمة المرور بنجاح' };
+    return { message: 'طھظ… طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط¨ظ†ط¬ط§ط­' };
 }
 
 async function login({ identifier, password, branchId: requestedBranchId }) {
     if (!JWT_SECRET) throw ApiError('JWT secret not configured', 500);
 
     const user = await db.user.findFirst({ where: { OR: [{ email: identifier }, { uid: identifier }] }, include: { branch: true } });
-    if (!user) throw ApiError('المستخدم غير موجود', 401);
+    if (!user) {
+        console.log(`Login failed: User not found for identifier: ${identifier}`);
+        throw ApiError('المستخدم غير موجود', 401);
+    }
 
     let validPassword = false;
     if (user.password) {
@@ -70,7 +73,10 @@ async function login({ identifier, password, branchId: requestedBranchId }) {
         }
     }
 
-    if (!validPassword) throw ApiError('البريد الإلكتروني أو كلمة المرور غير صحيحة', 401);
+    if (!validPassword) {
+        console.log(`Login failed: Invalid password for user: ${user.email}`);
+        throw ApiError('البريد الإلكتروني أو كلمة المرور غير صحيحة', 401);
+    }
 
     let sessionBranchId = user.branchId;
     if (!sessionBranchId && requestedBranchId) sessionBranchId = requestedBranchId;

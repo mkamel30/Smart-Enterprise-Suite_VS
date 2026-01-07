@@ -1,4 +1,5 @@
-import { useQuery, UseQueryOptions, QueryKey } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import type { UseQueryOptions, QueryKey } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -18,7 +19,7 @@ export function useAuthQuery<
   }
 ) {
   const { user } = useAuth();
-  
+
   return useQuery({
     ...options,
     // Combine authentication check with any custom enabled logic

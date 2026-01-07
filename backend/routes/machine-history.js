@@ -1,7 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
@@ -51,7 +51,7 @@ router.get('/machines/:serialNumber/history', authenticateToken, async (req, res
                 type: 'maintenance',
                 date: req.createdAt,
                 status: req.status,
-                title: req.status === 'Closed' ? 'طلب صيانة مكتمل' : 'طلب صيانة',
+                title: req.status === 'Closed' ? 'ط·ظ„ط¨ طµظٹط§ظ†ط© ظ…ظƒطھظ…ظ„' : 'ط·ظ„ط¨ طµظٹط§ظ†ط©',
                 details: {
                     requestId: req.id,
                     complaint: req.complaint,
@@ -71,7 +71,7 @@ router.get('/machines/:serialNumber/history', authenticateToken, async (req, res
             timeline.push({
                 type: 'payment',
                 date: payment.createdAt,
-                title: 'دفعة مالية',
+                title: 'ط¯ظپط¹ط© ظ…ط§ظ„ظٹط©',
                 details: {
                     amount: payment.amount,
                     reason: payment.reason,
@@ -86,12 +86,12 @@ router.get('/machines/:serialNumber/history', authenticateToken, async (req, res
         movements.forEach(movement => {
             let title = movement.action;
             switch (movement.action) {
-                case 'EXCHANGE_IN': title = 'استبدال - ماكينة جديدة'; break;
-                case 'EXCHANGE_OUT': title = 'استبدال - ماكينة قديمة'; break;
-                case 'SELL': title = 'بيع'; break;
-                case 'RETURN_FROM_CLIENT': title = 'إرجاع من عميل'; break;
-                case 'IMPORT': title = 'استيراد'; break;
-                case 'STATUS_CHANGE': title = 'تغيير حالة'; break;
+                case 'EXCHANGE_IN': title = 'ط§ط³طھط¨ط¯ط§ظ„ - ظ…ط§ظƒظٹظ†ط© ط¬ط¯ظٹط¯ط©'; break;
+                case 'EXCHANGE_OUT': title = 'ط§ط³طھط¨ط¯ط§ظ„ - ظ…ط§ظƒظٹظ†ط© ظ‚ط¯ظٹظ…ط©'; break;
+                case 'SELL': title = 'ط¨ظٹط¹'; break;
+                case 'RETURN_FROM_CLIENT': title = 'ط¥ط±ط¬ط§ط¹ ظ…ظ† ط¹ظ…ظٹظ„'; break;
+                case 'IMPORT': title = 'ط§ط³طھظٹط±ط§ط¯'; break;
+                case 'STATUS_CHANGE': title = 'طھط؛ظٹظٹط± ط­ط§ظ„ط©'; break;
             }
 
             timeline.push({

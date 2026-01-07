@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Refactoring Validation Script
  * Tests that ensureBranchWhere is NOT used with unique operations
  * and validates the refactored code patterns
@@ -30,19 +30,19 @@ function header(message) {
 }
 
 function success(message) {
-    log(`✅ ${message}`, 'green');
+    log(`âœ… ${message}`, 'green');
 }
 
 function error(message) {
-    log(`❌ ${message}`, 'red');
+    log(`â‌Œ ${message}`, 'red');
 }
 
 function warning(message) {
-    log(`⚠️  ${message}`, 'yellow');
+    log(`âڑ ï¸ڈ  ${message}`, 'yellow');
 }
 
 function info(message) {
-    log(`ℹ️  ${message}`, 'blue');
+    log(`â„¹ï¸ڈ  ${message}`, 'blue');
 }
 
 // Scan files for patterns
@@ -68,7 +68,7 @@ function scanDirectory(dir, extensions = ['.js']) {
 
 // Check for ensureBranchWhere misuse
 function checkEnsureBranchWhereMisuse() {
-    header('🔍 Checking for ensureBranchWhere Misuse');
+    header('ًں”چ Checking for ensureBranchWhere Misuse');
 
     const routesDir = path.join(__dirname, 'routes');
     const servicesDir = path.join(__dirname, 'services');
@@ -140,7 +140,7 @@ function checkEnsureBranchWhereMisuse() {
     } else {
         error(`Found ${totalIssues} potential issues in ${issues.length} locations:`);
         for (const issue of issues) {
-            console.log(`  ${issue.severity === 'error' ? '❌' : '⚠️'}  ${issue.file}`);
+            console.log(`  ${issue.severity === 'error' ? 'â‌Œ' : 'âڑ ï¸ڈ'}  ${issue.file}`);
             console.log(`     Pattern: ${issue.pattern} (${issue.count} occurrences)`);
         }
         return false;
@@ -149,7 +149,7 @@ function checkEnsureBranchWhereMisuse() {
 
 // Check for correct authorization patterns
 function checkAuthorizationPatterns() {
-    header('🔒 Checking for Proper Authorization Patterns');
+    header('ًں”’ Checking for Proper Authorization Patterns');
 
     const routesDir = path.join(__dirname, 'routes');
     const files = scanDirectory(routesDir);
@@ -157,7 +157,7 @@ function checkAuthorizationPatterns() {
     let goodPatterns = 0;
     let filesChecked = 0;
 
-    // Look for the correct pattern: findUnique/findFirst → authorization check
+    // Look for the correct pattern: findUnique/findFirst â†’ authorization check
     const authPattern = /(findUnique|findFirst)\s*\([^)]*\)[\s\S]{0,500}(branchId\s*!==|ForbiddenError|status\(403\))/gi;
 
     for (const file of files) {
@@ -183,7 +183,7 @@ function checkAuthorizationPatterns() {
 
 // Check for wrong allowunscoped usage
 function checkAllowunscopedUsage() {
-    header('🔍 Checking for Wrong "allowunscoped" Usage');
+    header('ًں”چ Checking for Wrong "allowunscoped" Usage');
 
     const routesDir = path.join(__dirname, 'routes');
     const servicesDir = path.join(__dirname, 'services');
@@ -211,14 +211,14 @@ function checkAllowunscopedUsage() {
         return true;
     } else {
         error(`Found incorrect "allowunscoped" in ${wrongUsage} files:`);
-        wrongFiles.forEach(f => console.log(`  ❌ ${f}`));
+        wrongFiles.forEach(f => console.log(`  â‌Œ ${f}`));
         return false;
     }
 }
 
 // Check branchHelpers.js documentation
 function checkHelperDocumentation() {
-    header('📚 Checking branchHelpers.js Documentation');
+    header('ًں“ڑ Checking branchHelpers.js Documentation');
 
     const helperPath = path.join(__dirname, 'prisma', 'branchHelpers.js');
     
@@ -260,7 +260,7 @@ function checkHelperDocumentation() {
 
 // Test database connection
 async function testDatabaseConnection() {
-    header('🗄️  Testing Database Connection');
+    header('ًں—„ï¸ڈ  Testing Database Connection');
 
     try {
         const db = require('./db');
@@ -275,7 +275,7 @@ async function testDatabaseConnection() {
             info(`Found ${count} customers in database`);
         } catch (err) {
             if (err.message.includes('Branch filter required')) {
-                success('Branch enforcer middleware is active ✓');
+                success('Branch enforcer middleware is active âœ“');
             } else {
                 warning(`Unexpected error: ${err.message}`);
             }
@@ -291,7 +291,7 @@ async function testDatabaseConnection() {
 
 // Generate summary report
 function generateReport(results) {
-    header('📊 REFACTORING VALIDATION REPORT');
+    header('ًں“ٹ REFACTORING VALIDATION REPORT');
 
     const total = Object.keys(results).length;
     const passed = Object.values(results).filter(v => v === true).length;
@@ -303,7 +303,7 @@ function generateReport(results) {
     console.log('');
 
     for (const [check, result] of Object.entries(results)) {
-        const icon = result ? '✅' : '❌';
+        const icon = result ? 'âœ…' : 'â‌Œ';
         const color = result ? 'green' : 'red';
         log(`${icon} ${check}`, color);
     }
@@ -311,11 +311,11 @@ function generateReport(results) {
     console.log('\n' + '='.repeat(80));
 
     if (failed === 0) {
-        log('\n🎉 ALL CHECKS PASSED! Refactoring is complete and correct.', 'green');
-        log('✨ The codebase follows the Service Layer Refactoring Strategy.', 'green');
+        log('\nًںژ‰ ALL CHECKS PASSED! Refactoring is complete and correct.', 'green');
+        log('âœ¨ The codebase follows the Service Layer Refactoring Strategy.', 'green');
     } else {
-        log(`\n⚠️  ${failed} check(s) failed. Review the issues above.`, 'yellow');
-        log('📝 Fix the issues and run this script again.', 'yellow');
+        log(`\nâڑ ï¸ڈ  ${failed} check(s) failed. Review the issues above.`, 'yellow');
+        log('ًں“‌ Fix the issues and run this script again.', 'yellow');
     }
 
     console.log('');
@@ -325,7 +325,7 @@ function generateReport(results) {
 // Main execution
 async function main() {
     console.clear();
-    log('\n🚀 REFACTORING VALIDATION SCRIPT', 'bold');
+    log('\nًںڑ€ REFACTORING VALIDATION SCRIPT', 'bold');
     log('Testing Service Layer Refactoring Strategy Implementation\n', 'cyan');
 
     const results = {};

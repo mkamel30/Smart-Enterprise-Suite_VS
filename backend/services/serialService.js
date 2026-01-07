@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 
 function normalizeSerial(serialNumber) {
     return String(serialNumber || '').trim();
@@ -11,11 +11,13 @@ async function getSerialConflicts(serialNumber) {
     const [warehouse, pos] = await Promise.all([
         db.warehouseMachine.findMany({
             where: { serialNumber: serial },
-            include: { branch: true }
+            include: { branch: true },
+            __allow_unscoped: true
         }),
         db.posMachine.findMany({
             where: { serialNumber: serial },
-            include: { customer: { include: { branch: true } } }
+            include: { customer: { include: { branch: true } } },
+            __allow_unscoped: true
         })
     ]);
 
@@ -60,12 +62,13 @@ async function ensureSerialNotAssignedToCustomer(serialNumber) {
 
     const existing = await db.posMachine.findUnique({
         where: { serialNumber: serial },
-        include: { customer: { include: { branch: true } } }
+        include: { customer: { include: { branch: true } } },
+        __allow_unscoped: true
     });
 
     if (existing) {
-        const branchName = existing.customer?.branch?.name || existing.customer?.branchId || existing.branchId || 'غير محدد';
-        const message = `الماكينة بالسيريال ${serial} مسجلة بالفعل لدى العميل ${existing.customer?.client_name || existing.customerId} في فرع ${branchName}`;
+        const branchName = existing.customer?.branch?.name || existing.customer?.branchId || existing.branchId || 'ط؛ظٹط± ظ…ط­ط¯ط¯';
+        const message = `ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¨ط§ظ„ط³ظٹط±ظٹط§ظ„ ${serial} ظ…ط³ط¬ظ„ط© ط¨ط§ظ„ظپط¹ظ„ ظ„ط¯ظ‰ ط§ظ„ط¹ظ…ظٹظ„ ${existing.customer?.client_name || existing.customerId} ظپظٹ ظپط±ط¹ ${branchName}`;
         const err = new Error(message);
         err.status = 400;
         err.code = 'SERIAL_IN_USE';

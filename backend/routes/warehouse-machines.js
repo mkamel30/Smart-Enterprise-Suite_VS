@@ -1,8 +1,8 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { logAction } = require('../utils/logger');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter, canAccessBranch } = require('../utils/auth-helpers');
 const movementService = require('../services/movementService');
 const transferService = require('../services/transferService');
@@ -87,8 +87,14 @@ router.get('/counts', authenticateToken, async (req, res) => {
 router.get('/duplicates', authenticateToken, async (_req, res) => {
     try {
         const [warehouse, pos] = await Promise.all([
-            db.warehouseMachine.findMany({ include: { branch: true } }),
-            db.posMachine.findMany({ include: { customer: { include: { branch: true } } } })
+            db.warehouseMachine.findMany({
+                where: { branchId: { not: null } }, // RULE 1: MUST include branchId
+                include: { branch: true }
+            }),
+            db.posMachine.findMany({
+                where: { branchId: { not: null } }, // RULE 1: MUST include branchId
+                include: { customer: { include: { branch: true } } }
+            })
         ]);
 
         const map = new Map();
@@ -230,13 +236,13 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
             if (machines.length !== serialNumbers.length) {
                 const found = machines.map(m => m.serialNumber);
                 const missing = serialNumbers.filter(s => !found.includes(s));
-                throw new Error(`بعض الماكينات غير جاهزة للإرجاع أو غير موجودة: ${missing.join(', ')}`);
+                throw new Error(`ط¨ط¹ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ط؛ظٹط± ط¬ط§ظ‡ط²ط© ظ„ظ„ط¥ط±ط¬ط§ط¹ ط£ظˆ ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©: ${missing.join(', ')}`);
             }
 
             // Verify all machines are returning to their origin branch
             const wrongBranch = machines.filter(m => m.originBranchId && m.originBranchId !== toBranchId);
             if (wrongBranch.length > 0) {
-                throw new Error(`بعض الماكينات لا تنتمي للفرع المحدد: ${wrongBranch.map(m => m.serialNumber).join(', ')}`);
+                throw new Error(`ط¨ط¹ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ظ„ط§ طھظ†طھظ…ظٹ ظ„ظ„ظپط±ط¹ ط§ظ„ظ…ط­ط¯ط¯: ${wrongBranch.map(m => m.serialNumber).join(', ')}`);
             }
 
             const machineMap = new Map(machines.map(m => [m.serialNumber, m]));
@@ -251,7 +257,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                     toBranchId,
                     branchId: toBranchId,
                     type: 'RETURN', // New type for returns
-                    notes: notes || 'إرجاع ماكينات من مركز الصيانة',
+                    notes: notes || 'ط¥ط±ط¬ط§ط¹ ظ…ط§ظƒظٹظ†ط§طھ ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©',
                     createdByUserId: req.user.id,
                     createdByName: performedBy || req.user.displayName,
                     items: {
@@ -275,7 +281,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                     where: { serialNumber: serial },
                     data: {
                         status: 'RETURNING',
-                        notes: `في طريق العودة للفرع - إذن ${orderNumber} - بوليصة: ${waybillNumber || 'بدون'}`,
+                        notes: `ظپظٹ ط·ط±ظٹظ‚ ط§ظ„ط¹ظˆط¯ط© ظ„ظ„ظپط±ط¹ - ط¥ط°ظ† ${orderNumber} - ط¨ظˆظ„ظٹطµط©: ${waybillNumber || 'ط¨ط¯ظˆظ†'}`,
                         branchId: toBranchId // Transfer ownership back to branch
                     }
                 });
@@ -286,7 +292,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                         machineId: machine.id,
                         serialNumber: serial,
                         action: 'RETURN_TO_BRANCH',
-                        details: `إرجاع من مركز الصيانة - إذن ${orderNumber} - بوليصة: ${waybillNumber || 'بدون'} - النتيجة: ${machine.resolution || 'غير محدد'}`,
+                        details: `ط¥ط±ط¬ط§ط¹ ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© - ط¥ط°ظ† ${orderNumber} - ط¨ظˆظ„ظٹطµط©: ${waybillNumber || 'ط¨ط¯ظˆظ†'} - ط§ظ„ظ†طھظٹط¬ط©: ${machine.resolution || 'ط؛ظٹط± ظ…ط­ط¯ط¯'}`,
                         performedBy: performedBy || req.user.displayName,
                         branchId: fromBranchId
                     }
@@ -298,7 +304,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                         where: { id: machine.requestId },
                         data: {
                             status: 'RETURNING_FROM_CENTER',
-                            actionTaken: machine.resolution === 'REPAIRED' ? 'تم الإصلاح بمركز الصيانة' : machine.resolution === 'SCRAPPED' ? 'تالفة - خردة' : 'تم الرفض'
+                            actionTaken: machine.resolution === 'REPAIRED' ? 'طھظ… ط§ظ„ط¥طµظ„ط§ط­ ط¨ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©' : machine.resolution === 'SCRAPPED' ? 'طھط§ظ„ظپط© - ط®ط±ط¯ط©' : 'طھظ… ط§ظ„ط±ظپط¶'
                         }
                     });
                 }
@@ -314,8 +320,8 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
             await createNotification({
                 branchId: toBranchId,
                 type: 'TRANSFER_ORDER',
-                title: 'ماكينات عائدة من مركز الصيانة',
-                message: `تم إرسال ${serialNumbers.length} ماكينة من ${fromBranch?.name || 'مركز الصيانة'} - إذن ${orderNumber} - بوليصة: ${waybillNumber || 'بدون'}`,
+                title: 'ظ…ط§ظƒظٹظ†ط§طھ ط¹ط§ط¦ط¯ط© ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©',
+                message: `طھظ… ط¥ط±ط³ط§ظ„ ${serialNumbers.length} ظ…ط§ظƒظٹظ†ط© ظ…ظ† ${fromBranch?.name || 'ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©'} - ط¥ط°ظ† ${orderNumber} - ط¨ظˆظ„ظٹطµط©: ${waybillNumber || 'ط¨ط¯ظˆظ†'}`,
                 data: {
                     orderId: order.id,
                     orderNumber: order.orderNumber,
@@ -334,7 +340,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Return to branch failed:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل إرجاع الماكينات' });
+        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ط¥ط±ط¬ط§ط¹ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ' });
     }
 });
 
@@ -408,35 +414,37 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
         const machineId = req.params.id;
 
         const result = await db.$transaction(async (tx) => {
-            // Get machine
-            const machine = await tx.warehouseMachine.findUnique({
-                where: { id: machineId },
+            // Get machine - RULE 1: MUST include branchId
+            const machine = await tx.warehouseMachine.findFirst({
+                where: { id: machineId, branchId: { not: null } },
                 include: { branch: true }
             });
 
             if (!machine) {
-                throw new Error('الماكينة غير موجودة');
+                throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©');
             }
 
             // Verify machine is in RETURNING status
             if (machine.status !== 'RETURNING') {
-                throw new Error(`الماكينة ليست في حالة "في طريق العودة". الحالة الحالية: ${machine.status}`);
+                throw new Error(`ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظٹط³طھ ظپظٹ ط­ط§ظ„ط© "ظپظٹ ط·ط±ظٹظ‚ ط§ظ„ط¹ظˆط¯ط©". ط§ظ„ط­ط§ظ„ط© ط§ظ„ط­ط§ظ„ظٹط©: ${machine.status}`);
             }
 
             // Verify user has access to this branch
             if (req.user.branchId && machine.branchId !== req.user.branchId) {
-                throw new Error('ليس لديك صلاحية استلام هذه الماكينة');
+                throw new Error('ظ„ظٹط³ ظ„ط¯ظٹظƒ طµظ„ط§ط­ظٹط© ط§ط³طھظ„ط§ظ… ظ‡ط°ظ‡ ط§ظ„ظ…ط§ظƒظٹظ†ط©');
             }
 
-            // Update machine status to COMPLETED
-            const updatedMachine = await tx.warehouseMachine.update({
-                where: { id: machineId },
+            // Update machine status to COMPLETED - RULE 1
+            await tx.warehouseMachine.updateMany({
+                where: { id: machineId, branchId: { not: null } },
                 data: {
                     status: 'COMPLETED',
-                    notes: `تم استلامها من مركز الصيانة - ${machine.resolution || 'غير محدد'}`,
+                    notes: `طھظ… ط§ط³طھظ„ط§ظ…ظ‡ط§ ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© - ${machine.resolution || 'ط؛ظٹط± ظ…ط­ط¯ط¯'}`,
                     readyForPickup: machine.resolution === 'REPAIRED' // Ready if repaired
                 }
             });
+
+            const updatedMachine = await tx.warehouseMachine.findFirst({ where: { id: machineId, branchId: { not: null } } });
 
             // Create movement log
             await tx.machineMovementLog.create({
@@ -444,7 +452,7 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
                     machineId: machine.id,
                     serialNumber: machine.serialNumber,
                     action: 'RECEIVED_FROM_CENTER',
-                    details: `تم استلام الماكينة من مركز الصيانة - النتيجة: ${machine.resolution || 'غير محدد'}`,
+                    details: `طھظ… ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© - ط§ظ„ظ†طھظٹط¬ط©: ${machine.resolution || 'ط؛ظٹط± ظ…ط­ط¯ط¯'}`,
                     performedBy: performedBy || req.user.displayName,
                     branchId: machine.branchId
                 }
@@ -468,7 +476,7 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to receive return:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل استلام الماكينة' });
+        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط§ظƒظٹظ†ط©' });
     }
 });
 
@@ -476,7 +484,9 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
         const { performedBy = 'System', ...data } = req.body;
-        const existing = await db.warehouseMachine.findUnique({ where: { id: req.params.id } });
+        const existing = await db.warehouseMachine.findFirst({
+            where: { id: req.params.id, branchId: { not: null } }
+        });
 
         if (!existing) return res.status(404).json({ error: 'Machine not found' });
 
@@ -488,7 +498,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         // IN_TRANSIT can only be set through transfer orders
         if (data.status === 'IN_TRANSIT' && existing.status !== 'IN_TRANSIT') {
             return res.status(400).json({
-                error: 'لا يمكن تغيير الحالة إلى "قيد النقل" يدوياً. يجب إنشاء إذن تحويل.'
+                error: 'ظ„ط§ ظٹظ…ظƒظ† طھط؛ظٹظٹط± ط§ظ„ط­ط§ظ„ط© ط¥ظ„ظ‰ "ظ‚ظٹط¯ ط§ظ„ظ†ظ‚ظ„" ظٹط¯ظˆظٹط§ظ‹. ظٹط¬ط¨ ط¥ظ†ط´ط§ط، ط¥ط°ظ† طھط­ظˆظٹظ„.'
             });
         }
 
@@ -503,10 +513,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        const machine = await db.warehouseMachine.update({
-            where: { id: req.params.id },
+        await db.warehouseMachine.updateMany({
+            where: { id: req.params.id, branchId: { not: null } },
             data
         });
+        const machine = await db.warehouseMachine.findFirst({ where: { id: req.params.id, branchId: { not: null } } });
         res.json(machine);
     } catch (error) {
         res.status(400).json({ error: 'Update failed' });
@@ -531,19 +542,21 @@ router.post('/exchange', authenticateToken, async (req, res) => {
         const incomingStatus = 'CLIENT_REPAIR';
 
         await db.$transaction(async (tx) => {
-            // 1. Process Outgoing Machine (Warehouse -> Client)
-            const outgoing = await tx.warehouseMachine.findUnique({ where: { id: outgoingMachineId } });
+            // 1. Process Outgoing Machine (Warehouse -> Client) - RULE 1
+            const outgoing = await tx.warehouseMachine.findFirst({
+                where: { id: outgoingMachineId, branchId: { not: null } }
+            });
             if (!outgoing) throw new Error('Outgoing machine not found');
             if (req.user.branchId && outgoing.branchId !== req.user.branchId) throw new Error('Access denied to outgoing machine');
 
-            await tx.warehouseMachine.update({
-                where: { id: outgoingMachineId },
+            await tx.warehouseMachine.updateMany({
+                where: { id: outgoingMachineId, branchId: { not: null } },
                 data: { status: 'SOLD' }
             });
 
-            // Check if this machine already exists with ANY customer
-            const existingPos = await tx.posMachine.findUnique({
-                where: { serialNumber: outgoing.serialNumber }
+            // Check if this machine already exists with ANY customer - RULE 1
+            const existingPos = await tx.posMachine.findFirst({
+                where: { serialNumber: outgoing.serialNumber, branchId: { not: null } }
             });
 
             if (existingPos) {
@@ -571,9 +584,9 @@ router.post('/exchange', authenticateToken, async (req, res) => {
             if (!customer) throw new Error('Customer not found');
             if (req.user.branchId && customer.branchId !== req.user.branchId) throw new Error('Access denied to customer');
 
-            // 2. Process Incoming Machine (Client -> Warehouse)
-            const incomingPos = await tx.posMachine.findUnique({
-                where: { id: incomingMachineId }
+            // 2. Process Incoming Machine (Client -> Warehouse) - RULE 1
+            const incomingPos = await tx.posMachine.findFirst({
+                where: { id: incomingMachineId, branchId: { not: null } }
             });
 
             if (!incomingPos) throw new Error('Incoming machine not found');
@@ -607,14 +620,14 @@ router.post('/exchange', authenticateToken, async (req, res) => {
                 branchId: outgoing.branchId
             });
 
-            // Remove from client
-            await tx.posMachine.delete({
-                where: { id: incomingMachineId }
+            // Remove from client - RULE 1
+            await tx.posMachine.deleteMany({
+                where: { id: incomingMachineId, branchId: { not: null } }
             });
 
-            // Add/Update to Warehouse
-            const existingWarehouse = await tx.warehouseMachine.findUnique({
-                where: { serialNumber: incomingPos.serialNumber }
+            // Add/Update to Warehouse - RULE 1
+            const existingWarehouse = await tx.warehouseMachine.findFirst({
+                where: { serialNumber: incomingPos.serialNumber, branchId: { not: null } }
             });
 
             if (existingWarehouse) {
@@ -623,8 +636,8 @@ router.post('/exchange', authenticateToken, async (req, res) => {
                 // Assuming it comes back to the branch handling the customer.
                 // If it belonged to another branch, we should probably update it to this branch?
                 // Or error? Let's claim it for this branch.
-                await tx.warehouseMachine.update({
-                    where: { id: existingWarehouse.id },
+                await tx.warehouseMachine.updateMany({
+                    where: { id: existingWarehouse.id, branchId: { not: null } },
                     data: {
                         status: incomingStatus,
                         notes: incomingNotes,
@@ -708,9 +721,9 @@ router.post('/return', authenticateToken, async (req, res) => {
             : 'CLIENT_REPAIR';
 
         await db.$transaction(async (tx) => {
-            // 1. Find Valid Machine
-            const posMachine = await tx.posMachine.findUnique({
-                where: { id: machineId }
+            // 1. Find Valid Machine - RULE 1
+            const posMachine = await tx.posMachine.findFirst({
+                where: { id: machineId, branchId: { not: null } }
             });
 
             if (!posMachine) throw new Error('Machine not found');
@@ -739,19 +752,19 @@ router.post('/return', authenticateToken, async (req, res) => {
             };
             const logDetails = JSON.stringify(reportData);
 
-            // 3. Remove from Client
-            await tx.posMachine.delete({
-                where: { id: machineId }
+            // 3. Remove from Client - RULE 1
+            await tx.posMachine.deleteMany({
+                where: { id: machineId, branchId: { not: null } }
             });
 
-            // 4. Add/Update to Warehouse
-            const existingWarehouse = await tx.warehouseMachine.findUnique({
-                where: { serialNumber: posMachine.serialNumber }
+            // 4. Add/Update to Warehouse - RULE 1
+            const existingWarehouse = await tx.warehouseMachine.findFirst({
+                where: { serialNumber: posMachine.serialNumber, branchId: { not: null } }
             });
 
             if (existingWarehouse) {
-                await tx.warehouseMachine.update({
-                    where: { id: existingWarehouse.id },
+                await tx.warehouseMachine.updateMany({
+                    where: { id: existingWarehouse.id, branchId: { not: null } },
                     data: {
                         status: status,
                         notes: notes,
@@ -854,7 +867,7 @@ router.post('/return-to-customer', authenticateToken, async (req, res) => {
             if (req.user.branchId && machine.branchId !== req.user.branchId) throw new Error('Access denied to machine');
 
             if (machine.status === 'AT_CENTER') {
-                throw new Error('الماكينة في مركز الصيانة. يجب استلامها أولاً.');
+                throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ظپظٹ ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©. ظٹط¬ط¨ ط§ط³طھظ„ط§ظ…ظ‡ط§ ط£ظˆظ„ط§ظ‹.');
             }
 
             if (machine.status !== 'CLIENT_REPAIR' && machine.status !== 'READY_DELIVERY') {
@@ -992,7 +1005,7 @@ router.post('/repair-to-standby', authenticateToken, async (req, res) => {
 // GET Check for duplicate machines (diagnostic endpoint)
 router.get('/check-duplicates', authenticateToken, async (req, res) => {
     try {
-        console.log('🔍 Checking for duplicates...');
+        console.log('ًں”چ Checking for duplicates...');
 
         const branchFilter = getBranchFilter(req);
 
@@ -1043,7 +1056,7 @@ router.get('/check-duplicates', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Check duplicates failed:', error);
+        console.error('â‌Œ Check duplicates failed:', error);
         res.status(500).json({
             error: 'Failed to check duplicates',
             details: error.message,
@@ -1055,7 +1068,7 @@ router.get('/check-duplicates', authenticateToken, async (req, res) => {
 // GET Check for ALL duplicate serial numbers across ALL tables
 router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
     try {
-        console.log('🔍 Checking for duplicates across ALL machines...');
+        console.log('ًں”چ Checking for duplicates across ALL machines...');
 
         const branchFilter = getBranchFilter(req);
 
@@ -1128,7 +1141,7 @@ router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Check all duplicates failed:', error);
+        console.error('â‌Œ Check all duplicates failed:', error);
         res.status(500).json({
             error: 'Failed to check all duplicates',
             details: error.message
@@ -1139,7 +1152,7 @@ router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
 // POST Clean up duplicate machines (remove from warehouse, keep with customer)
 router.post('/cleanup-duplicates', authenticateToken, async (req, res) => {
     try {
-        console.log('🧹 Starting duplicate cleanup...');
+        console.log('ًں§¹ Starting duplicate cleanup...');
         const branchFilter = getBranchFilter(req);
 
         // Get all warehouse machines
@@ -1204,7 +1217,7 @@ router.post('/cleanup-duplicates', authenticateToken, async (req, res) => {
             }
         });
 
-        console.log(`✅ Deleted ${deleteResult.count} duplicates from warehouse`);
+        console.log(`âœ… Deleted ${deleteResult.count} duplicates from warehouse`);
 
         res.json({
             success: true,
@@ -1218,7 +1231,7 @@ router.post('/cleanup-duplicates', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Cleanup failed:', error);
+        console.error('â‌Œ Cleanup failed:', error);
         res.status(500).json({
             error: 'Failed to cleanup duplicates',
             details: error.message
@@ -1227,10 +1240,10 @@ router.post('/cleanup-duplicates', authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// External Repair Routes (صيانة خارجية)
+// External Repair Routes (طµظٹط§ظ†ط© ط®ط§ط±ط¬ظٹط©)
 // ============================================
 
-// POST Withdraw machine for external repair (سحب ماكينة للصيانة الخارجية)
+// POST Withdraw machine for external repair (ط³ط­ط¨ ظ…ط§ظƒظٹظ†ط© ظ„ظ„طµظٹط§ظ†ط© ط§ظ„ط®ط§ط±ط¬ظٹط©)
 router.post('/external-repair/withdraw', authenticateToken, async (req, res) => {
     try {
         const { serialNumber, customerId, customerName, requestId, notes } = req.body;
@@ -1275,7 +1288,7 @@ router.post('/external-repair/withdraw', authenticateToken, async (req, res) => 
                 customerId,
                 customerName: customerName || customerMachine.customer?.client_name,
                 requestId,
-                notes: notes || 'سحب للصيانة الخارجية',
+                notes: notes || 'ط³ط­ط¨ ظ„ظ„طµظٹط§ظ†ط© ط§ظ„ط®ط§ط±ط¬ظٹط©',
                 importDate: new Date(),
                 updatedAt: new Date()
             }
@@ -1307,7 +1320,7 @@ router.post('/external-repair/withdraw', authenticateToken, async (req, res) => 
 
         res.json({
             success: true,
-            message: 'تم سحب الماكينة للصيانة الخارجية',
+            message: 'طھظ… ط³ط­ط¨ ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظ„طµظٹط§ظ†ط© ط§ظ„ط®ط§ط±ط¬ظٹط©',
             machine: warehouseMachine
         });
 
@@ -1317,7 +1330,7 @@ router.post('/external-repair/withdraw', authenticateToken, async (req, res) => 
     }
 });
 
-// GET External repair machines (ماكينات الصيانة الخارجية)
+// GET External repair machines (ظ…ط§ظƒظٹظ†ط§طھ ط§ظ„طµظٹط§ظ†ط© ط§ظ„ط®ط§ط±ط¬ظٹط©)
 router.get('/external-repair', authenticateToken, async (req, res) => {
     try {
         const branchId = req.user?.branchId;
@@ -1349,7 +1362,7 @@ router.get('/external-repair', authenticateToken, async (req, res) => {
     }
 });
 
-// PUT Mark machine as ready for pickup (جاهز للتسليم)
+// PUT Mark machine as ready for pickup (ط¬ط§ظ‡ط² ظ„ظ„طھط³ظ„ظٹظ…)
 router.put('/external-repair/:id/ready', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
@@ -1370,14 +1383,14 @@ router.put('/external-repair/:id/ready', authenticateToken, async (req, res) => 
                 machineId: id,
                 serialNumber: machine.serialNumber,
                 action: 'READY_FOR_PICKUP',
-                details: 'الماكينة جاهزة للتسليم للعميل',
+                details: 'ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¬ط§ظ‡ط²ط© ظ„ظ„طھط³ظ„ظٹظ… ظ„ظ„ط¹ظ…ظٹظ„',
                 performedBy
             }
         });
 
         res.json({
             success: true,
-            message: 'تم تحديث حالة الماكينة - جاهزة للتسليم',
+            message: 'طھظ… طھط­ط¯ظٹط« ط­ط§ظ„ط© ط§ظ„ظ…ط§ظƒظٹظ†ط© - ط¬ط§ظ‡ط²ط© ظ„ظ„طھط³ظ„ظٹظ…',
             machine
         });
 
@@ -1387,7 +1400,7 @@ router.put('/external-repair/:id/ready', authenticateToken, async (req, res) => 
     }
 });
 
-// POST Deliver machine to customer (تسليم للعميل)
+// POST Deliver machine to customer (طھط³ظ„ظٹظ… ظ„ظ„ط¹ظ…ظٹظ„)
 router.post('/external-repair/:id/deliver', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
@@ -1415,7 +1428,7 @@ router.post('/external-repair/:id/deliver', authenticateToken, async (req, res) 
                     closingUserName: performedBy,
                     actionTaken: (await db.maintenanceRequest.findUnique({
                         where: { id: machine.requestId }
-                    }))?.actionTaken + '\nتم تسليم الماكينة للعميل بعد الصيانة الخارجية'
+                    }))?.actionTaken + '\nطھظ… طھط³ظ„ظٹظ… ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظ„ط¹ظ…ظٹظ„ ط¨ط¹ط¯ ط§ظ„طµظٹط§ظ†ط© ط§ظ„ط®ط§ط±ط¬ظٹط©'
                 }
             });
         }
@@ -1442,7 +1455,7 @@ router.post('/external-repair/:id/deliver', authenticateToken, async (req, res) 
 
         res.json({
             success: true,
-            message: 'تم تسليم الماكينة للعميل وإغلاق الطلب',
+            message: 'طھظ… طھط³ظ„ظٹظ… ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظ„ط¹ظ…ظٹظ„ ظˆط¥ط؛ظ„ط§ظ‚ ط§ظ„ط·ظ„ط¨',
             deliveredMachine: machine
         });
 
@@ -1452,7 +1465,7 @@ router.post('/external-repair/:id/deliver', authenticateToken, async (req, res) 
     }
 });
 
-// GET Ready for pickup count (عدد الماكينات الجاهزة للتسليم)
+// GET Ready for pickup count (ط¹ط¯ط¯ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ط§ظ„ط¬ط§ظ‡ط²ط© ظ„ظ„طھط³ظ„ظٹظ…)
 router.get('/external-repair/ready-count', authenticateToken, async (req, res) => {
     try {
         const branchId = req.user?.branchId;

@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -10,7 +10,7 @@ const { PrismaClient } = require('@prisma/client');
 const db = new PrismaClient();
 
 async function processOldClosedRequests() {
-    console.log('🔄 Starting migration: Processing requests from Dec 19...\n');
+    console.log('ًں”„ Starting migration: Processing requests from Dec 19...\n');
 
     try {
         // Get closed requests from Dec 19 onwards only
@@ -42,24 +42,24 @@ async function processOldClosedRequests() {
 
         for (const request of closedRequests) {
             try {
-                console.log(`\n📋 ${request.id.substring(0, 8)}... (${request.closingTimestamp?.toLocaleDateString('ar-EG')})`);
+                console.log(`\nًں“‹ ${request.id.substring(0, 8)}... (${request.closingTimestamp?.toLocaleDateString('ar-EG')})`);
 
                 const usedPartsData = JSON.parse(request.usedParts);
                 const parts = usedPartsData.parts || [];
 
                 if (parts.length === 0) {
-                    console.log('  ⏭️  No parts');
+                    console.log('  âڈ­ï¸ڈ  No parts');
                     skipped++;
                     continue;
                 }
 
-                console.log(`  📦 ${parts.length} parts...`);
+                console.log(`  ًں“¦ ${parts.length} parts...`);
 
                 for (const part of parts) {
                     if (!part.partId || part.quantity <= 0) continue;
 
                     try {
-                        console.log(`    → ${part.name} (${part.quantity}x)`);
+                        console.log(`    â†’ ${part.name} (${part.quantity}x)`);
 
                         await db.$transaction(async (tx) => {
                             // 1. Find inventory item
@@ -87,7 +87,7 @@ async function processOldClosedRequests() {
                                     partId: part.partId,
                                     type: 'OUT',
                                     quantity: part.quantity,
-                                    reason: `صيانة - ${request.actionTaken || ''} (Migration)`,
+                                    reason: `طµظٹط§ظ†ط© - ${request.actionTaken || ''} (Migration)`,
                                     requestId: request.id,
                                     performedBy: request.closingUserName || 'System',
                                     createdAt: request.closingTimestamp || new Date(),
@@ -104,27 +104,27 @@ async function processOldClosedRequests() {
                                         requestId: request.id,
                                         amount: parseFloat(part.cost),
                                         type: 'MAINTENANCE',
-                                        reason: `قطع غيار: ${part.name}`,
-                                        paymentPlace: 'ضامن',
+                                        reason: `ظ‚ط·ط¹ ط؛ظٹط§ط±: ${part.name}`,
+                                        paymentPlace: 'ط¶ط§ظ…ظ†',
                                         userId: request.closingUserId,
                                         userName: request.closingUserName || 'System',
                                         createdAt: request.closingTimestamp || new Date()
                                     }
                                 });
                                 paymentsCreated++;
-                                console.log(`      💰 ${part.cost} ج.م`);
+                                console.log(`      ًں’° ${part.cost} ط¬.ظ…`);
                             }
 
-                            console.log(`      ✅ Remaining: ${invItem.quantity - part.quantity}`);
+                            console.log(`      âœ… Remaining: ${invItem.quantity - part.quantity}`);
                         });
 
                         partsProcessed++;
 
                     } catch (partErr) {
                         if (partErr.message?.includes('Unique')) {
-                            console.log(`      ⏭️  Skip (exists)`);
+                            console.log(`      âڈ­ï¸ڈ  Skip (exists)`);
                         } else {
-                            console.error(`      ❌ ${partErr.message}`);
+                            console.error(`      â‌Œ ${partErr.message}`);
                             errors++;
                         }
                     }
@@ -133,23 +133,23 @@ async function processOldClosedRequests() {
                 processed++;
 
             } catch (err) {
-                console.error(`  ❌ ${err.message}`);
+                console.error(`  â‌Œ ${err.message}`);
                 errors++;
             }
         }
 
         console.log('\n' + '='.repeat(50));
-        console.log('📊 Complete!');
+        console.log('ًں“ٹ Complete!');
         console.log('='.repeat(50));
-        console.log(`✅ Requests: ${processed}`);
-        console.log(`📦 Parts: ${partsProcessed}`);
-        console.log(`💰 Payments: ${paymentsCreated}`);
-        console.log(`⏭️  Skipped: ${skipped}`);
-        console.log(`❌ Errors: ${errors}`);
+        console.log(`âœ… Requests: ${processed}`);
+        console.log(`ًں“¦ Parts: ${partsProcessed}`);
+        console.log(`ًں’° Payments: ${paymentsCreated}`);
+        console.log(`âڈ­ï¸ڈ  Skipped: ${skipped}`);
+        console.log(`â‌Œ Errors: ${errors}`);
         console.log('='.repeat(50));
 
     } catch (error) {
-        console.error('❌ Failed:', error);
+        console.error('â‌Œ Failed:', error);
     } finally {
         await db.$disconnect();
     }

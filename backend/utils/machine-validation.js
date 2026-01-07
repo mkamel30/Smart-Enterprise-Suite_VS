@@ -1,4 +1,4 @@
-// Utility function to check if machine exists in both locations
+﻿// Utility function to check if machine exists in both locations
 async function checkMachineDuplication(serialNumber, db) {
     const inWarehouse = await db.warehouseMachine.findUnique({
         where: { serialNumber }

@@ -1,0 +1,43 @@
+﻿
+> smart-enterprise-suite-frontend@1.0.0 build
+> tsc -b && vite build
+
+[36mvite v7.3.0 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mظ£ô[39m 3973 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                      [39m[1m[2m    1.36 kB[22m[1m[22m[2m ظ¤é gzip:   0.61 kB[22m
+[2mdist/[22m[35massets/index-CsDfrlgr.css       [39m[1m[2m  145.81 kB[22m[1m[22m[2m ظ¤é gzip:  21.45 kB[22m
+[2mdist/[22m[36massets/exceljs.min-DpL9Ab3U.js  [39m[1m[33m  938.99 kB[39m[22m[2m ظ¤é gzip: 270.74 kB[22m
+[2mdist/[22m[36massets/index-BGVJavtY.js        [39m[1m[33m2,283.43 kB[39m[22m[2m ظ¤é gzip: 658.79 kB[22m
+node.exe : [33m
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" "C:\U
+sers\mkame\AppData\Roaming\ 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: ([33m  
+  :String) [], RemoteExce   
+ ption
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+(!) Some chunks are larger 
+than 500 kB after 
+minification. Consider:
+- Using dynamic import() to 
+code-split the application
+- Use build.rollupOptions.ou
+tput.manualChunks to 
+improve chunking: https://ro
+llupjs.org/configuration-opt
+ions/#output-manualchunks
+- Adjust chunk size limit 
+for this warning via build.c
+hunkSizeWarningLimit.[39m
+[32mظ£ô built in 27.92s[39m

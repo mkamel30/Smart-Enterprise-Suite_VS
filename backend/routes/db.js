@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
@@ -9,17 +9,17 @@ const { ensureBranchWhere } = require('../prisma/branchHelpers');
 router.get('/tables', async (req, res) => {
     try {
         const tables = [
-            { name: 'customer', label: 'العملاء' },
-            { name: 'posMachine', label: 'ماكينات POS' },
-            { name: 'simCard', label: 'شرائح SIM' },
-            { name: 'maintenanceRequest', label: 'طلبات الصيانة' },
-            { name: 'sparePart', label: 'قطع الغيار' },
-            { name: 'inventoryItem', label: 'المخزون' },
-            { name: 'user', label: 'المستخدمين' },
-            { name: 'payment', label: 'المدفوعات' },
-            { name: 'warehouseMachine', label: 'مخزن الماكينات' },
-            { name: 'machineSale', label: 'مبيعات الماكينات' },
-            { name: 'systemLog', label: 'سجل النظام' }
+            { name: 'customer', label: 'ط§ظ„ط¹ظ…ظ„ط§ط،' },
+            { name: 'posMachine', label: 'ظ…ط§ظƒظٹظ†ط§طھ POS' },
+            { name: 'simCard', label: 'ط´ط±ط§ط¦ط­ SIM' },
+            { name: 'maintenanceRequest', label: 'ط·ظ„ط¨ط§طھ ط§ظ„طµظٹط§ظ†ط©' },
+            { name: 'sparePart', label: 'ظ‚ط·ط¹ ط§ظ„ط؛ظٹط§ط±' },
+            { name: 'inventoryItem', label: 'ط§ظ„ظ…ط®ط²ظˆظ†' },
+            { name: 'user', label: 'ط§ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†' },
+            { name: 'payment', label: 'ط§ظ„ظ…ط¯ظپظˆط¹ط§طھ' },
+            { name: 'warehouseMachine', label: 'ظ…ط®ط²ظ† ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ' },
+            { name: 'machineSale', label: 'ظ…ط¨ظٹط¹ط§طھ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ' },
+            { name: 'systemLog', label: 'ط³ط¬ظ„ ط§ظ„ظ†ط¸ط§ظ…' }
         ];
         res.json(tables);
     } catch (error) {

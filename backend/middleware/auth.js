@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+﻿const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
 // Validate JWT secret exists and meets security requirements

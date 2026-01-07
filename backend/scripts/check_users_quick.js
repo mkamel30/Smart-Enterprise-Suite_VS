@@ -1,9 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function checkUsers() {
     const users = await prisma.user.findMany();
-    console.log(`\n📊 Users in Database: ${users.length}\n`);
+    console.log(`\nًں“ٹ Users in Database: ${users.length}\n`);
     users.forEach(user => {
         console.log(`- ${user.email || 'no email'}`);
         console.log(`  Role: ${user.role}`);

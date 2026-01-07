@@ -1,4 +1,4 @@
-const ExcelJS = require('exceljs');
+﻿const ExcelJS = require('exceljs');
 
 /**
  * Generate Excel template with specified columns
@@ -8,7 +8,7 @@ const ExcelJS = require('exceljs');
  */
 async function generateTemplate(columns, filename) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('بيانات');
+    const worksheet = workbook.addWorksheet('ط¨ظٹط§ظ†ط§طھ');
 
     // Set columns
     worksheet.columns = columns;
@@ -63,7 +63,7 @@ async function parseExcelFile(buffer) {
  */
 async function exportToExcel(data, columns, filename) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('بيانات');
+    const worksheet = workbook.addWorksheet('ط¨ظٹط§ظ†ط§طھ');
 
     // Set columns
     worksheet.columns = columns;

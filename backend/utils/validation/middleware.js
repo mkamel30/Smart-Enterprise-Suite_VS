@@ -1,4 +1,4 @@
-const { ValidationError } = require('../errors');
+﻿const { ValidationError } = require('../errors');
 
 /**
  * Validation middleware factory

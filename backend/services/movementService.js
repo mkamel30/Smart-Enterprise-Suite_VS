@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 
 /**
  * Service to handle all inventory movement logging centrally

@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
 const bcrypt = require('bcryptjs');
@@ -63,11 +63,11 @@ const idParamSchema = z.object({
  */
 const buildWhereClause = (validated, user) => {
   const where = {};
-  
+
   // Apply branch filter for non-super-admins
   const branchFilter = getBranchFilter(user);
   Object.assign(where, branchFilter);
-  
+
   // Super-admin branch filtering
   if (validated.branchId) {
     if (user.role !== 'SUPER_ADMIN') {
@@ -75,12 +75,12 @@ const buildWhereClause = (validated, user) => {
     }
     where.branchId = validated.branchId;
   }
-  
+
   // Role filtering
   if (validated.role) {
     where.role = validated.role;
   }
-  
+
   // Search by name or email
   if (validated.search && validated.search.trim()) {
     const searchTerm = validated.search.trim();
@@ -89,7 +89,7 @@ const buildWhereClause = (validated, user) => {
       { email: { contains: searchTerm, mode: 'insensitive' } }
     ];
   }
-  
+
   return where;
 };
 
@@ -108,24 +108,24 @@ router.get(
   validateQuery(listQuerySchema),
   asyncHandler(async (req, res) => {
     const validated = req.query;
-    
+
     // Build filter - only get maintenance-capable users
     const where = {
       canDoMaintenance: true
     };
-    
+
     // Apply branch filter
     const branchFilter = getBranchFilter(req.user);
     Object.assign(where, branchFilter);
-    
+
     if (validated.branchId && req.user.role === 'SUPER_ADMIN') {
       where.branchId = validated.branchId;
     }
-    
+
     // Safe pagination
     const limit = Math.min(validated.limit, 100);
     const offset = Math.max(0, validated.offset);
-    
+
     // Fetch in parallel
     const [technicians, total] = await Promise.all([
       db.user.findMany({
@@ -145,7 +145,7 @@ router.get(
       }),
       db.user.count({ where })
     ]);
-    
+
     res.json({
       data: technicians,
       pagination: { total, limit, offset, pages: Math.ceil(total / limit) }
@@ -169,12 +169,12 @@ router.get(
   validateQuery(listQuerySchema),
   asyncHandler(async (req, res) => {
     const validated = req.query;
-    
+
     const where = buildWhereClause(validated, req.user);
-    
+
     const limit = Math.min(validated.limit, 100);
     const offset = Math.max(0, validated.offset);
-    
+
     const [users, total] = await Promise.all([
       db.user.findMany({
         where,
@@ -194,7 +194,7 @@ router.get(
       }),
       db.user.count({ where })
     ]);
-    
+
     res.json({
       data: users,
       pagination: { total, limit, offset, pages: Math.ceil(total / limit) }
@@ -216,7 +216,7 @@ router.get(
   requireManager,
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
-    
+
     const user = await db.user.findUnique({
       where: { id },
       select: {
@@ -230,16 +230,16 @@ router.get(
         createdAt: true
       }
     });
-    
+
     if (!user) {
       throw new NotFoundError('User');
     }
-    
+
     // Branch isolation
     if (req.user.branchId && user.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
-    
+
     res.json(user);
   })
 );
@@ -260,25 +260,25 @@ router.post(
   validateRequest(createTechnicianSchema),
   asyncHandler(async (req, res) => {
     const validated = req.validated;
-    
+
     // Check if email already exists
     const existing = await db.user.findUnique({
       where: { email: validated.email }
     });
-    
+
     if (existing) {
       throw new AppError('Email already in use', 409, 'DUPLICATE_EMAIL');
     }
-    
+
     // Determine branch
     const branchId = req.user.branchId || validated.branchId;
     if (!branchId && !req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
       throw new AppError('Branch ID is required', 400, 'MISSING_BRANCH');
     }
-    
+
     // Hash password
     const hashedPassword = await bcrypt.hash(validated.password, 10);
-    
+
     // Create user
     const user = await db.user.create({
       data: {
@@ -298,7 +298,7 @@ router.post(
         branchId: true
       }
     });
-    
+
     // Audit logging
     await logAction({
       entityType: 'USER',
@@ -309,7 +309,7 @@ router.post(
       performedBy: req.user.displayName,
       branchId: branchId || req.user.branchId
     });
-    
+
     res.status(201).json(user);
   })
 );
@@ -332,21 +332,21 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
     const validated = req.validated;
-    
+
     // Find existing
     const existing = await db.user.findUnique({
       where: { id }
     });
-    
+
     if (!existing) {
       throw new NotFoundError('User');
     }
-    
+
     // Branch isolation
     if (req.user.branchId && existing.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
-    
+
     // Check email uniqueness if changing
     if (validated.email && validated.email !== existing.email) {
       const duplicate = await db.user.findUnique({
@@ -356,7 +356,7 @@ router.put(
         throw new AppError('Email already in use', 409, 'DUPLICATE_EMAIL');
       }
     }
-    
+
     // Build update data
     const updateData = {};
     Object.entries(validated).forEach(([key, value]) => {
@@ -364,7 +364,7 @@ router.put(
         updateData[key] = value;
       }
     });
-    
+
     // Update
     const updated = await db.user.update({
       where: { id },
@@ -378,7 +378,7 @@ router.put(
         canDoMaintenance: true
       }
     });
-    
+
     // Audit logging
     await logAction({
       entityType: 'USER',
@@ -389,7 +389,7 @@ router.put(
       performedBy: req.user.displayName,
       branchId: req.user.branchId
     });
-    
+
     res.json(updated);
   })
 );
@@ -411,30 +411,30 @@ router.post(
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
     const { newPassword } = req.validated;
-    
+
     // Find user
     const user = await db.user.findUnique({
       where: { id }
     });
-    
+
     if (!user) {
       throw new NotFoundError('User');
     }
-    
+
     // Branch isolation
     if (req.user.branchId && user.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
-    
+
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
+
     // Update
     await db.user.update({
       where: { id },
       data: { password: hashedPassword }
     });
-    
+
     // Audit logging
     await logAction({
       entityType: 'USER',
@@ -443,4 +443,11 @@ router.post(
       details: `Password reset by admin`,
       userId: req.user.id,
       performedBy: req.user.displayName,
-      branch
+      branchId: req.user.branchId
+    });
+
+    res.json({ message: 'Password reset successfully' });
+  })
+);
+
+module.exports = router;

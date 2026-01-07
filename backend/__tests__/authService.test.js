@@ -1,4 +1,4 @@
-// Use shared mock helper
+﻿// Use shared mock helper
 const { createMockPrismaClient } = require('../tests/helpers/mockPrismaClient');
 const mockDb = createMockPrismaClient();
 mockDb.user = { findUnique: jest.fn(), update: jest.fn(), findFirst: jest.fn() };

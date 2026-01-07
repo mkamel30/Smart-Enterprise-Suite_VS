@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Integration Tests for Routes with Validation & Error Handling
  * 
  * This file shows patterns for testing:
@@ -266,19 +266,19 @@ describe('Customer Routes with Enhanced Error Handling', () => {
  * PATTERNS TO USE IN YOUR TESTS:
  * 
  * 1. Always test validation:
- *    - Missing required fields → 400 VALIDATION_ERROR
- *    - Invalid types → 400 VALIDATION_ERROR with details
- *    - Invalid email/format → 400 VALIDATION_ERROR
+ *    - Missing required fields â†’ 400 VALIDATION_ERROR
+ *    - Invalid types â†’ 400 VALIDATION_ERROR with details
+ *    - Invalid email/format â†’ 400 VALIDATION_ERROR
  * 
  * 2. Always test permission errors:
- *    - Access denied → 403 FORBIDDEN
- *    - Not authenticated → 401 UNAUTHORIZED
+ *    - Access denied â†’ 403 FORBIDDEN
+ *    - Not authenticated â†’ 401 UNAUTHORIZED
  * 
  * 3. Always test not found:
- *    - Resource doesn't exist → 404 NOT_FOUND
+ *    - Resource doesn't exist â†’ 404 NOT_FOUND
  * 
  * 4. Always test success:
- *    - Valid request → 200/201 with correct response
+ *    - Valid request â†’ 200/201 with correct response
  * 
  * 5. Test error handler integration:
  *    - Errors are caught by asyncHandler

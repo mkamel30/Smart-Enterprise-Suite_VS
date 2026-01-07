@@ -1,4 +1,4 @@
-// Test APIs with detailed error logging
+﻿// Test APIs with detailed error logging
 const https = require('https');
 const http = require('http');
 
@@ -42,56 +42,56 @@ function request(method, path, headers = {}, body = null) {
 
 async function testAPIs() {
     try {
-        console.log('🔐 Logging in...');
+        console.log('ًں”گ Logging in...');
         const loginRes = await request('POST', '/api/auth/login', {}, {
             email: 'admin@csdept.com',
             password: 'admin123'
         });
         
         const token = loginRes.data.token;
-        console.log('✅ Login successful');
+        console.log('âœ… Login successful');
         console.log('User:', loginRes.data.user.displayName);
         
         const headers = { Authorization: `Bearer ${token}` };
         
         // Test 1: Dashboard admin summary
-        console.log('\n📊 Testing /api/dashboard/admin-summary...');
+        console.log('\nًں“ٹ Testing /api/dashboard/admin-summary...');
         try {
             const dashRes = await request('GET', '/api/dashboard/admin-summary', headers);
-            console.log('✅ Dashboard OK');
+            console.log('âœ… Dashboard OK');
             console.log('Data:', JSON.stringify(dashRes.data, null, 2));
         } catch (err) {
-            console.log('❌ Dashboard ERROR:');
+            console.log('â‌Œ Dashboard ERROR:');
             console.log('Status:', err.status);
             console.log('Error:', JSON.stringify(err.data, null, 2));
         }
         
         // Test 2: Transfer orders pending
-        console.log('\n📦 Testing /api/transfer-orders/pending...');
+        console.log('\nًں“¦ Testing /api/transfer-orders/pending...');
         try {
             const transferRes = await request('GET', '/api/transfer-orders/pending', headers);
-            console.log('✅ Transfer Orders OK');
+            console.log('âœ… Transfer Orders OK');
             console.log('Count:', transferRes.data.length);
         } catch (err) {
-            console.log('❌ Transfer Orders ERROR:');
+            console.log('â‌Œ Transfer Orders ERROR:');
             console.log('Status:', err.status);
             console.log('Error:', JSON.stringify(err.data, null, 2));
         }
         
         // Test 3: Maintenance shipments
-        console.log('\n🚚 Testing /api/maintenance/shipments...');
+        console.log('\nًںڑڑ Testing /api/maintenance/shipments...');
         try {
             const shipRes = await request('GET', '/api/maintenance/shipments', headers);
-            console.log('✅ Shipments OK');
+            console.log('âœ… Shipments OK');
             console.log('Count:', shipRes.data.length);
         } catch (err) {
-            console.log('❌ Shipments ERROR:');
+            console.log('â‌Œ Shipments ERROR:');
             console.log('Status:', err.status);
             console.log('Error:', JSON.stringify(err.data, null, 2));
         }
         
     } catch (error) {
-        console.log('❌ FATAL ERROR:');
+        console.log('â‌Œ FATAL ERROR:');
         console.log(error);
     }
 }

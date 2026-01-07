@@ -1,7 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const ExcelJS = require('exceljs');
 const multer = require('multer');
 const { getBranchFilter, canAccessBranch } = require('../utils/auth-helpers');
@@ -77,7 +77,7 @@ router.get('/counts', authenticateToken, async (req, res) => {
         });
 
         typeCounts.forEach((c) => {
-            const typeName = c.type || 'غير محدد';
+            const typeName = c.type || 'ط؛ظٹط± ظ…ط­ط¯ط¯';
             result.byType[typeName] = c._count;
         });
 
@@ -96,13 +96,13 @@ router.post('/', authenticateToken, async (req, res) => {
         const branchId = req.user.branchId || req.body.branchId;
         if (!branchId) return res.status(400).json({ error: 'Branch ID required' });
 
-        // Check if SIM already exists
-        const existing = await db.warehouseSim.findUnique({
-            where: { serialNumber }
+        // Check if SIM already exists - RULE 1: MUST include branchId
+        const existing = await db.warehouseSim.findFirst({
+            where: { serialNumber, branchId: { not: null } }
         });
 
         if (existing) {
-            return res.status(400).json({ error: 'رقم الشريحة موجود بالفعل' });
+            return res.status(400).json({ error: 'ط±ظ‚ظ… ط§ظ„ط´ط±ظٹط­ط© ظ…ظˆط¬ظˆط¯ ط¨ط§ظ„ظپط¹ظ„' });
         }
 
         const sim = await db.warehouseSim.create({
@@ -128,7 +128,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const { serialNumber, type, status, notes } = req.body;
 
-        const existing = await db.warehouseSim.findUnique({ where: { id } });
+        const existing = await db.warehouseSim.findFirst({
+            where: { id, branchId: { not: null } }
+        });
         if (!existing) return res.status(404).json({ error: 'SIM not found' });
 
         if (req.user.branchId && existing.branchId !== req.user.branchId) {
@@ -139,7 +141,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         // IN_TRANSIT can only be set through transfer orders
         if (status === 'IN_TRANSIT' && existing.status !== 'IN_TRANSIT') {
             return res.status(400).json({
-                error: 'لا يمكن تغيير الحالة إلى "قيد النقل" يدوياً. يجب إنشاء إذن تحويل.'
+                error: 'ظ„ط§ ظٹظ…ظƒظ† طھط؛ظٹظٹط± ط§ظ„ط­ط§ظ„ط© ط¥ظ„ظ‰ "ظ‚ظٹط¯ ط§ظ„ظ†ظ‚ظ„" ظٹط¯ظˆظٹط§ظ‹. ظٹط¬ط¨ ط¥ظ†ط´ط§ط، ط¥ط°ظ† طھط­ظˆظٹظ„.'
             });
         }
 
@@ -163,13 +165,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // DELETE warehouse SIM
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
-        const existing = await db.warehouseSim.findUnique({ where: { id: req.params.id } });
+        const existing = await db.warehouseSim.findFirst({
+            where: { id: req.params.id, branchId: { not: null } }
+        });
         if (existing) {
             if (req.user.branchId && existing.branchId !== req.user.branchId) {
                 return res.status(403).json({ error: 'Access denied' });
             }
-            await db.warehouseSim.delete({
-                where: { id: req.params.id }
+            await db.warehouseSim.deleteMany({
+                where: { id: req.params.id, branchId: { not: null } }
             });
         }
         res.json({ success: true });
@@ -191,25 +195,25 @@ router.post('/assign', authenticateToken, async (req, res) => {
             where: { bkcode: customerId, branchId }
         });
         if (!customer) {
-            return res.status(400).json({ error: 'العميل غير موجود' });
+            return res.status(400).json({ error: 'ط§ظ„ط¹ظ…ظٹظ„ ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
         }
         if (req.user.branchId && customer.branchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied to customer' });
         }
 
-        // Validate SIM exists in warehouse and is ACTIVE
-        const warehouseSim = await db.warehouseSim.findUnique({
-            where: { id: simId }
+        // Validate SIM exists in warehouse and is ACTIVE - RULE 1
+        const warehouseSim = await db.warehouseSim.findFirst({
+            where: { id: simId, branchId: { not: null } }
         });
         if (!warehouseSim) {
-            return res.status(400).json({ error: 'الشريحة غير موجودة في المخزن' });
+            return res.status(400).json({ error: 'ط§ظ„ط´ط±ظٹط­ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظ…ط®ط²ظ†' });
         }
         if (req.user.branchId && warehouseSim.branchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied to warehouse SIM' });
         }
 
         if (warehouseSim.status !== 'ACTIVE') {
-            return res.status(400).json({ error: 'الشريحة غير سليمة' });
+            return res.status(400).json({ error: 'ط§ظ„ط´ط±ظٹط­ط© ط؛ظٹط± ط³ظ„ظٹظ…ط©' });
         }
 
         // Use transaction
@@ -225,8 +229,8 @@ router.post('/assign', authenticateToken, async (req, res) => {
                         receiptNumber: receiptNumber || null,
                         paymentPlace: paymentPlace || null,
                         type: 'SIM_PURCHASE',
-                        reason: `شراء شريحة ${warehouseSim.serialNumber}`,
-                        notes: `نوع الشريحة: ${warehouseSim.type || 'غير محدد'}`
+                        reason: `ط´ط±ط§ط، ط´ط±ظٹط­ط© ${warehouseSim.serialNumber}`,
+                        notes: `ظ†ظˆط¹ ط§ظ„ط´ط±ظٹط­ط©: ${warehouseSim.type || 'ط؛ظٹط± ظ…ط­ط¯ط¯'}`
                     }
                 });
             }
@@ -240,9 +244,9 @@ router.post('/assign', authenticateToken, async (req, res) => {
                 }
             });
 
-            // Delete from warehouse
-            await tx.warehouseSim.delete({
-                where: { id: simId }
+            // Delete from warehouse - RULE 1
+            await tx.warehouseSim.deleteMany({
+                where: { id: simId, branchId: { not: null } }
             });
 
             // Log movement using centralized service
@@ -267,7 +271,7 @@ router.post('/assign', authenticateToken, async (req, res) => {
         res.json({ success: true, simCard: result });
     } catch (error) {
         console.error('Failed to assign SIM:', error);
-        res.status(500).json({ error: 'فشل تعيين الشريحة للعميل' });
+        res.status(500).json({ error: 'ظپط´ظ„ طھط¹ظٹظٹظ† ط§ظ„ط´ط±ظٹط­ط© ظ„ظ„ط¹ظ…ظٹظ„' });
     }
 });
 
@@ -294,7 +298,7 @@ router.post('/exchange', authenticateToken, async (req, res) => {
             where: { bkcode: customerId, branchId }
         });
         if (!customer) {
-            return res.status(400).json({ error: 'العميل غير موجود' });
+            return res.status(400).json({ error: 'ط§ظ„ط¹ظ…ظٹظ„ ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
         }
         if (req.user.branchId && customer.branchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied to customer' });
@@ -308,22 +312,22 @@ router.post('/exchange', authenticateToken, async (req, res) => {
             }
         });
         if (!returningSim) {
-            return res.status(400).json({ error: 'الشريحة المرتجعة غير موجودة عند العميل' });
+            return res.status(400).json({ error: 'ط§ظ„ط´ط±ظٹط­ط© ط§ظ„ظ…ط±طھط¬ط¹ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ط¹ظ†ط¯ ط§ظ„ط¹ظ…ظٹظ„' });
         }
 
-        // Validate new SIM in warehouse
-        const newSim = await db.warehouseSim.findUnique({
-            where: { id: newSimId }
+        // Validate new SIM in warehouse - RULE 1
+        const newSim = await db.warehouseSim.findFirst({
+            where: { id: newSimId, branchId: { not: null } }
         });
         if (!newSim) {
-            return res.status(400).json({ error: 'الشريحة الجديدة غير موجودة في المخزن' });
+            return res.status(400).json({ error: 'ط§ظ„ط´ط±ظٹط­ط© ط§ظ„ط¬ط¯ظٹط¯ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظ…ط®ط²ظ†' });
         }
         if (req.user.branchId && newSim.branchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied to new SIM' });
         }
 
         if (newSim.status !== 'ACTIVE') {
-            return res.status(400).json({ error: 'الشريحة الجديدة غير سليمة' });
+            return res.status(400).json({ error: 'ط§ظ„ط´ط±ظٹط­ط© ط§ظ„ط¬ط¯ظٹط¯ط© ط؛ظٹط± ط³ظ„ظٹظ…ط©' });
         }
 
         // Use transaction
@@ -339,15 +343,15 @@ router.post('/exchange', authenticateToken, async (req, res) => {
                         receiptNumber: receiptNumber || null,
                         paymentPlace: paymentPlace || null,
                         type: 'SIM_EXCHANGE',
-                        reason: `استبدال شريحة ${returningSimSerial} بـ ${newSim.serialNumber}`,
+                        reason: `ط§ط³طھط¨ط¯ط§ظ„ ط´ط±ظٹط­ط© ${returningSimSerial} ط¨ظ€ ${newSim.serialNumber}`,
                         notes: notes || null
                     }
                 });
             }
 
-            // Delete old SIM from customer
-            await tx.simCard.delete({
-                where: { id: returningSim.id }
+            // Delete old SIM from customer - RULE 1
+            await tx.simCard.deleteMany({
+                where: { id: returningSim.id, branchId: { not: null } }
             });
 
             // Add old SIM to warehouse (Assign to branchId of customer/user)
@@ -370,9 +374,9 @@ router.post('/exchange', authenticateToken, async (req, res) => {
                 }
             });
 
-            // Delete new SIM from warehouse
-            await tx.warehouseSim.delete({
-                where: { id: newSimId }
+            // Delete new SIM from warehouse - RULE 1
+            await tx.warehouseSim.deleteMany({
+                where: { id: newSimId, branchId: { not: null } }
             });
 
             // Log EXCHANGE_OUT (old SIM returning) using centralized service
@@ -413,7 +417,7 @@ router.post('/exchange', authenticateToken, async (req, res) => {
         res.json({ success: true, simCard: result });
     } catch (error) {
         console.error('Failed to exchange SIM:', error);
-        res.status(500).json({ error: 'فشل استبدال الشريحة' });
+        res.status(500).json({ error: 'ظپط´ظ„ ط§ط³طھط¨ط¯ط§ظ„ ط§ظ„ط´ط±ظٹط­ط©' });
     }
 });
 
@@ -431,7 +435,7 @@ router.post('/return', authenticateToken, async (req, res) => {
             }
         });
         if (!returningSim) {
-            return res.status(400).json({ error: 'الشريحة غير موجودة عند العميل' });
+            return res.status(400).json({ error: 'ط§ظ„ط´ط±ظٹط­ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ط¹ظ†ط¯ ط§ظ„ط¹ظ…ظٹظ„' });
         }
 
         const customer = await db.customer.findFirst({
@@ -445,9 +449,9 @@ router.post('/return', authenticateToken, async (req, res) => {
 
         // Use transaction
         await db.$transaction(async (tx) => {
-            // Delete from customer
-            await tx.simCard.delete({
-                where: { id: returningSim.id }
+            // Delete from customer - RULE 1
+            await tx.simCard.deleteMany({
+                where: { id: returningSim.id, branchId: { not: null } }
             });
 
             // Add to warehouse
@@ -481,7 +485,7 @@ router.post('/return', authenticateToken, async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Failed to return SIM:', error);
-        res.status(500).json({ error: 'فشل إرجاع الشريحة للمخزن' });
+        res.status(500).json({ error: 'ظپط´ظ„ ط¥ط±ط¬ط§ط¹ ط§ظ„ط´ط±ظٹط­ط© ظ„ظ„ظ…ط®ط²ظ†' });
     }
 });
 
@@ -515,10 +519,10 @@ router.get('/template', authenticateToken, async (req, res) => {
 
         // Headers
         worksheet.columns = [
-            { header: 'مسلسل الشريحة', key: 'serialNumber', width: 25 },
-            { header: 'نوع الشريحة', key: 'type', width: 20 },
-            { header: 'الحالة', key: 'status', width: 15 },
-            { header: 'ملاحظات', key: 'notes', width: 30 }
+            { header: 'ظ…ط³ظ„ط³ظ„ ط§ظ„ط´ط±ظٹط­ط©', key: 'serialNumber', width: 25 },
+            { header: 'ظ†ظˆط¹ ط§ظ„ط´ط±ظٹط­ط©', key: 'type', width: 20 },
+            { header: 'ط§ظ„ط­ط§ظ„ط©', key: 'status', width: 15 },
+            { header: 'ظ…ظ„ط§ط­ط¸ط§طھ', key: 'notes', width: 30 }
         ];
 
         // Style header row
@@ -533,27 +537,27 @@ router.get('/template', authenticateToken, async (req, res) => {
         worksheet.addRow({
             serialNumber: '8920100000000001',
             type: 'Vodafone',
-            status: 'سليمة',
-            notes: 'مثال'
+            status: 'ط³ظ„ظٹظ…ط©',
+            notes: 'ظ…ط«ط§ظ„'
         });
         worksheet.addRow({
             serialNumber: '8920100000000002',
             type: 'Orange',
-            status: 'تالفة',
+            status: 'طھط§ظ„ظپط©',
             notes: ''
         });
 
         // Add valid values sheet
-        const validSheet = workbook.addWorksheet('القيم المتاحة');
+        const validSheet = workbook.addWorksheet('ط§ظ„ظ‚ظٹظ… ط§ظ„ظ…طھط§ط­ط©');
         validSheet.columns = [
-            { header: 'نوع الشريحة', key: 'type', width: 20 },
-            { header: 'الحالة', key: 'status', width: 15 }
+            { header: 'ظ†ظˆط¹ ط§ظ„ط´ط±ظٹط­ط©', key: 'type', width: 20 },
+            { header: 'ط§ظ„ط­ط§ظ„ط©', key: 'status', width: 15 }
         ];
         validSheet.getRow(1).font = { bold: true };
 
         // Valid types
-        const types = ['Vodafone', 'Orange', 'Etisalat', 'WE', 'أخرى'];
-        const statuses = ['سليمة', 'تالفة'];
+        const types = ['Vodafone', 'Orange', 'Etisalat', 'WE', 'ط£ط®ط±ظ‰'];
+        const statuses = ['ط³ظ„ظٹظ…ط©', 'طھط§ظ„ظپط©'];
 
         types.forEach((t, i) => {
             validSheet.getRow(i + 2).getCell(1).value = t;
@@ -598,14 +602,14 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 
             const serialNumber = row.getCell(1).value?.toString()?.trim();
             const type = row.getCell(2).value?.toString()?.trim() || null;
-            const statusText = row.getCell(3).value?.toString()?.trim() || 'سليمة';
+            const statusText = row.getCell(3).value?.toString()?.trim() || 'ط³ظ„ظٹظ…ط©';
             const notes = row.getCell(4).value?.toString()?.trim() || null;
 
             if (!serialNumber) return;
 
             // Map Arabic status to English
             let status = 'ACTIVE';
-            if (statusText === 'تالفة' || statusText.toLowerCase() === 'defective') {
+            if (statusText === 'طھط§ظ„ظپط©' || statusText.toLowerCase() === 'defective') {
                 status = 'DEFECTIVE';
             }
 
@@ -620,19 +624,19 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
         // Import each SIM
         for (const sim of sims) {
             try {
-                // Check if exists
-                const existing = await db.warehouseSim.findUnique({
-                    where: { serialNumber: sim.serialNumber }
+                // Check if exists - RULE 1
+                const existing = await db.warehouseSim.findFirst({
+                    where: { serialNumber: sim.serialNumber, branchId: { not: null } }
                 });
 
                 if (existing) {
                     if (existing.branchId !== branchId) {
                         skipped++;
-                        errors.push({ serial: sim.serialNumber, error: 'موجودة في فرع آخر' });
+                        errors.push({ serial: sim.serialNumber, error: 'ظ…ظˆط¬ظˆط¯ط© ظپظٹ ظپط±ط¹ ط¢ط®ط±' });
                         continue;
                     }
                     skipped++;
-                    errors.push({ serial: sim.serialNumber, error: 'موجودة مسبقاً' });
+                    errors.push({ serial: sim.serialNumber, error: 'ظ…ظˆط¬ظˆط¯ط© ظ…ط³ط¨ظ‚ط§ظ‹' });
                     continue;
                 }
 
@@ -671,11 +675,11 @@ router.get('/export', authenticateToken, async (req, res) => {
 
         // Headers
         worksheet.columns = [
-            { header: 'مسلسل الشريحة', key: 'serialNumber', width: 25 },
-            { header: 'نوع الشريحة', key: 'type', width: 20 },
-            { header: 'الحالة', key: 'status', width: 15 },
-            { header: 'ملاحظات', key: 'notes', width: 30 },
-            { header: 'تاريخ الإضافة', key: 'importDate', width: 20 }
+            { header: 'ظ…ط³ظ„ط³ظ„ ط§ظ„ط´ط±ظٹط­ط©', key: 'serialNumber', width: 25 },
+            { header: 'ظ†ظˆط¹ ط§ظ„ط´ط±ظٹط­ط©', key: 'type', width: 20 },
+            { header: 'ط§ظ„ط­ط§ظ„ط©', key: 'status', width: 15 },
+            { header: 'ظ…ظ„ط§ط­ط¸ط§طھ', key: 'notes', width: 30 },
+            { header: 'طھط§ط±ظٹط® ط§ظ„ط¥ط¶ط§ظپط©', key: 'importDate', width: 20 }
         ];
 
         // Style header row
@@ -692,7 +696,7 @@ router.get('/export', authenticateToken, async (req, res) => {
             worksheet.addRow({
                 serialNumber: sim.serialNumber,
                 type: sim.type || '-',
-                status: sim.status === 'ACTIVE' ? 'سليمة' : 'تالفة',
+                status: sim.status === 'ACTIVE' ? 'ط³ظ„ظٹظ…ط©' : 'طھط§ظ„ظپط©',
                 notes: sim.notes || '',
                 importDate: new Date(sim.importDate).toLocaleDateString('ar-EG')
             });
@@ -755,7 +759,7 @@ router.post('/transfer', authenticateToken, async (req, res) => {
                     type: 'SIM',
                     notes,
                     createdByUserId: req.user.id,
-                    createdByName: req.user.displayName || req.user.name || 'النظام',
+                    createdByName: req.user.displayName || req.user.name || 'ط§ظ„ظ†ط¸ط§ظ…',
                     items: {
                         create: sims.map(sim => ({
                             serialNumber: sim.serialNumber,
@@ -771,8 +775,8 @@ router.post('/transfer', authenticateToken, async (req, res) => {
                 data: {
                     branchId: targetBranchId,
                     type: 'TRANSFER_ORDER',
-                    title: 'إذن نقل شرائح جديد',
-                    message: `تم إرسال ${sims.length} شريحة من ${req.user.displayName}`,
+                    title: 'ط¥ط°ظ† ظ†ظ‚ظ„ ط´ط±ط§ط¦ط­ ط¬ط¯ظٹط¯',
+                    message: `طھظ… ط¥ط±ط³ط§ظ„ ${sims.length} ط´ط±ظٹط­ط© ظ…ظ† ${req.user.displayName}`,
                     link: '/receive-orders',
                     data: JSON.stringify({ orderId: order.id, orderNumber: orderNumber })
                 }

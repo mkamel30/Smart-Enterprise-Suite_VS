@@ -1,4 +1,4 @@
-// MOVED TO backend/ops - guarded execution
+﻿// MOVED TO backend/ops - guarded execution
 // To run: set LEGACY_OPS_ALLOW=1 and optionally DRY_RUN=1 to review behavior
 if (process.env.LEGACY_OPS_ALLOW !== '1') {
   console.error('Legacy script is guarded. Set LEGACY_OPS_ALLOW=1 to run.');
@@ -10,7 +10,7 @@ const { PrismaClient } = require('@prisma/client');
 const db = new PrismaClient();
 
 async function fixSalePaidAmounts() {
-    console.log('🔧 Fixing sale paid amounts...\n');
+    console.log('ًں”§ Fixing sale paid amounts...\n');
 
     try {
         // Get all sales with installments
@@ -46,16 +46,16 @@ async function fixSalePaidAmounts() {
             console.log(`  Correct paid: ${correctPaidAmount}`);
 
             if (sale.paidAmount !== correctPaidAmount) {
-                console.log(`  ⚠️ MISMATCH! Will fix...`);
+                console.log(`  âڑ ï¸ڈ MISMATCH! Will fix...`);
 
                 await db.machineSale.update({
                     where: { id: sale.id },
                     data: { paidAmount: correctPaidAmount }
                 });
 
-                console.log(`  ✅ Fixed!`);
+                console.log(`  âœ… Fixed!`);
             } else {
-                console.log(`  ✓ OK`);
+                console.log(`  âœ“ OK`);
             }
             console.log('');
         }
@@ -63,7 +63,7 @@ async function fixSalePaidAmounts() {
         console.log('\nDone!');
 
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('â‌Œ Error:', error);
     } finally {
         await db.$disconnect();
     }

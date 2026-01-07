@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Permissions Middleware
  * Handles role-based access control for all routes
  */

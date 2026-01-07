@@ -1,4 +1,4 @@
-// Test dashboard API specifically
+﻿// Test dashboard API specifically
 const http = require('http');
 
 function request(method, path, headers = {}, body = null) {

@@ -40,9 +40,32 @@ class ApiClient {
             headers['Authorization'] = `Bearer ${this.token}`;
         }
 
+        // Automatically include CSRF token from cookie if available
+        const getCsrfToken = () => {
+            const name = "XSRF-TOKEN=";
+            const decodedCookie = decodeURIComponent(document.cookie);
+            const ca = decodedCookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) === 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        };
+
+        const csrfToken = getCsrfToken();
+        if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
+        }
+
         const response = await fetch(`${this.baseUrl}${endpoint}`, {
             ...options,
             headers,
+            credentials: 'include', // Important for cookies/sessions
         });
 
         if (!response.ok) {
@@ -61,6 +84,20 @@ class ApiClient {
     public async post<T>(endpoint: string, data?: any): Promise<T> {
         return this.request<T>(endpoint, {
             method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    public async put<T>(endpoint: string, data?: any): Promise<T> {
+        return this.request<T>(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    public async patch<T>(endpoint: string, data?: any): Promise<T> {
+        return this.request<T>(endpoint, {
+            method: 'PATCH',
             body: JSON.stringify(data)
         });
     }

@@ -1,4 +1,4 @@
-// Test specific failing endpoints
+﻿// Test specific failing endpoints
 const http = require('http');
 
 function request(method, path, headers = {}, body = null) {

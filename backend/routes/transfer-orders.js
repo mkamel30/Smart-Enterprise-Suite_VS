@@ -1,8 +1,8 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const db = require('../db');
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { createNotification } = require('./notifications');
 const { detectMachineParams } = require('../utils/machine-validation');
 const { getBranchFilter, canAccessBranch } = require('../utils/auth-helpers');
@@ -45,7 +45,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(orders);
     } catch (error) {
         console.error('Failed to fetch transfer orders:', error);
-        res.status(500).json({ error: 'فشل في جلب الأذونات' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط£ط°ظˆظ†ط§طھ' });
     }
 });
 
@@ -56,7 +56,7 @@ router.get('/pending', authenticateToken, async (req, res) => {
         res.json(orders);
     } catch (error) {
         console.error('Failed to fetch pending orders:', error);
-        res.status(500).json({ error: 'فشل في جلب الأذونات المعلقة' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط£ط°ظˆظ†ط§طھ ط§ظ„ظ…ط¹ظ„ظ‚ط©' });
     }
 });
 
@@ -68,7 +68,7 @@ router.get('/pending-serials', authenticateToken, async (req, res) => {
         res.json(serials);
     } catch (error) {
         console.error('Failed to fetch pending serials:', error);
-        res.status(500).json({ error: 'فشل في جلب الماكينات قيد التحويل' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ظ‚ظٹط¯ ط§ظ„طھط­ظˆظٹظ„' });
     }
 });
 
@@ -79,7 +79,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         res.json(order);
     } catch (error) {
         console.error('Failed to fetch transfer order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في جلب الإذن' });
+        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط¥ط°ظ†' });
     }
 });
 
@@ -90,7 +90,7 @@ router.post('/', authenticateToken, async (req, res) => {
         res.status(201).json(order);
     } catch (error) {
         console.error('========== TRANSFER ORDER ERROR ==========', error.message);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في إنشاء الإذن' });
+        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط¥ظ†ط´ط§ط، ط§ظ„ط¥ط°ظ†' });
     }
 });
 
@@ -101,7 +101,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
         res.status(201).json(result);
     } catch (error) {
         console.error('Failed to import transfer order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في استيراد الإذن' });
+        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط§ط³طھظٹط±ط§ط¯ ط§ظ„ط¥ط°ظ†' });
     }
 });
 
@@ -149,7 +149,7 @@ router.get('/template/:type', authenticateToken, async (req, res) => {
         res.end();
     } catch (error) {
         console.error('Failed to generate template:', error);
-        res.status(500).json({ error: 'فشل في إنشاء القالب' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¥ظ†ط´ط§ط، ط§ظ„ظ‚ط§ظ„ط¨' });
     }
 });
 
@@ -161,7 +161,7 @@ router.post('/:id/receive', authenticateToken, async (req, res) => {
         res.json(updated);
     } catch (error) {
         console.error('Failed to receive order:', error.message || error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في تأكيد الاستلام' });
+        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ طھط£ظƒظٹط¯ ط§ظ„ط§ط³طھظ„ط§ظ…' });
     }
 });
 
@@ -172,7 +172,7 @@ router.post('/:id/reject', authenticateToken, async (req, res) => {
         res.json(updated);
     } catch (error) {
         console.error('Failed to reject order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في رفض الإذن' });
+        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط±ظپط¶ ط§ظ„ط¥ط°ظ†' });
     }
 });
 
@@ -183,7 +183,7 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to cancel order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في إلغاء الإذن' });
+        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط°ظ†' });
     }
 });
 
@@ -194,7 +194,7 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
         res.json(stats);
     } catch (error) {
         console.error('Failed to get stats:', error);
-        res.status(500).json({ error: 'فشل في جلب الإحصائيات' });
+        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط¥ط­طµط§ط¦ظٹط§طھ' });
     }
 });
 

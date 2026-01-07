@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+﻿const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
@@ -23,7 +23,7 @@ async function main() {
             }
         });
 
-        console.log('✅ Admin restored successfully.');
+        console.log('âœ… Admin restored successfully.');
         console.log('Email: admin@system.com');
         console.log('Password: admin');
 

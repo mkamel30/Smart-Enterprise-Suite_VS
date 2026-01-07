@@ -1,4 +1,4 @@
-// Scan all routes for ensureBranchWhere usage on models without branchId
+﻿// Scan all routes for ensureBranchWhere usage on models without branchId
 const fs = require('fs');
 const path = require('path');
 
@@ -92,7 +92,7 @@ function scanRoutes() {
 // Run scan
 const results = scanRoutes();
 
-console.log('\n📊 SCAN RESULTS\n');
+console.log('\nًں“ٹ SCAN RESULTS\n');
 console.log('=' .repeat(80));
 
 let totalIssues = 0;
@@ -101,12 +101,12 @@ const filesByModel = {};
 Object.entries(results).forEach(([file, issues]) => {
     totalIssues += issues.length;
     
-    console.log(`\n📁 ${file} (${issues.length} issues)`);
+    console.log(`\nًں“پ ${file} (${issues.length} issues)`);
     console.log('-'.repeat(80));
     
     issues.forEach(issue => {
         if (issue.type === 'WRONG_MODEL') {
-            console.log(`  ❌ Line ${issue.line}: ensureBranchWhere on ${issue.model} (no branchId field)`);
+            console.log(`  â‌Œ Line ${issue.line}: ensureBranchWhere on ${issue.model} (no branchId field)`);
             console.log(`     ${issue.content}`);
             
             if (!filesByModel[issue.model]) {
@@ -114,19 +114,19 @@ Object.entries(results).forEach(([file, issues]) => {
             }
             filesByModel[issue.model].push(file);
         } else if (issue.type === 'MISSING_UNSCOPED') {
-            console.log(`  ⚠️  Line ${issue.line}: TransferOrder without __allow_unscoped`);
+            console.log(`  âڑ ï¸ڈ  Line ${issue.line}: TransferOrder without __allow_unscoped`);
             console.log(`     ${issue.content}`);
         }
     });
 });
 
 console.log('\n' + '='.repeat(80));
-console.log(`\n📈 SUMMARY: ${totalIssues} total issues found\n`);
+console.log(`\nًں“ˆ SUMMARY: ${totalIssues} total issues found\n`);
 
 if (Object.keys(filesByModel).length > 0) {
     console.log('Models being incorrectly filtered:');
     Object.entries(filesByModel).forEach(([model, files]) => {
-        console.log(`  • ${model}: ${[...new Set(files)].join(', ')}`);
+        console.log(`  â€¢ ${model}: ${[...new Set(files)].join(', ')}`);
     });
 }
 

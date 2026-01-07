@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const OpenAI = require('openai');
 const db = require('../db');
@@ -108,7 +108,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
         // Try to get SQL from AI
         for (const m of SQL_MODELS) {
             try {
-                console.log(`🤖 Step 1: Generating SQL with ${m}...`);
+                console.log(`ًں¤– Step 1: Generating SQL with ${m}...`);
                 const completion = await client.chat.completions.create({
                     model: m,
                     messages: [
@@ -119,7 +119,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
 
                 if (completion.choices && completion.choices[0]) {
                     let text = completion.choices[0].message.content.trim();
-                    console.log(`🤖 Raw output from ${m}:`, text);
+                    console.log(`ًں¤– Raw output from ${m}:`, text);
 
                     // 1. Clean markdown
                     text = text.replace(/```sql/gi, '').replace(/```/g, '').trim();
@@ -138,18 +138,18 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
                             sqlQuery = sqlQuery.substring(0, semicolonIndex + 1);
                         }
 
-                        console.log(`✅ Extracted SQL: ${sqlQuery}`);
+                        console.log(`âœ… Extracted SQL: ${sqlQuery}`);
                         break;
                     }
                 }
             } catch (err) {
-                console.warn(`⚠️ Model ${m} failed to gen SQL: ${err.message}`);
+                console.warn(`âڑ ï¸ڈ Model ${m} failed to gen SQL: ${err.message}`);
                 if (err.response) console.warn(err.response.data);
             }
         }
 
         if (!sqlQuery) {
-            console.warn("⚠️ No SQL generated. Switching to Fallback Mode (Lite Context).");
+            console.warn("âڑ ï¸ڈ No SQL generated. Switching to Fallback Mode (Lite Context).");
 
             // Fallback: Fetch basic data to answer general questions or simple queries
             try {
@@ -200,7 +200,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
                             ]
                         });
                         if (completion.choices && completion.choices[0]) {
-                            return res.json({ answer: "⚠️ (إجابة تقريبية): " + completion.choices[0].message.content });
+                            return res.json({ answer: "âڑ ï¸ڈ (ط¥ط¬ط§ط¨ط© طھظ‚ط±ظٹط¨ظٹط©): " + completion.choices[0].message.content });
                         }
                     } catch (e) { }
                 }
@@ -208,7 +208,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
                 console.error("Fallback error:", fbError);
             }
 
-            return res.json({ answer: "عذراً، لم أتمكن من فهم طلبك أو الوصول للبيانات." });
+            return res.json({ answer: "ط¹ط°ط±ط§ظ‹طŒ ظ„ظ… ط£طھظ…ظƒظ† ظ…ظ† ظپظ‡ظ… ط·ظ„ط¨ظƒ ط£ظˆ ط§ظ„ظˆطµظˆظ„ ظ„ظ„ط¨ظٹط§ظ†ط§طھ." });
         }
 
         // 3. Step 2: Execute SQL (Safely)
@@ -226,7 +226,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
 
         } catch (dbError) {
             console.error('SQL Execution Error:', dbError);
-            return res.json({ answer: `حدث خطأ أثناء البحث في قاعدة البيانات: ${dbError.message}` });
+            return res.json({ answer: `ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„ط¨ط­ط« ظپظٹ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ: ${dbError.message}` });
         }
 
         // 4. Step 3: Summarize Answer
@@ -257,11 +257,11 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
                     break;
                 }
             } catch (err) {
-                console.warn(`⚠️ Model ${m} failed to summarize: ${err.message}`);
+                console.warn(`âڑ ï¸ڈ Model ${m} failed to summarize: ${err.message}`);
             }
         }
 
-        res.json({ answer: finalAnswer || "عذراً، حدث خطأ أثناء صياغة الإجابة." });
+        res.json({ answer: finalAnswer || "ط¹ط°ط±ط§ظ‹طŒ ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طµظٹط§ط؛ط© ط§ظ„ط¥ط¬ط§ط¨ط©." });
 
     } catch (error) {
         console.error('AI Query Error Full:', error);

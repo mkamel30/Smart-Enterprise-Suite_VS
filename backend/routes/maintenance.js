@@ -1,9 +1,9 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const maintenanceService = require('../services/maintenanceService');
 const { authenticateToken } = require('../middleware/auth');
-const { validateRequest } = require('../validation/middleware');
+const { validateRequest } = require('../middleware/validation');
 const asyncHandler = require('../utils/asyncHandler');
 const {
   CreateAssignmentSchema,
@@ -27,267 +27,39 @@ const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // --- 1. SHIPMENT MANAGEMENT ---
 
 // GET /shipments - Fetch incoming batches (TransferOrders)
-router.get('/shipments', authenticateToken, async (req, res) => {
-  try {
-    const { status } = req.query;
-    // Logic: Users in Maintenance Center see shipments TO their branch
-    // Filter by 'SEND_TO_CENTER' type
-
-    const branchId = req.user.branchId;
-    const userRole = req.user.role;
-
-    // Allow Admins to view all or filter
-    const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(userRole) || !branchId;
-
-    const where = {
-      type: { in: ['SEND_TO_CENTER', 'MAINTENANCE'] },
-    };
-
-    if (!isAdmin) {
-      where.toBranchId = branchId;
-    } else if (req.query.branchId) {
-      // Admin filtering by specific center
-      where.toBranchId = req.query.branchId;
-    }
-
-    if (status && status !== 'ALL') {
-      where.status = status;
-    } else if (!status) {
-      // Default: Show Pending and Accepted (Received) - Active workflows
-      where.status = { in: ['PENDING', 'ACCEPTED', 'RECEIVED'] };
-    }
-    // If status === 'ALL', we don't set where.status, so it fetches everything
-
-    const allowUnscoped = (!branchId) || ['SUPER_ADMIN', 'MANAGEMENT'].includes(userRole);
-    // Add a branch-aware scope to satisfy branch enforcement while keeping toBranch filter
-    const branchScope = branchId ? { OR: [{ branchId }, { toBranchId: branchId }, { fromBranchId: branchId }] } : {};
-
-    const shipments = await db.transferOrder.findMany(ensureBranchWhere({
-      where: {
-        ...where,
-        ...branchScope
-      },
-      include: {
-        fromBranch: { select: { name: true, code: true } },
-        items: {
-          select: {
-            serialNumber: true,
-            model: true,
-            manufacturer: true,
-            type: true
-          }
-        },
-        _count: { select: { items: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    }, req));
-
-    // Enrich with WarehouseMachine status for each item
-    // This acts as a 'smart' view to show updated status of machines within shipment
-    const enrichedShipments = await Promise.all(shipments.map(async (shipment) => {
-      const serials = shipment.items.map(i => i.serialNumber);
-      const machines = await db.warehouseMachine.findMany(ensureBranchWhere({
-        where: { serialNumber: { in: serials } },
-        select: { serialNumber: true, status: true, resolution: true }
-      }, req));
-
-      // Calculate progress?
-      const completedCount = machines.filter(m =>
-        ['REPAIRED', 'SCRAPPED', 'RETURNED_AS_IS', 'READY_FOR_DELIVERY', 'IN_RETURN_TRANSIT'].includes(m.status) ||
-        m.resolution
-      ).length;
-
-      return {
-        ...shipment,
-        machineStatuses: machines,
-        progress: Math.round((completedCount / shipment.items.length) * 100) || 0
-      };
-    }));
-
-    res.json(enrichedShipments);
-  } catch (error) {
-    console.error('Failed to fetch shipments:', error);
-    res.status(500).json({ error: 'Failed to fetch shipments' });
-  }
-});
+router.get('/shipments', authenticateToken, asyncHandler(async (req, res) => {
+  const result = await maintenanceService.getShipments(req.query, req.user);
+  res.json(result);
+}));
 
 // POST /shipments/:id/receive - Confirm Receipt of Batch
-router.post('/shipments/:id/receive', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  try {
-    await db.$transaction(async (tx) => {
-      // 1. Update TransferOrder
-      const order = await tx.transferOrder.update({
-        where: { id },
-        data: {
-          status: 'ACCEPTED', // or RECEIVED
-          receivedByUserId: req.user.id,
-          receivedBy: req.user.displayName,
-          receivedAt: new Date()
-        },
-        include: { items: true }
-      });
-
-      // 2. Update Machines Status
-      for (const item of order.items) {
-        await tx.warehouseMachine.update({
-          where: { serialNumber: item.serialNumber },
-          data: {
-            status: 'RECEIVED_AT_CENTER',
-            branchId: req.user.branchId
-          }
-        });
-
-        // Log movement
-        await tx.machineMovementLog.create({
-          data: {
-            serialNumber: item.serialNumber,
-            action: 'RECEIVED_AT_CENTER',
-            performedBy: req.user.displayName,
-            branchId: req.user.branchId,
-            details: `Received in Shipment #${order.orderNumber}`
-          }
-        });
-      }
-    });
-
-    res.json({ success: true, message: 'Shipment received successfully' });
-  } catch (error) {
-    console.error('Failed to receive shipment:', error);
-    res.status(500).json({ error: 'Failed to receive shipment' });
-  }
-});
+router.post('/shipments/:id/receive', authenticateToken, asyncHandler(async (req, res) => {
+  const result = await maintenanceService.receiveShipment(req.params.id, req.user);
+  res.json({ success: true, message: 'Shipment received successfully', order: result });
+}));
 
 
 // --- 2. MACHINE WORKFLOW (transitions) ---
 
 // POST /machine/:serial/transition
-router.post('/machine/:serial/transition', authenticateToken, async (req, res) => {
+router.post('/machine/:serial/transition', authenticateToken, asyncHandler(async (req, res) => {
   const { serial } = req.params;
   const { action, data } = req.body;
-  // action: 'INSPECT', 'REQUEST_APPROVAL', 'REPAIR', 'SCRAP'
-  // data: { notes, proposedParts, usedParts, cost }
+  const result = await maintenanceService.transitionMachine(serial, action, data, req.user);
 
-  try {
-    // findUnique يجب أن يستخدم حقل فريد فقط (serialNumber) ثم نتحقق من الفرع يدوياً
-    const machine = await db.warehouseMachine.findUnique({ where: { serialNumber: serial } });
-    if (!machine) return res.status(404).json({ error: 'Machine not found' });
+  // Log workflow transition (AFTER successful service call)
+  await logAction({
+    entityType: 'WAREHOUSE_MACHINE',
+    entityId: serial,
+    action: result.logActionType,
+    details: `Workflow transition: ${result.logActionType} - Status: ${result.newStatus}${data.notes ? ' - ' + data.notes : ''}`,
+    userId: req.user?.id,
+    performedBy: req.user?.displayName || 'System',
+    branchId: req.user?.branchId
+  });
 
-    // تحقق صلاحيات الوصول: يسمح لمركز الصيانة أو لنفس فرع الماكينة (branchId أو originBranchId)
-    const userBranchId = req.user.branchId;
-    const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
-    const sameBranch = userBranchId && (machine.branchId === userBranchId || machine.originBranchId === userBranchId);
-    if (userBranchId && !isCenterRole && !sameBranch) {
-      return res.status(403).json({ error: 'Access denied for this machine' });
-    }
-
-    // ALL OPERATIONS IN TRANSACTION FOR ATOMICITY
-    const result = await db.$transaction(async (tx) => {
-      let updateData = {};
-      let newStatus = machine.status;
-      let logActionType = action;
-      let approval = null;
-      let activeRequest = null;
-
-      if (action === 'INSPECT') {
-        newStatus = 'UNDER_INSPECTION';
-        updateData = { status: newStatus };
-      }
-      else if (action === 'REQUEST_APPROVAL') {
-        newStatus = 'AWAITING_APPROVAL';
-        // Store Quote
-        updateData = {
-          status: newStatus,
-          proposedRepairNotes: data.notes,
-          proposedParts: JSON.stringify(data.parts || []),
-          proposedTotalCost: parseFloat(data.cost || 0)
-        };
-
-        // 1. Find or Create Active Request to attach Approval to
-        activeRequest = await tx.maintenanceRequest.findFirst(ensureBranchWhere({
-          where: {
-            serialNumber: serial,
-            status: { in: ['Open', 'In Progress', 'PENDING_TRANSFER'] }
-          }
-        }, req));
-
-        if (!activeRequest) {
-          activeRequest = await tx.maintenanceRequest.create({
-            data: {
-              branchId: machine.originBranchId || machine.branchId,
-              serialNumber: serial,
-              customerName: machine.originalOwnerId ? 'Client ' + machine.originalOwnerId : 'Unknown',
-              type: 'MAINTENANCE',
-              status: 'Open',
-              description: 'Generated during Center Inspection',
-              createdBy: req.user.id
-            }
-          });
-        }
-
-        // 2. Create the Approval Record
-        approval = await tx.maintenanceApproval.create({
-          data: {
-            requestId: activeRequest.id,
-            branchId: activeRequest.branchId,
-            parts: JSON.stringify(data.parts || []),
-            cost: parseFloat(data.cost || 0),
-            notes: data.notes,
-            status: 'PENDING'
-          }
-        });
-      }
-      else if (action === 'REPAIR') {
-        // Finalize
-        newStatus = 'REPAIRED';
-
-        updateData = {
-          status: newStatus,
-          resolution: 'REPAIRED',
-          repairNotes: data.notes,
-          usedParts: JSON.stringify(data.parts || []),
-          totalCost: parseFloat(data.cost || 0),
-          proposedParts: null,
-          proposedTotalCost: null
-        };
-        // Logic to deduct inventory would go here inside transaction
-      }
-      else if (action === 'SCRAP') {
-        newStatus = 'SCRAPPED';
-        updateData = {
-          status: newStatus,
-          resolution: 'SCRAPPED',
-          repairNotes: data.notes
-        };
-      }
-
-      // Update machine status
-      const updatedMachine = await tx.warehouseMachine.update({
-        where: { serialNumber: serial },
-        data: updateData
-      });
-
-      return { updatedMachine, approval, activeRequest, newStatus, logActionType };
-    });
-
-    // Log workflow transition (AFTER transaction)
-    await logAction({
-      entityType: 'WAREHOUSE_MACHINE',
-      entityId: serial,
-      action: result.logActionType,
-      details: `Workflow transition: ${result.logActionType} - Status: ${result.newStatus}${data.notes ? ' - ' + data.notes : ''}`,
-      userId: req.user?.id,
-      performedBy: req.user?.displayName || 'System',
-      branchId: req.user?.branchId
-    });
-
-    res.json({ success: true, machine: result.updatedMachine, approval: result.approval });
-
-  } catch (error) {
-    console.error('Workflow transition failed:', error);
-    res.status(500).json({ error: 'Transition failed' });
-  }
-});
+  res.json({ success: true, machine: result.updatedMachine, approval: result.approval });
+}));
 
 // ============================================
 // NEW MAINTENANCE WORKFLOW ROUTES
@@ -296,7 +68,7 @@ router.post('/machine/:serial/transition', authenticateToken, async (req, res) =
 
 /**
  * POST /api/maintenance/assignments
- * Create service assignment (تعيين مختص)
+ * Create service assignment (طھط¹ظٹظٹظ† ظ…ط®طھطµ)
  */
 router.post(
   '/assignments',
@@ -311,7 +83,7 @@ router.post(
         assignmentId: assignment.id,
         machineSerial: assignment.serialNumber,
         customerName: assignment.customerName,
-        message: `🔧 تم تعيينك للماكينة ${assignment.serialNumber}`,
+        message: `ًں”§ طھظ… طھط¹ظٹظٹظ†ظƒ ظ„ظ„ظ…ط§ظƒظٹظ†ط© ${assignment.serialNumber}`,
       });
     }
 
@@ -353,7 +125,7 @@ router.post(
         customerName: req.body.customerName,
         proposedTotal: approvalRequest.proposedTotal,
         centerBranchId: req.body.centerBranchId,
-        message: `⚠️ طلب موافقة صيانة: ${req.body.machineSerial} للعميل ${req.body.customerName} - ${approvalRequest.proposedTotal} ج.م`,
+        message: `âڑ ï¸ڈ ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط© طµظٹط§ظ†ط©: ${req.body.machineSerial} ظ„ظ„ط¹ظ…ظٹظ„ ${req.body.customerName} - ${approvalRequest.proposedTotal} ط¬.ظ…`,
       });
     }
 
@@ -380,7 +152,7 @@ router.post(
         machineSerial: assignment.serialNumber,
         resolution: req.body.resolution,
         totalCost: assignment.totalCost,
-        message: `✅ تمت الصيانة: ${assignment.serialNumber} - ${req.body.resolution}`,
+        message: `âœ… طھظ…طھ ط§ظ„طµظٹط§ظ†ط©: ${assignment.serialNumber} - ${req.body.resolution}`,
       });
     }
 
@@ -407,7 +179,7 @@ router.post(
         machineSerial: assignment.serialNumber,
         resolution: req.body.resolution,
         totalCost: assignment.totalCost,
-        message: `✅ تمت الصيانة بعد الموافقة: ${assignment.serialNumber} - ${req.body.resolution}`,
+        message: `âœ… طھظ…طھ ط§ظ„طµظٹط§ظ†ط© ط¨ط¹ط¯ ط§ظ„ظ…ظˆط§ظپظ‚ط©: ${assignment.serialNumber} - ${req.body.resolution}`,
       });
     }
 
@@ -435,8 +207,8 @@ router.post(
     if (req.app.get('io')) {
       const message =
         req.body.status === 'APPROVED'
-          ? `✅ تمت الموافقة على صيانة ${assignment.serialNumber}`
-          : `❌ تم رفض طلب الموافقة للماكينة ${assignment.serialNumber}`;
+          ? `âœ… طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ طµظٹط§ظ†ط© ${assignment.serialNumber}`
+          : `â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„ظ…ظˆط§ظپظ‚ط© ظ„ظ„ظ…ط§ظƒظٹظ†ط© ${assignment.serialNumber}`;
 
       req.app.get('io').to(`branch_${assignment.centerBranchId}`).emit('maintenance:approval-responded', {
         assignmentId: assignment.id,
@@ -498,7 +270,7 @@ router.post(
         receiptNumber: req.body.receiptNumber,
         remainingAmount: debt.remainingAmount,
         status: debt.status,
-        message: `💰 تم تسجيل سداد ${req.body.amount} ج.م - إيصال: ${req.body.receiptNumber}`,
+        message: `ًں’° طھظ… طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯ ${req.body.amount} ط¬.ظ… - ط¥ظٹطµط§ظ„: ${req.body.receiptNumber}`,
       });
     }
 

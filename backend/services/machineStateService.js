@@ -1,4 +1,4 @@
-const db = require('../db');
+﻿const db = require('../db');
 const movementService = require('./movementService');
 const inventoryService = require('./inventoryService');
 // const notificationService = require('./notificationService'); // Assuming this exists
