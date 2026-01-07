@@ -1,7 +1,10 @@
 ﻿const express = require('express');
 const router = express.Router();
+const { z } = require('zod');
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const { getBranchFilter } = require('../middleware/permissions');
+const { validateRequest } = require('../middleware/validation');
 const { logAction } = require('../utils/logger');
 
 // Import roundMoney from centralized payment service
@@ -10,16 +13,18 @@ const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
-// Helper to get branch filter
-const getBranchFilter = (req) => {
-    if (req.user.branchId) {
-        return { branchId: req.user.branchId };
-    }
-    if (req.query.branchId) {
-        return { branchId: req.query.branchId };
-    }
-    return {};
-};
+// Validation Schemas
+const createPaymentSchema = z.object({
+    receiptNumber: z.string().optional(),
+    paymentPlace: z.string().optional(),
+    amount: z.number().positive(),
+    branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
+    customerId: z.string().optional(),
+    customerName: z.string().optional(),
+    requestId: z.string().optional(),
+    reason: z.string().optional(),
+    notes: z.string().optional()
+});
 
 // CHECK receipt number
 router.get('/payments/check-receipt', async (req, res) => {
@@ -35,7 +40,7 @@ router.get('/payments/check-receipt', async (req, res) => {
         res.json({ exists: !!exists });
     } catch (error) {
         console.error('Failed to check receipt:', error);
-        res.status(500).json({ error: 'Failed to check receipt' });
+        res.status(500).json({ error: 'فشل في التحقق من رقم الإيصال' });
     }
 });
 
@@ -60,7 +65,7 @@ router.get('/payments', authenticateToken, async (req, res) => {
         res.json(payments);
     } catch (error) {
         console.error('Failed to fetch payments:', error);
-        res.status(500).json({ error: 'Failed to fetch payments' });
+        res.status(500).json({ error: 'فشل في جلب المدفوعات' });
     }
 });
 
@@ -79,7 +84,7 @@ router.get('/payments/customer/:customerId', authenticateToken, async (req, res)
         res.json(payments);
     } catch (error) {
         console.error('Failed to fetch customer payments:', error);
-        res.status(500).json({ error: 'Failed to fetch customer payments' });
+        res.status(500).json({ error: 'فشل في جلب مدفوعات العميل' });
     }
 });
 
@@ -123,14 +128,14 @@ router.get('/payments/stats', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Failed to fetch payment stats:', error);
-        res.status(500).json({ error: 'Failed to fetch payment stats' });
+        res.status(500).json({ error: 'فشل في جلب إحصائيات المدفوعات' });
     }
 });
 
 // POST create payment
-router.post('/payments', authenticateToken, async (req, res) => {
+router.post('/payments', authenticateToken, validateRequest(createPaymentSchema), async (req, res) => {
     try {
-        const { receiptNumber, paymentPlace, amount } = req.body;
+        const { receiptNumber, paymentPlace, amount, notes, customerId, customerName, requestId, reason } = req.body;
         const branchId = req.user.branchId || req.body.branchId;
 
         if (!branchId) return res.status(400).json({ error: 'Branch ID required' });
@@ -141,24 +146,23 @@ router.post('/payments', authenticateToken, async (req, res) => {
                 where: { receiptNumber: receiptNumber.trim() }
             }, req));
             if (existingPayment) {
-                // Duplicate check global
-                return res.status(400).json({ error: 'ط±ظ‚ظ… ط§ظ„ط¥ظٹطµط§ظ„ ظ…ط³طھط®ط¯ظ… ظ…ظ† ظ‚ط¨ظ„' });
+                return res.status(400).json({ error: 'رقم الإيصال مستخدم من قبل' });
             }
         }
 
         const payment = await db.payment.create({
             data: {
                 branchId,
-                customerId: req.body.customerId,
-                customerName: req.body.customerName,
-                requestId: req.body.requestId,
-                amount: roundMoney(req.body.amount),
-                reason: req.body.reason,
-                paymentPlace: req.body.paymentPlace,
+                customerId,
+                customerName,
+                requestId,
+                amount: roundMoney(amount),
+                reason,
+                paymentPlace,
                 receiptNumber: receiptNumber?.trim() || null,
-                notes: req.body.notes,
+                notes,
                 userId: req.user.id,
-                userName: req.user.name
+                userName: req.user.displayName || req.user.name
             }
         });
 
@@ -168,14 +172,14 @@ router.post('/payments', authenticateToken, async (req, res) => {
             action: 'CREATE',
             details: `Created payment of ${payment.amount} for ${payment.customerName}`,
             userId: req.user.id,
-            performedBy: req.user.name,
+            performedBy: req.user.displayName,
             branchId: req.user.branchId
         });
 
         res.status(201).json(payment);
     } catch (error) {
         console.error('Failed to create payment:', error);
-        res.status(500).json({ error: 'Failed to create payment' });
+        res.status(500).json({ error: 'فشل في إنشاء الدفع' });
     }
 });
 
@@ -212,7 +216,7 @@ router.delete('/payments/:id', authenticateToken, async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Failed to delete payment:', error);
-        res.status(500).json({ error: 'Failed to delete payment' });
+        res.status(500).json({ error: 'فشل في حذف الدفع' });
     }
 });
 

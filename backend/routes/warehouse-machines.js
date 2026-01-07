@@ -1,31 +1,39 @@
 ﻿const express = require('express');
 const router = express.Router();
+const { z } = require('zod');
 const db = require('../db');
 const { logAction } = require('../utils/logger');
 const { authenticateToken } = require('../middleware/auth');
-const { getBranchFilter, canAccessBranch } = require('../utils/auth-helpers');
-const movementService = require('../services/movementService');
-const transferService = require('../services/transferService');
-const warehouseService = require('../services/warehouseService');
-const { detectMachineParams } = require('../utils/machine-validation');
+const { getBranchFilter } = require('../middleware/permissions');
+const { validateQuery } = require('../middleware/validation');
 const { normalizeSerial } = require('../services/serialService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
+// Validation Schemas
+const listQuerySchema = z.object({
+    branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
+    status: z.union([
+        z.string(),
+        z.array(z.string())
+    ]).optional(),
+    q: z.string().optional()
+});
 
 // GET Machines by Status
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, validateQuery(listQuerySchema), async (req, res) => {
     try {
-        const { status } = req.query;
+        const { status, q } = req.query;
         const branchFilter = getBranchFilter(req);
         const targetBranchId = req.query.branchId;
 
-        const whereClause = {
-            ...branchFilter
-        };
+        const whereClause = { ...branchFilter };
 
-        if (targetBranchId && (req.user.role === 'SUPER_ADMIN' || req.user.role === 'MANAGEMENT')) {
+        // Allow Super Admin/Management to filter by branch
+        if (targetBranchId && (['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role))) {
             whereClause.branchId = targetBranchId;
         }
+
+        // Status Filtering
         if (status) {
             if (status === 'CLIENT_REPAIR') {
                 whereClause.status = { in: ['CLIENT_REPAIR', 'AT_CENTER', 'EXTERNAL_REPAIR'] };
@@ -36,15 +44,24 @@ router.get('/', authenticateToken, async (req, res) => {
             }
         }
 
+        // Search Filtering (if q is provided)
+        if (q) {
+            whereClause.OR = [
+                { serialNumber: { contains: q } },
+                { model: { contains: q, mode: 'insensitive' } }
+            ];
+        }
+
         const machines = await db.warehouseMachine.findMany(ensureBranchWhere({
             where: whereClause,
-            orderBy: { importDate: 'desc' }
+            orderBy: { importDate: 'desc' },
+            include: { branch: true }
         }, req));
 
         res.json(machines);
     } catch (error) {
         console.error('Failed to fetch warehouse machines:', error);
-        res.status(500).json({ error: 'Failed to fetch warehouse machines' });
+        res.status(500).json({ error: 'فشل في جلب الماكينات' });
     }
 });
 
@@ -54,9 +71,7 @@ router.get('/counts', authenticateToken, async (req, res) => {
         const branchFilter = getBranchFilter(req);
         const targetBranchId = req.query.branchId;
 
-        const whereClause = {
-            ...branchFilter
-        };
+        const whereClause = { ...branchFilter };
 
         if (targetBranchId && (['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(req.user.role))) {
             whereClause.branchId = targetBranchId;
@@ -65,9 +80,7 @@ router.get('/counts', authenticateToken, async (req, res) => {
         const counts = await db.warehouseMachine.groupBy(ensureBranchWhere({
             by: ['status'],
             where: whereClause,
-            _count: {
-                status: true
-            }
+            _count: { status: true }
         }, req));
 
         // Format: { NEW: 10, STANDBY: 5, ... }
@@ -79,20 +92,25 @@ router.get('/counts', authenticateToken, async (req, res) => {
         res.json(formattedCounts);
     } catch (error) {
         console.error('Failed to fetch machine counts:', error);
-        res.status(500).json({ error: 'Failed to fetch counts' });
+        res.status(500).json({ error: 'فشل في جلب الإحصائيات' });
     }
 });
 
 // GET Duplicated serial numbers across warehouse and customer machines
 router.get('/duplicates', authenticateToken, async (_req, res) => {
     try {
+        // Only Admin/Management/AdminAffairs should see duplicates
+        if (!['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS'].includes(_req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
         const [warehouse, pos] = await Promise.all([
             db.warehouseMachine.findMany({
-                where: { branchId: { not: null } }, // RULE 1: MUST include branchId
+                where: { branchId: { not: null } },
                 include: { branch: true }
             }),
             db.posMachine.findMany({
-                where: { branchId: { not: null } }, // RULE 1: MUST include branchId
+                where: { branchId: { not: null } },
                 include: { customer: { include: { branch: true } } }
             })
         ]);
@@ -114,8 +132,7 @@ router.get('/duplicates', authenticateToken, async (_req, res) => {
                 branchName: m.branch?.name || null,
                 status: m.status,
                 model: m.model,
-                manufacturer: m.manufacturer,
-                notes: m.notes || null
+                manufacturer: m.manufacturer
             });
         }
 
@@ -126,8 +143,7 @@ router.get('/duplicates', authenticateToken, async (_req, res) => {
                 customerId: p.customerId,
                 customerName: p.customer?.client_name || null,
                 branchId: p.customer?.branchId || p.branchId || null,
-                branchName: p.customer?.branch?.name || null,
-                isMain: p.isMain || false
+                branchName: p.customer?.branch?.name || null
             });
         }
 
@@ -143,7 +159,7 @@ router.get('/duplicates', authenticateToken, async (_req, res) => {
         res.json({ duplicates, totalDuplicates: duplicates.length });
     } catch (error) {
         console.error('Failed to fetch duplicate machines:', error);
-        res.status(500).json({ error: 'Failed to fetch duplicates' });
+        res.status(500).json({ error: 'فشل في جلب التكرارات' });
     }
 });
 

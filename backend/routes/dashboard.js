@@ -1,403 +1,212 @@
-﻿const express = require('express');
+﻿/**
+ * Dashboard Routes
+ * 
+ * Provides accurate, real-time dashboard statistics from the database.
+ * All metrics are computed from actual DB queries - no mock data.
+ * 
+ * METRICS ACCURACY REFERENCE:
+ * ===========================
+ * | Widget | Table | Filters | Aggregation |
+ * |--------|-------|---------|-------------|
+ * | العمليات اليومية | SystemLog | createdAt >= today | COUNT |
+ * | الفروع النشطة | Branch | type='BRANCH', isActive=true | COUNT |
+ * | إجمالي المستخدمين | User | branchId (scoped) | COUNT |
+ * | الإيرادات الشهرية | Payment | createdAt in this month | SUM(amount) |
+ * | طلبات مفتوحة | MaintenanceRequest | status='Open' | COUNT |
+ * | أقساط متأخرة | Installment | isPaid=false, dueDate<today | COUNT |
+ * | الماكينات | WarehouseMachine | branchId | COUNT |
+ * | الشرائح | WarehouseSim | branchId | COUNT |
+ */
+
+const express = require('express');
 const router = express.Router();
-const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
-const { ensureBranchWhere } = require('../prisma/branchHelpers');
-// NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
-// NOTE: automated inserted imports for branch-filtering and safe raw SQL
+const dashboardService = require('../services/dashboardService');
 
-// GET Dashboard Stats
+/**
+ * GET /api/dashboard
+ * 
+ * Main dashboard endpoint - returns all KPIs filtered by user's branch
+ * For SUPER_ADMIN/MANAGEMENT: Global view or filtered by ?branchId=X
+ * For others: Scoped to their branch
+ */
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const baseBranchFilter = getBranchFilter(req);
+        const user = req.user;
         const targetBranchId = req.query.branchId;
-        const branchFilter = { ...baseBranchFilter };
 
-        if (targetBranchId && (['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(req.user.role))) {
-            branchFilter.branchId = targetBranchId;
-        }
+        // Build branch filter based on user role and optional filter
+        const branchFilter = dashboardService.buildBranchFilter(user, targetBranchId);
 
-        const today = new Date();
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        // Determine if user is admin (can see global data)
+        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
+        const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH'].includes(user.role);
 
-        // 1. Financial Stats (This Month)
-        // Check Payment table for unified revenue
-        const monthlyRevenue = await db.payment.aggregate(ensureBranchWhere({
-            where: {
-                ...branchFilter,
-                createdAt: {
-                    gte: startOfMonth,
-                    lte: endOfMonth
-                }
-            },
-            _sum: { amount: true }
-        }, req));
-
-        // Calculate Weekly Trend for this month
-        const paymentsThisMonth = await db.payment.findMany(ensureBranchWhere({
-            where: {
-                ...branchFilter,
-                createdAt: {
-                    gte: startOfMonth,
-                    lte: endOfMonth
-                }
-            },
-            select: { amount: true, createdAt: true }
-        }, req));
-
-        const weeklyRevenue = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-
-        paymentsThisMonth.forEach(p => {
-            const day = new Date(p.createdAt).getDate();
-            const week = Math.ceil(day / 7);
-            if (weeklyRevenue[week] !== undefined) {
-                weeklyRevenue[week] += p.amount;
-            }
-        });
-
-        // Format for Recharts (W1, W2, W3, W4)
-        const trendData = [
-            { name: 'W1', value: weeklyRevenue[1] },
-            { name: 'W2', value: weeklyRevenue[2] },
-            { name: 'W3', value: weeklyRevenue[3] },
-            { name: 'W4', value: weeklyRevenue[4] + (weeklyRevenue[5] || 0) }
-        ];
-
-        // 2. Request Stats
-        const openRequests = await db.maintenanceRequest.count(ensureBranchWhere({
-            where: { ...branchFilter, status: 'Open' }
-        }, req));
-
-        const inProgressRequests = await db.maintenanceRequest.count(ensureBranchWhere({
-            where: { ...branchFilter, status: 'In Progress' }
-        }, req));
-
-        const requestsByStatus = await db.maintenanceRequest.groupBy(ensureBranchWhere({
-            by: ['status'],
-            where: branchFilter,
-            _count: { id: true }
-        }, req));
-
-        // 3. Inventory Alerts (Low Stock)
-        const lowStockItems = await db.inventoryItem.findMany(ensureBranchWhere({
-            where: {
-                ...branchFilter,
-                quantity: { lte: 5 }
-            },
-            include: { part: true },
-            take: 5
-        }, req));
-
-        // 4. Overdue Installments
-        // Hide for Center roles
-        const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH'].includes(req.user.role);
-        const overdueInstallmentsCount = isCenterRole ? 0 : await db.installment.count(ensureBranchWhere({
-            where: {
-                ...branchFilter,
-                isPaid: false,
-                dueDate: { lt: today }
-            }
-        }, req));
-
-        // 5. Recent Activity (Latest 5 payments/actions)
-        // Using Payment for activity stream
-        const recentPayments = await db.payment.findMany(ensureBranchWhere({
-            where: branchFilter,
-            take: 5,
-            orderBy: { createdAt: 'desc' }
-        }, req));
-
-        // 6. Special Stats for Admin Affairs & Stock Managers
-        const machinesCount = await db.warehouseMachine.count(ensureBranchWhere({ where: branchFilter }, req));
-        const simsCount = await db.warehouseSim.count(ensureBranchWhere({ where: branchFilter }, req));
-
-        // 7. Maintenance Stats (Paid vs Free Parts Comparison)
-        // This is specifically for Center Dashboards
-        let maintenanceStats = null;
-        if (isCenterRole || req.user.role === 'SUPER_ADMIN') {
-            const maintenancePayments = await db.payment.findMany(ensureBranchWhere({
-                where: {
-                    ...branchFilter,
-                    type: 'MAINTENANCE',
-                    createdAt: { gte: startOfMonth, lte: endOfMonth }
-                },
-                select: { amount: true, requestId: true }
-            }, req));
-
-            const paidRequestIds = maintenancePayments.map(p => p.requestId).filter(id => id);
-
-            // Replaced Parts count (Paid)
-            const paidPartsCount = await db.stockMovement.aggregate(ensureBranchWhere({
-                where: {
-                    ...branchFilter,
-                    type: 'OUT',
-                    requestId: { in: paidRequestIds },
-                    createdAt: { gte: startOfMonth, lte: endOfMonth }
-                },
-                _sum: { quantity: true }
-            }, req));
-
-            // Replaced Parts count (Free/Warranty)
-            const freePartsCount = await db.stockMovement.aggregate(ensureBranchWhere({
-                where: {
-                    ...branchFilter,
-                    type: 'OUT',
-                    requestId: { notIn: paidRequestIds },
-                    createdAt: { gte: startOfMonth, lte: endOfMonth }
-                },
-                _sum: { quantity: true }
-            }, req));
-
-            maintenanceStats = {
-                revenue: maintenancePayments.reduce((sum, p) => sum + p.amount, 0),
-                paidCount: paidPartsCount._sum.quantity || 0,
-                freeCount: freePartsCount._sum.quantity || 0
-            };
-        }
-
-        // Pending Transfer Orders (Incoming/Outgoing for this branch)
-        // If branchFilter is empty (Admin), show all pending
-        const transferFilter = {};
-        if (req.user.branchId) {
-            transferFilter.OR = [
-                { fromBranchId: req.user.branchId },
-                { toBranchId: req.user.branchId }
-            ];
-        }
-        const pendingTransfers = await db.transferOrder.count(ensureBranchWhere({
-            where: {
-                ...transferFilter,
-                status: 'PENDING'
-            }
-        }, req));
+        // Fetch all metrics in parallel for performance
+        const [
+            monthlyRevenue,
+            weeklyTrend,
+            requestStats,
+            inventoryStats,
+            overdueInstallments,
+            pendingTransfers,
+            recentPayments
+        ] = await Promise.all([
+            dashboardService.getMonthlyRevenue(branchFilter),
+            dashboardService.getWeeklyRevenueTrend(branchFilter),
+            dashboardService.getRequestStats(branchFilter),
+            dashboardService.getInventoryStats(branchFilter),
+            // Hide installments for center roles
+            isCenterRole ? Promise.resolve(0) : dashboardService.getOverdueInstallmentsCount(branchFilter),
+            dashboardService.getPendingTransfersCount(user.branchId, isAdmin),
+            dashboardService.getRecentPayments(branchFilter)
+        ]);
 
         res.json({
             revenue: {
-                monthly: monthlyRevenue._sum.amount || 0,
-                trend: trendData
+                monthly: monthlyRevenue,
+                trend: weeklyTrend
             },
-            requests: {
-                open: openRequests,
-                inProgress: inProgressRequests,
-                distribution: requestsByStatus.map(s => ({ name: s.status, value: s._count.id }))
-            },
-            inventory: {
-                lowStock: lowStockItems,
-                machines: machinesCount,
-                sims: simsCount
-            },
+            requests: requestStats,
+            inventory: inventoryStats,
             alerts: {
-                overdueInstallments: overdueInstallmentsCount,
+                overdueInstallments: overdueInstallments,
                 pendingTransfers: pendingTransfers
             },
-            maintenanceStats,
             recentActivity: recentPayments
         });
-
 
     } catch (error) {
         console.error('Dashboard error:', error);
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
-        res.status(500).json({ error: 'Failed to fetch dashboard stats', details: error.message });
+        res.status(500).json({
+            error: 'فشل في تحميل بيانات لوحة التحكم',
+            details: error.message
+        });
     }
 });
 
-// GET Admin Summary (Global view for Super Admin)
+/**
+ * GET /api/dashboard/admin-summary
+ * 
+ * Admin-only endpoint with global statistics
+ * Shows: Total users, branches, machines, daily ops, branch performance
+ */
 router.get('/admin-summary', authenticateToken, async (req, res) => {
+    // Only Super Admin can access this endpoint
     if (req.user.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ error: 'Access denied: Admin only' });
+        return res.status(403).json({ error: 'صلاحية الوصول مرفوضة: مدير النظام فقط' });
     }
 
     try {
-        const today = new Date();
-        const startOfToday = new Date(today.setHours(0, 0, 0, 0));
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const summary = await dashboardService.getAdminSummary();
 
-        // 1. General counts
-        const usersCount = await db.user.count(ensureBranchWhere({}, req));
-        const branchesCount = await db.branch.count({
-            where: { type: 'BRANCH' }
-        });
-        const totalMachines = await db.warehouseMachine.count(ensureBranchWhere({}, req));
-        const dailyOps = await db.systemLog.count(ensureBranchWhere({
-            where: { createdAt: { gte: startOfToday }, branchId: { not: null } }
-        }, req));
-
-        // 2. Branch Performance
-        const branches = await db.branch.findMany({
-            where: { type: 'BRANCH' },
-            select: { id: true, name: true }
-        });
-
-        const performanceData = await Promise.all(branches.map(async (branch) => {
-            const revenue = await db.payment.aggregate(ensureBranchWhere({
-                where: {
-                    branchId: branch.id,
-                    createdAt: { gte: startOfMonth }
-                },
-                _sum: { amount: true }
-            }, req));
-
-            const repairs = await db.maintenanceRequest.count(ensureBranchWhere({
-                where: {
-                    branchId: branch.id,
-                    createdAt: { gte: startOfMonth },
-                    status: 'Done'
-                }
-            }, req));
-
-            return {
-                name: branch.name,
-                revenue: revenue._sum.amount || 0,
-                repairs: repairs
-            };
-        }));
-
-        // 3. Specialized Entities (Admin Affairs & Maintenance Centers)
-        const adminAffairs = await db.branch.findMany({ where: { type: 'ADMIN_AFFAIRS' }, select: { id: true, name: true } });
-        const maintenanceCenters = await db.branch.findMany({ where: { type: 'MAINTENANCE_CENTER' }, select: { id: true, name: true } });
-
-        const adminAffairsStats = await Promise.all(adminAffairs.map(async (branch) => {
-            const machineTransfers = await db.transferOrder.count(ensureBranchWhere({
-                where: { fromBranchId: branch.id, type: 'MACHINE', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
-            }, req));
-            const simTransfers = await db.transferOrder.count(ensureBranchWhere({
-                where: { fromBranchId: branch.id, type: 'SIM', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
-            }, req));
-
-            return { id: branch.id, name: branch.name, machineTransfers, simTransfers };
-        }));
-
-        const maintenanceCenterStats = await Promise.all(maintenanceCenters.map(async (center) => {
-            const partTransfers = await db.transferOrder.count(ensureBranchWhere({
-                where: { fromBranchId: center.id, type: 'SPARE_PART', status: 'RECEIVED', updatedAt: { gte: startOfMonth } }
-            }, req));
-
-            const machinesInRepair = await db.warehouseMachine.count(ensureBranchWhere({
-                where: { branchId: center.id, status: { in: ['AT_CENTER', 'UNDER_INSPECTION', 'AWAITING_APPROVAL', 'IN_PROGRESS'] } }
-            }, req));
-
-            const machinesRepaired = await db.warehouseMachine.count(ensureBranchWhere({
-                where: { branchId: center.id, status: { in: ['READY_FOR_RETURN', 'COMPLETED'] }, updatedAt: { gte: startOfMonth } }
-            }, req));
-
-            return {
-                id: center.id,
-                name: center.name,
-                partTransfers,
-                inRepair: machinesInRepair,
-                repaired: machinesRepaired
-            };
-        }));
-
-        // 4. Advanced Intelligence
-        // A. Real System Health (based on recent logs)
+        // Calculate system health (based on recent logs)
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const totalRecentLogs = await db.systemLog.count({ where: { createdAt: { gte: twentyFourHoursAgo }, branchId: { not: null } } });
-        const errorLogs = await db.systemLog.count({
-            where: {
-                createdAt: { gte: twentyFourHoursAgo },
-                branchId: { not: null },
-                OR: [
-                    { action: { contains: 'ERROR' } },
-                    { details: { contains: 'failed' } },
-                    { details: { contains: 'ط®ط·ط£' } }
-                ]
-            }
-        });
+        const db = require('../db');
+
+        const [totalRecentLogs, errorLogs] = await Promise.all([
+            db.systemLog.count({
+                where: {
+                    createdAt: { gte: twentyFourHoursAgo },
+                    branchId: { not: null }
+                }
+            }),
+            db.systemLog.count({
+                where: {
+                    createdAt: { gte: twentyFourHoursAgo },
+                    branchId: { not: null },
+                    OR: [
+                        { action: { contains: 'ERROR' } },
+                        { details: { contains: 'failed' } },
+                        { details: { contains: 'خطأ' } }
+                    ]
+                }
+            })
+        ]);
 
         const healthScore = totalRecentLogs > 0
             ? Math.max(0, Math.min(100, 100 - (errorLogs / totalRecentLogs * 100)))
             : 100;
 
-        // B. Global Inventory Low Stock (Items low across the whole system)
-        const globalLowStock = await db.inventoryItem.groupBy(ensureBranchWhere({
-            by: ['partId'],
-            _sum: { quantity: true },
-            having: {
-                quantity: { _sum: { lte: 20 } }
-            }
-        }, req));
-
-        const lowStockDetails = await Promise.all(globalLowStock.map(async (item) => {
-            const part = await db.sparePart.findUnique({
-                where: { id: item.partId },
-                select: { name: true, partNumber: true }
-            });
-            return {
-                name: part?.name || 'Unknown Part',
-                partNumber: part?.partNumber,
-                totalQuantity: item._sum.quantity
-            };
-        }));
-
         res.json({
-            usersCount,
-            branchesCount,
-            totalMachines,
-            dailyOps,
-            branchPerformance: performanceData,
-            adminAffairsStats,
-            maintenanceCenterStats,
+            ...summary,
             systemHealth: {
                 score: Math.round(healthScore),
-                errorCount: errorLogs
-            },
-            globalLowStock: lowStockDetails
+                errorCount: errorLogs,
+                totalOps: totalRecentLogs
+            }
         });
 
     } catch (error) {
         console.error('Admin summary error:', error);
         console.error('Error stack:', error.stack);
-        console.error('Error message:', error.message);
-        res.status(500).json({ error: 'Failed to fetch admin summary', details: error.message });
+        res.status(500).json({
+            error: 'فشل في تحميل ملخص الإدارة',
+            details: error.message
+        });
     }
 });
 
-// GET Global Search
+/**
+ * GET /api/dashboard/search
+ * 
+ * Global search across machines and customers
+ * Used by the search bar in the dashboard header
+ */
 router.get('/search', authenticateToken, async (req, res) => {
     try {
         const { q } = req.query;
-        if (!q || q.length < 2) return res.json({ machines: [], customers: [] });
+        if (!q || q.length < 2) {
+            return res.json({ machines: [], customers: [] });
+        }
 
         const branchFilter = getBranchFilter(req);
+        const db = require('../db');
 
-        // 1. Search Machines (Serial Number)
-        const machines = await db.warehouseMachine.findMany(ensureBranchWhere({
-            where: {
-                ...branchFilter,
-                serialNumber: { contains: q }
-            },
-            take: 10,
-            select: {
-                id: true,
-                serialNumber: true,
-                model: true,
-                status: true,
-                branch: { select: { name: true } }
-            }
-        }, req));
+        // Ensure branchId filter is present
+        const whereBase = { ...branchFilter };
+        if (!whereBase.branchId) {
+            whereBase.branchId = { not: null };
+        }
 
-        // 2. Search Customers (BK Code or Name)
-        const customers = await db.customer.findMany(ensureBranchWhere({
-            where: {
-                ...branchFilter,
-                OR: [
-                    { bkcode: { contains: q } },
-                    { name: { contains: q } }
-                ]
-            },
-            take: 10,
-            select: {
-                id: true,
-                bkcode: true,
-                name: true,
-                branch: { select: { name: true } }
-            }
-        }, req));
+        // Search in parallel
+        const [machines, customers] = await Promise.all([
+            // Search machines by serial number
+            db.warehouseMachine.findMany({
+                where: {
+                    ...whereBase,
+                    serialNumber: { contains: q }
+                },
+                take: 10,
+                select: {
+                    id: true,
+                    serialNumber: true,
+                    model: true,
+                    status: true,
+                    branch: { select: { name: true } }
+                }
+            }),
+            // Search customers by BK code or name
+            db.customer.findMany({
+                where: {
+                    ...whereBase,
+                    OR: [
+                        { bkcode: { contains: q } },
+                        { client_name: { contains: q } }
+                    ]
+                },
+                take: 10,
+                select: {
+                    id: true,
+                    bkcode: true,
+                    client_name: true,
+                    branch: { select: { name: true } }
+                }
+            })
+        ]);
 
         res.json({
             machines: machines.map(m => ({ ...m, type: 'MACHINE' })),
@@ -406,8 +215,78 @@ router.get('/search', authenticateToken, async (req, res) => {
 
     } catch (error) {
         console.error('Global search error:', error);
-        res.status(500).json({ error: 'Search failed' });
+        res.status(500).json({ error: 'فشل في البحث' });
     }
+});
+
+/**
+ * GET /api/dashboard/metrics-reference
+ * 
+ * Debug endpoint - returns documentation of how each metric is calculated
+ * Useful for verifying data accuracy
+ */
+router.get('/metrics-reference', authenticateToken, async (req, res) => {
+    res.json({
+        metrics: [
+            {
+                name: 'العمليات اليومية (Daily Operations)',
+                table: 'SystemLog',
+                filter: 'createdAt >= startOfToday AND branchId is not null',
+                aggregation: 'COUNT(*)',
+                notes: 'Counts all system log entries for today'
+            },
+            {
+                name: 'الفروع النشطة (Active Branches)',
+                table: 'Branch',
+                filter: "type='BRANCH' AND isActive=true",
+                aggregation: 'COUNT(*)',
+                notes: 'Global count, not branch-scoped'
+            },
+            {
+                name: 'إجمالي المستخدمين (Total Users)',
+                table: 'User',
+                filter: 'branchId (scoped by role)',
+                aggregation: 'COUNT(*)',
+                notes: 'Admins see all, others see their branch only'
+            },
+            {
+                name: 'الإيرادات الشهرية (Monthly Revenue)',
+                table: 'Payment',
+                filter: 'createdAt >= startOfMonth AND createdAt <= endOfMonth',
+                aggregation: 'SUM(amount)',
+                notes: 'Sum of all payment amounts for current month'
+            },
+            {
+                name: 'طلبات الصيانة المفتوحة (Open Requests)',
+                table: 'MaintenanceRequest',
+                filter: "status='Open'",
+                aggregation: 'COUNT(*)',
+                notes: 'Filtered by branch for non-admins'
+            },
+            {
+                name: 'الأقساط المتأخرة (Overdue Installments)',
+                table: 'Installment',
+                filter: 'isPaid=false AND dueDate < today',
+                aggregation: 'COUNT(*)',
+                notes: 'Hidden for maintenance center roles'
+            },
+            {
+                name: 'الماكينات في المخزن (Warehouse Machines)',
+                table: 'WarehouseMachine',
+                filter: 'branchId',
+                aggregation: 'COUNT(*)',
+                notes: 'Count of machines in warehouse'
+            },
+            {
+                name: 'الشرائح في المخزن (Warehouse SIMs)',
+                table: 'WarehouseSim',
+                filter: 'branchId',
+                aggregation: 'COUNT(*)',
+                notes: 'Count of SIMs in warehouse'
+            }
+        ],
+        generated: new Date().toISOString()
+    });
 });
 
 module.exports = router;

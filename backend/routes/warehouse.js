@@ -2,8 +2,8 @@
 const router = express.Router();
 const db = require('../db');
 
-// GET spare parts
-router.get('/spare-parts', async (req, res) => {
+// GET spare parts (mounted at /api/spare-parts, so path is just '/')
+router.get('/', async (req, res) => {
     try {
         const parts = await db.sparePart.findMany({
             include: {
@@ -18,7 +18,7 @@ router.get('/spare-parts', async (req, res) => {
 });
 
 // POST create spare part (with auto-generated part number)
-router.post('/spare-parts', async (req, res) => {
+router.post('/', async (req, res) => {
     try {
         // Get count for auto-generated part number
         const count = await db.sparePart.count();
@@ -44,7 +44,7 @@ router.post('/spare-parts', async (req, res) => {
 });
 
 // PUT update spare part (with price logging)
-router.put('/spare-parts/:id', async (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
         // Get current part to check price change
         const currentPart = await db.sparePart.findUnique({
@@ -89,7 +89,7 @@ router.put('/spare-parts/:id', async (req, res) => {
 });
 
 // GET price change logs for a part
-router.get('/spare-parts/:id/price-logs', async (req, res) => {
+router.get('/:id/price-logs', async (req, res) => {
     try {
         const logs = await db.priceChangeLog.findMany({
             where: { partId: req.params.id },
@@ -103,7 +103,7 @@ router.get('/spare-parts/:id/price-logs', async (req, res) => {
 });
 
 // POST bulk import spare parts
-router.post('/spare-parts/import', async (req, res) => {
+router.post('/import', async (req, res) => {
     try {
         const parts = req.body.parts;
         if (!Array.isArray(parts)) return res.status(400).json({ error: 'parts array required' });
@@ -130,13 +130,13 @@ router.post('/spare-parts/import', async (req, res) => {
 });
 
 // DELETE spare part
-router.delete('/spare-parts/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
     try {
         // First, delete all related inventory items
         await db.inventoryItem.deleteMany({
             where: { partId: req.params.id }
         });
-        
+
         // Then delete the spare part
         await db.sparePart.delete({ where: { id: req.params.id } });
         res.json({ success: true });
@@ -148,3 +148,4 @@ router.delete('/spare-parts/:id', async (req, res) => {
 });
 
 module.exports = router;
+

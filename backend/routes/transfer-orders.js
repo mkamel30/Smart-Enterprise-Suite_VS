@@ -1,39 +1,74 @@
 ﻿const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const db = require('../db');
+const { z } = require('zod');
+const ExcelJS = require('exceljs');
 const { authenticateToken } = require('../middleware/auth');
-const { createNotification } = require('./notifications');
-const { detectMachineParams } = require('../utils/machine-validation');
-const { getBranchFilter, canAccessBranch } = require('../utils/auth-helpers');
-const { ensureBranchWhere } = require('../prisma/branchHelpers');
-const movementService = require('../services/movementService');
+const { validateRequest, validateQuery } = require('../middleware/validation');
 const transferService = require('../services/transferService');
 
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Validation Schemas
+const listQuerySchema = z.object({
+    branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
+    status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED']).optional(),
+    type: z.enum(['MACHINE', 'SIM', 'SPARE_PART']).optional(),
+    fromDate: z.string().datetime().optional(),
+    toDate: z.string().datetime().optional(),
+    q: z.string().optional()
+});
+
+const createOrderSchema = z.object({
+    type: z.enum(['MACHINE', 'SIM', 'SPARE_PART']),
+    fromBranchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
+    toBranchId: z.string().regex(/^[a-z0-9]{25}$/),
+    items: z.array(z.object({
+        serialNumber: z.string().min(1).optional(), // For Machine/SIM
+        partId: z.string().min(1).optional(), // For Spare Parts
+        quantity: z.number().int().positive().optional().default(1)
+    })).min(1),
+    notes: z.string().optional()
+});
+
+const receiveOrderSchema = z.object({
+    receivedItems: z.array(z.object({
+        serialNumber: z.string().optional(),
+        partId: z.string().optional(),
+        accepted: z.boolean(),
+        notes: z.string().optional()
+    })).optional()
+});
+
+const rejectOrderSchema = z.object({
+    rejectionReason: z.string().min(5, 'سبب الرفض مطلوب (5 أحرف على الأقل)')
+});
 
 // Routes for transfer orders are largely handled by the transferService.
 // This file serves as the main entry point for transfer-related API endpoints.
 
 // Get all transfer orders
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, validateQuery(listQuerySchema), async (req, res) => {
     try {
-        const orders = await transferService.listTransferOrders({ branchId: req.query.branchId, status: req.query.status, type: req.query.type, fromDate: req.query.fromDate, toDate: req.query.toDate, q: req.query.q }, req.user);
+        const orders = await transferService.listTransferOrders(req.query, req.user);
         res.json(orders);
     } catch (error) {
         console.error('Failed to fetch transfer orders:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط£ط°ظˆظ†ط§طھ' });
+        res.status(500).json({ error: 'فشل في جلب الأذونات' });
     }
 });
 
 // Get pending orders for a branch
 router.get('/pending', authenticateToken, async (req, res) => {
     try {
-        const orders = await transferService.getPendingOrders({ branchId: req.query.branchId, type: req.query.type }, req.user, req);
+        const orders = await transferService.getPendingOrders({
+            branchId: req.query.branchId,
+            type: req.query.type
+        }, req.user, req);
         res.json(orders);
     } catch (error) {
         console.error('Failed to fetch pending orders:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط£ط°ظˆظ†ط§طھ ط§ظ„ظ…ط¹ظ„ظ‚ط©' });
+        res.status(500).json({ error: 'فشل في جلب الأذونات المعلقة' });
     }
 });
 
@@ -41,11 +76,14 @@ router.get('/pending', authenticateToken, async (req, res) => {
 // IMPORTANT: This route MUST be before /:id to avoid matching "pending-serials" as an ID
 router.get('/pending-serials', authenticateToken, async (req, res) => {
     try {
-        const serials = await transferService.getPendingSerials({ branchId: req.query.branchId, type: req.query.type }, req.user);
+        const serials = await transferService.getPendingSerials({
+            branchId: req.query.branchId,
+            type: req.query.type
+        }, req.user);
         res.json(serials);
     } catch (error) {
         console.error('Failed to fetch pending serials:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ظ‚ظٹط¯ ط§ظ„طھط­ظˆظٹظ„' });
+        res.status(500).json({ error: 'فشل في جلب الماكينات قيد التحويل' });
     }
 });
 
@@ -56,29 +94,40 @@ router.get('/:id', authenticateToken, async (req, res) => {
         res.json(order);
     } catch (error) {
         console.error('Failed to fetch transfer order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط¥ط°ظ†' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل في جلب الإذن' });
     }
 });
 
 // Create transfer order
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, validateRequest(createOrderSchema), async (req, res) => {
     try {
         const order = await transferService.createTransferOrder(req.body, req.user);
         res.status(201).json(order);
     } catch (error) {
         console.error('========== TRANSFER ORDER ERROR ==========', error.message);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط¥ظ†ط´ط§ط، ط§ظ„ط¥ط°ظ†' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل في إنشاء الإذن' });
     }
 });
 
 // Import items from Excel
 router.post('/import', upload.single('file'), async (req, res) => {
     try {
-        const result = await transferService.importTransferFromExcel(req.file?.buffer, { branchId: req.body.branchId, type: req.body.type, createdBy: req.body.createdBy, createdByName: req.body.createdByName, notes: req.body.notes }, req.user);
+        if (!req.file) {
+            return res.status(400).json({ error: 'ملف مطلوب' });
+        }
+        const result = await transferService.importTransferFromExcel(
+            req.file.buffer,
+            {
+                branchId: req.body.branchId,
+                type: req.body.type,
+                notes: req.body.notes
+            },
+            req.user
+        );
         res.status(201).json(result);
     } catch (error) {
         console.error('Failed to import transfer order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط§ط³طھظٹط±ط§ط¯ ط§ظ„ط¥ط°ظ†' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل في استيراد الإذن' });
     }
 });
 
@@ -93,20 +142,19 @@ router.get('/template/:type', authenticateToken, async (req, res) => {
         if (type === 'SIM') {
             worksheet.columns = [
                 { header: 'Serial Number', key: 'serialNumber', width: 25 },
-                { header: 'Type (Vodafone/Orange/Etisalat/WE)', key: 'type', width: 30 },
+                { header: 'Type', key: 'type', width: 30 },
                 { header: 'Notes', key: 'notes', width: 30 }
             ];
         } else if (type === 'MACHINE') {
             worksheet.columns = [
                 { header: 'Serial Number', key: 'serialNumber', width: 25 },
-                { header: 'Model (auto-detected)', key: 'type', width: 25 },
-                { header: 'Manufacturer (auto-detected)', key: 'manufacturer', width: 25 },
                 { header: 'Notes', key: 'notes', width: 30 }
             ];
         } else {
+            // Shared/Spare Parts
             worksheet.columns = [
-                { header: 'Serial/Code', key: 'serialNumber', width: 25 },
-                { header: 'Type', key: 'type', width: 25 },
+                { header: 'Part Code', key: 'serialNumber', width: 25 },
+                { header: 'Quantity', key: 'quantity', width: 15 },
                 { header: 'Notes', key: 'notes', width: 30 }
             ];
         }
@@ -126,30 +174,45 @@ router.get('/template/:type', authenticateToken, async (req, res) => {
         res.end();
     } catch (error) {
         console.error('Failed to generate template:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¥ظ†ط´ط§ط، ط§ظ„ظ‚ط§ظ„ط¨' });
+        res.status(500).json({ error: 'فشل في إنشاء القالب' });
     }
 });
 
 // Receive order (confirm receipt)
-router.post('/:id/receive', authenticateToken, async (req, res) => {
+router.post('/:id/receive', authenticateToken, validateRequest(receiveOrderSchema), async (req, res) => {
     try {
-        const { receivedBy, receivedByName, receivedItems } = req.body;
-        const updated = await transferService.receiveTransferOrder(req.params.id, { receivedBy, receivedByName, receivedItems }, req.user);
+        const updated = await transferService.receiveTransferOrder(
+            req.params.id,
+            {
+                receivedBy: req.user.id,
+                receivedByName: req.user.displayName,
+                receivedItems: req.body.receivedItems
+            },
+            req.user
+        );
         res.json(updated);
     } catch (error) {
         console.error('Failed to receive order:', error.message || error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ طھط£ظƒظٹط¯ ط§ظ„ط§ط³طھظ„ط§ظ…' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل في تأكيد الاستلام' });
     }
 });
 
 // Reject order
-router.post('/:id/reject', authenticateToken, async (req, res) => {
+router.post('/:id/reject', authenticateToken, validateRequest(rejectOrderSchema), async (req, res) => {
     try {
-        const updated = await transferService.rejectOrder(req.params.id, { rejectionReason: req.body.rejectionReason, receivedBy: req.body.receivedBy, receivedByName: req.body.receivedByName }, req.user);
+        const updated = await transferService.rejectOrder(
+            req.params.id,
+            {
+                rejectionReason: req.body.rejectionReason,
+                receivedBy: req.user.id,
+                receivedByName: req.user.displayName
+            },
+            req.user
+        );
         res.json(updated);
     } catch (error) {
-        console.error('Failed to reject order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط±ظپط¶ ط§ظ„ط¥ط°ظ†' });
+        console.error('Reject order error:', error);
+        res.status(error.status || 500).json({ error: error.message || 'فشل في رفض الإذن' });
     }
 });
 

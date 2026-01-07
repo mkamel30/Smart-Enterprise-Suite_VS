@@ -1,14 +1,20 @@
 ﻿const express = require('express');
 const router = express.Router();
+const { z } = require('zod');
+const multer = require('multer');
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const { validateRequest } = require('../middleware/validation');
 const { generateTemplate, parseExcelFile, exportToExcel } = require('../utils/excel');
 const { logAction } = require('../utils/logger');
-const multer = require('multer');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
-// NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
-// NOTE: automated inserted imports for branch-filtering and safe raw SQL
+
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Validation Schemas
+const applyParametersSchema = z.object({
+    dryRun: z.boolean().optional().default(false)
+});
 
 // GET template for Machine import
 router.get('/machines/template', authenticateToken, async (req, res) => {
@@ -26,17 +32,15 @@ router.get('/machines/template', authenticateToken, async (req, res) => {
         res.send(buffer);
     } catch (error) {
         console.error('Failed to generate Machines template:', error);
-        res.status(500).json({ error: 'Failed to generate template' });
+        res.status(500).json({ error: 'فشل في إنشاء القالب' });
     }
 });
-
-
 
 // POST import Machines from Excel
 router.post('/machines/import', authenticateToken, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+            return res.status(400).json({ error: 'ملف مطلوب' });
         }
 
         const rows = await parseExcelFile(req.file.buffer);
@@ -44,21 +48,19 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
         // Get branchId from user
         const branchId = req.user.branchId || req.body.branchId;
         if (!branchId || typeof branchId !== 'string' || branchId.trim() === '') {
-            return res.status(400).json({ error: 'Branch ID is required for import' });
+            return res.status(400).json({ error: 'معرف الفرع مطلوب' });
         }
 
         // Get all machine parameters for auto-detection
         const machineParams = await db.machineParameter.findMany();
 
-        let successCount = 0;
         let skippedCount = 0;
-        let updatedCount = 0;
-        let errors = [];
 
         // Helper function to detect model and manufacturer from serial
         const detectMachineInfo = (serialNumber) => {
+            const sn = serialNumber.toString();
             for (const param of machineParams) {
-                if (serialNumber.startsWith(param.prefix)) {
+                if (sn.startsWith(param.prefix)) {
                     return {
                         model: param.model,
                         manufacturer: param.manufacturer
@@ -68,7 +70,7 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
             return { model: null, manufacturer: null };
         };
 
-        // WRAP ALL OPERATIONS IN TRANSACTION FOR ATOMICITY
+        // WRAP ALL OPERATIONS IN TRANSACTION
         const result = await db.$transaction(async (tx) => {
             let successCount = 0;
             let updatedCount = 0;
@@ -81,7 +83,7 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
 
                 // Validate
                 if (!serialNumber) {
-                    errors.push({ row, error: 'serialNumber is required' });
+                    errors.push({ row, error: 'الرقم التسلسلي مطلوب' });
                     continue;
                 }
 
@@ -95,13 +97,13 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
                     });
 
                     if (!customer) {
-                        errors.push({ row, error: `Customer ${customerId} not found in branch` });
+                        errors.push({ row, error: `العميل ${customerId} غير موجود في هذا الفرع` });
                         continue;
                     }
                 }
 
                 // Auto-detect model and manufacturer from parameters
-                const { model, manufacturer } = detectMachineInfo(serialNumber.toString());
+                const { model, manufacturer } = detectMachineInfo(serialNumber);
 
                 try {
                     // Check if machine already exists (branch-scoped)
@@ -125,7 +127,7 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
                         });
                         updatedCount++;
                     } else {
-                        // Create new machine with auto-detected model and manufacturer
+                        // Create new machine
                         await tx.posMachine.create({
                             data: {
                                 serialNumber: serialNumber.toString(),
@@ -151,7 +153,7 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
             entityType: 'POS_MACHINE',
             entityId: 'BULK_IMPORT',
             action: 'IMPORT',
-            details: `ط§ط³طھظٹط±ط§ط¯ ظ…ط§ظƒظٹظ†ط§طھ - ط¬ط¯ظٹط¯: ${result.successCount}, ظ…ط­ط¯ط«: ${result.updatedCount}, ط£ط®ط·ط§ط،: ${result.errors.length}`,
+            details: `استيراد ماكينات - جديد: ${result.successCount}, محدث: ${result.updatedCount}, أخطاء: ${result.errors.length}`,
             userId: req.user?.id,
             performedBy: req.user?.displayName || 'System',
             branchId
@@ -167,7 +169,7 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
 
     } catch (error) {
         console.error('Failed to import Machines:', error);
-        res.status(500).json({ error: 'Failed to import Machines' });
+        res.status(500).json({ error: 'فشل في استيراد الماكينات' });
     }
 });
 
@@ -207,7 +209,7 @@ router.get('/machines/export', authenticateToken, async (req, res) => {
 
     } catch (error) {
         console.error('Failed to export Machines:', error);
-        res.status(500).json({ error: 'Failed to export Machines' });
+        res.status(500).json({ error: 'فشل في تصدير الماكينات' });
     }
 });
 
@@ -229,12 +231,12 @@ router.get('/machines', authenticateToken, async (req, res) => {
         res.json(machines);
     } catch (error) {
         console.error('Failed to fetch Machines:', error);
-        res.status(500).json({ error: 'Failed to fetch Machines' });
+        res.status(500).json({ error: 'فشل في جلب الماكينات' });
     }
 });
 
 // POST apply parameters to machines missing model/manufacturer
-router.post('/machines/apply-parameters', authenticateToken, async (req, res) => {
+router.post('/machines/apply-parameters', authenticateToken, validateRequest(applyParametersSchema), async (req, res) => {
     try {
         // Get all machine parameters
         const machineParams = await db.machineParameter.findMany();
@@ -253,23 +255,29 @@ router.post('/machines/apply-parameters', authenticateToken, async (req, res) =>
 
         let updatedCount = 0;
 
-        for (const machine of machinesToUpdate) {
-            // Find matching parameter by prefix
-            const matchingParam = machineParams.find(param =>
-                machine.serialNumber.startsWith(param.prefix)
-            );
+        // Perform updates in parallel-ish batches? No, sequential is safer for SQLite/transaction loops
+        // But for plain updates, fine to loop.
 
-            if (matchingParam) {
-                await db.posMachine.update({
-                    where: { id: machine.id },
-                    data: {
-                        model: matchingParam.model,
-                        manufacturer: matchingParam.manufacturer
-                    }
-                });
-                updatedCount++;
+        // Optimization: Use transaction
+        await db.$transaction(async (tx) => {
+            for (const machine of machinesToUpdate) {
+                // Find matching parameter by prefix
+                const matchingParam = machineParams.find(param =>
+                    machine.serialNumber.startsWith(param.prefix)
+                );
+
+                if (matchingParam) {
+                    await tx.posMachine.update({
+                        where: { id: machine.id },
+                        data: {
+                            model: matchingParam.model,
+                            manufacturer: matchingParam.manufacturer
+                        }
+                    });
+                    updatedCount++;
+                }
             }
-        }
+        });
 
         res.json({
             success: true,
@@ -279,7 +287,7 @@ router.post('/machines/apply-parameters', authenticateToken, async (req, res) =>
 
     } catch (error) {
         console.error('Failed to apply parameters:', error);
-        res.status(500).json({ error: 'Failed to apply parameters' });
+        res.status(500).json({ error: 'فشل في تطبيق الإعدادات' });
     }
 });
 

@@ -21,9 +21,9 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 
         // Branch filtering based on user role
         if (req.user.role === 'SUPER_ADMIN') {
-            // Can see all users, optionally filter by branch
+            // Super admin can see ALL users (including those with null branchId)
             if (branchId) where.branchId = branchId;
-            else where.branchId = { not: null }; // Comply with branch enforcer
+            // If no filter, show all users (including admin users without branch)
         } else {
             // Non-super admins can only see users in their branch
             where.branchId = req.user.branchId;
@@ -60,11 +60,13 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 // GET single user
 router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
+        // Super admin can see any user
+        const whereClause = req.user.role === 'SUPER_ADMIN'
+            ? { id: req.params.id }
+            : { id: req.params.id, branchId: req.user.branchId };
+
         const user = await db.user.findFirst({
-            where: {
-                id: req.params.id,
-                branchId: req.user.role === 'SUPER_ADMIN' ? { not: null } : req.user.branchId
-            },
+            where: whereClause,
             select: {
                 id: true,
                 email: true,
@@ -97,13 +99,21 @@ router.post('/', authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
         const { email, displayName, password, role, branchId, canDoMaintenance } = req.body;
 
-        if (!email || !displayName || !branchId) {
-            return res.status(400).json({ error: 'البريد الإلكتروني والاسم والفرع مطلوبين' });
+        // Admin roles (SUPER_ADMIN, MANAGEMENT) don't require branchId
+        const isAdminRole = ['SUPER_ADMIN', 'MANAGEMENT'].includes(role);
+
+        if (!email || !displayName) {
+            return res.status(400).json({ error: 'البريد الإلكتروني والاسم مطلوبين' });
         }
 
-        // Check for duplicate email
+        // Non-admin roles require branchId
+        if (!isAdminRole && !branchId) {
+            return res.status(400).json({ error: 'يجب تحديد الفرع للمستخدمين غير الإداريين' });
+        }
+
+        // Check for duplicate email (search in all users)
         const existing = await db.user.findFirst({
-            where: { email, branchId: { not: null } }
+            where: { email }
         });
 
         if (existing) {
@@ -119,7 +129,7 @@ router.post('/', authenticateToken, requireSuperAdmin, async (req, res) => {
                 displayName,
                 password: hashedPassword,
                 role: role || 'CS_AGENT',
-                branchId,
+                branchId: branchId || null, // Allow null for admin roles
                 canDoMaintenance: canDoMaintenance || false
             },
             select: {
@@ -137,10 +147,10 @@ router.post('/', authenticateToken, requireSuperAdmin, async (req, res) => {
             entityType: 'USER',
             entityId: user.id,
             action: 'CREATE',
-            details: `Created user: ${user.displayName}`,
+            details: `Created user: ${user.displayName} (${role})`,
             userId: req.user.id,
             performedBy: req.user.displayName,
-            branchId: branchId
+            branchId: branchId || req.user.branchId
         });
 
         res.status(201).json(user);
@@ -156,7 +166,7 @@ router.put('/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
         const { displayName, role, branchId, canDoMaintenance, password } = req.body;
 
         const existing = await db.user.findFirst({
-            where: { id: req.params.id, branchId: { not: null } }
+            where: { id: req.params.id }
         });
 
         if (!existing) {
@@ -166,17 +176,18 @@ router.put('/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
         const updateData = {};
         if (displayName) updateData.displayName = displayName;
         if (role) updateData.role = role;
-        if (branchId) updateData.branchId = branchId;
+        // Allow setting branchId to null for admin roles
+        if (branchId !== undefined) updateData.branchId = branchId || null;
         if (canDoMaintenance !== undefined) updateData.canDoMaintenance = canDoMaintenance;
         if (password) updateData.password = await bcrypt.hash(password, 10);
 
-        await db.user.updateMany({
-            where: { id: req.params.id, branchId: { not: null } },
+        await db.user.update({
+            where: { id: req.params.id },
             data: updateData
         });
 
         const updated = await db.user.findFirst({
-            where: { id: req.params.id, branchId: { not: null } },
+            where: { id: req.params.id },
             select: {
                 id: true,
                 email: true,
@@ -195,7 +206,7 @@ router.put('/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
             details: `Updated user: ${updated?.displayName}`,
             userId: req.user.id,
             performedBy: req.user.displayName,
-            branchId: updated?.branchId
+            branchId: updated?.branchId || req.user.branchId
         });
 
         res.json(updated);
@@ -209,7 +220,7 @@ router.put('/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
 router.delete('/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
         const existing = await db.user.findFirst({
-            where: { id: req.params.id, branchId: { not: null } }
+            where: { id: req.params.id }
         });
 
         if (!existing) {
@@ -232,7 +243,7 @@ router.delete('/:id', authenticateToken, requireSuperAdmin, async (req, res) => 
             details: `Deleted user: ${existing.displayName}`,
             userId: req.user.id,
             performedBy: req.user.displayName,
-            branchId: existing.branchId
+            branchId: existing.branchId || req.user.branchId
         });
 
         res.json({ success: true, message: 'تم حذف المستخدم بنجاح' });
@@ -252,7 +263,7 @@ router.post('/:id/reset-password', authenticateToken, requireSuperAdmin, async (
         }
 
         const existing = await db.user.findFirst({
-            where: { id: req.params.id, branchId: { not: null } }
+            where: { id: req.params.id }
         });
 
         if (!existing) {
@@ -261,8 +272,8 @@ router.post('/:id/reset-password', authenticateToken, requireSuperAdmin, async (
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        await db.user.updateMany({
-            where: { id: req.params.id, branchId: { not: null } },
+        await db.user.update({
+            where: { id: req.params.id },
             data: { password: hashedPassword }
         });
 
@@ -273,7 +284,7 @@ router.post('/:id/reset-password', authenticateToken, requireSuperAdmin, async (
             details: `Password reset for user: ${existing.displayName}`,
             userId: req.user.id,
             performedBy: req.user.displayName,
-            branchId: existing.branchId
+            branchId: existing.branchId || req.user.branchId
         });
 
         res.json({ success: true, message: 'تم إعادة تعيين كلمة المرور بنجاح' });

@@ -187,22 +187,8 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/branches-lookup', require('./routes/branches'));
 app.use('/api/branches', require('./routes/branches'));
 
-// Permissions stub (frontend expects this)
-app.get('/api/permissions', authenticateToken, (req, res) => {
-  // Return role-based permissions
-  const rolePermissions = {
-    SUPER_ADMIN: { all: true },
-    MANAGEMENT: { dashboard: true, reports: true, settings: true },
-    CENTER_MANAGER: { maintenance: true, inventory: true },
-    BRANCH_MANAGER: { customers: true, requests: true },
-    CS_SUPERVISOR: { customers: true, requests: true },
-    CS_AGENT: { customers: true, requests: true },
-    CENTER_TECH: { maintenance: true },
-    BRANCH_TECH: { requests: true },
-    ADMIN_AFFAIRS: { transfers: true, inventory: true }
-  };
-  res.json(rolePermissions[req.user.role] || {});
-});
+// Permissions management - full route
+app.use('/api/permissions', require('./routes/permissions'));
 
 // Inventory & Warehouse
 app.use('/api', require('./routes/inventory'));

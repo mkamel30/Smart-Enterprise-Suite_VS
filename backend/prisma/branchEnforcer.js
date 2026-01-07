@@ -1,7 +1,8 @@
 ﻿// Prisma middleware to require branchId filtering on sensitive models
 // This middleware throws if a query on a protected model does not include any branchId filter.
+// NOTE: User model is NOT protected here because admin users (SUPER_ADMIN, MANAGEMENT) have null branchId.
+// User access control is enforced via requireAdmin/requireSuperAdmin middleware instead.
 const protectedModels = new Set([
-  'User',
   'Customer',
   'MachineSale',
   'Installment',

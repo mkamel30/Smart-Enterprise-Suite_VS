@@ -331,6 +331,33 @@ class ApiClient {
         });
     }
 
+    // Permissions
+    async getPermissions(): Promise<{
+        pages: Record<string, Record<string, boolean>>;
+        actions: Record<string, Record<string, boolean>>;
+        roles: string[];
+    }> {
+        return this.request('/permissions');
+    }
+
+    async bulkUpdatePermissions(permissions: Array<{
+        role: string;
+        permissionType: 'PAGE' | 'ACTION';
+        permissionKey: string;
+        isAllowed: boolean;
+    }>) {
+        return this.request('/permissions/bulk', {
+            method: 'POST',
+            body: JSON.stringify({ permissions }),
+        });
+    }
+
+    async resetPermissions() {
+        return this.request('/permissions/reset', {
+            method: 'POST',
+        });
+    }
+
     // Client Types
     async getClientTypes(): Promise<ClientType[]> {
         return this.request('/settings/client-types');
