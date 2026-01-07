@@ -62,6 +62,9 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
     // Dashboard - everyone
     '/': ALL_SYSTEM_ROLES,
 
+    // Executive Dashboard - Management only
+    '/executive-dashboard': [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT],
+
     // Maintenance requests - branches and supervisors only
     '/requests': [
         ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH

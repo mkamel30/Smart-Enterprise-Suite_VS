@@ -538,6 +538,21 @@ class ApiClient {
         return this.request(`/dashboard${query}`);
     }
 
+    // Executive Dashboard (High Management)
+    async getExecutiveDashboard(params?: { startDate?: string; endDate?: string; branchId?: string }): Promise<any> {
+        const query = new URLSearchParams();
+        if (params?.startDate) query.append('startDate', params.startDate);
+        if (params?.endDate) query.append('endDate', params.endDate);
+        if (params?.branchId) query.append('branchId', params.branchId);
+        const queryStr = query.toString() ? `?${query.toString()}` : '';
+        return this.request(`/executive-dashboard${queryStr}`);
+    }
+
+    async getExecutiveBranchDetail(branchId: string): Promise<any> {
+        return this.request(`/executive-dashboard/branch/${branchId}`);
+    }
+
+
     async getAiModels(): Promise<string[]> {
         return this.request('/ai/models');
     }

@@ -28,12 +28,14 @@ import {
     ZoomOut,
     Wrench,
     Eye,
-    Truck
+    Truck,
+    TrendingUp
 } from 'lucide-react';
 import { Menu } from 'lucide-react';
 
 const allNavItems = [
     { path: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
+    { path: '/executive-dashboard', label: 'لوحة الإدارة العليا', icon: TrendingUp }, // Management only
     // { path: '/maintenance-board', label: 'لوحة الصيانة', icon: LayoutDashboard }, // Deprecated
     { path: '/requests', label: 'طلبات الصيانة', icon: ClipboardList },
     { path: '/maintenance/shipments', label: 'الشحنات الواردة', icon: Truck }, // مركز الصيانة

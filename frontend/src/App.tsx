@@ -36,6 +36,7 @@ import ShipmentDetail from './pages/ShipmentDetail';
 import MaintenanceApprovals from './pages/MaintenanceApprovals';
 import TrackMachines from './pages/TrackMachines';
 import PendingPayments from './pages/PendingPayments';
+import ExecutiveDashboard from './pages/ExecutiveDashboard';
 
 import { useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
@@ -97,6 +98,11 @@ function AppContent() {
                 <Route path="/maintenance-approvals" element={<MaintenanceApprovals />} />
                 <Route path="/track-machines" element={<TrackMachines />} />
                 <Route path="/pending-payments" element={<PendingPayments />} />
+                <Route path="/executive-dashboard" element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT']}>
+                    <ExecutiveDashboard />
+                  </ProtectedRoute>
+                } />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>
