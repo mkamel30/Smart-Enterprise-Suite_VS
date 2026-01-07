@@ -47,11 +47,11 @@ const PartSchema = z.object({
   quantity: z.number().int().positive('Quantity must be positive'),
   unitPrice: z.number().nonnegative('Unit price cannot be negative'),
   total: z.number().nonnegative('Total cannot be negative'),
-  isPaid: z.boolean().default(true), // true = ط¨ظ…ظ‚ط§ط¨ظ„, false = ظ…ط¬ط§ظ†ظٹ
+  isPaid: z.boolean().default(true), // true = بمقابل, false = مجاني
 });
 
 // ============================================
-// Request Quote Schema (ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط©)
+// Request Quote Schema (طلب موافقة)
 // ============================================
 
 const RequestQuoteSchema = z.object({
@@ -59,14 +59,14 @@ const RequestQuoteSchema = z.object({
   machineSerial: z.string().min(1, 'Machine serial required'),
   customerId: z.string().optional(),
   customerName: z.string().min(1, 'Customer name required'),
-  
+
   // Proposed parts (Quote)
   proposedParts: z.array(PartSchema).min(1, 'At least one part required'),
-  
+
   // Technician notes
   diagnosis: z.string().optional(),
   notes: z.string().optional(),
-  
+
   // Branch references
   centerBranchId: z.string().cuid('Invalid center branch ID'),
   originBranchId: z.string().cuid('Invalid origin branch ID'),
@@ -80,25 +80,25 @@ const RequestQuoteSchema = z.object({
 );
 
 // ============================================
-// Complete Direct Schema (طµظٹط§ظ†ط© ظ…ط¨ط§ط´ط±ط©)
+// Complete Direct Schema (صيانة مباشرة)
 // ============================================
 
 const CompleteDirectSchema = z.object({
   assignmentId: z.string().cuid('Invalid assignment ID'),
-  
+
   // Used parts (actual consumption)
   usedParts: z.array(PartSchema).min(1, 'At least one part required'),
-  
+
   // Resolution details
   actionTaken: z.string().min(1, 'Action taken required'),
   resolution: ResolutionType,
-  
+
   // Optional notes
   notes: z.string().optional(),
 });
 
 // ============================================
-// Approve Schema (ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ ط·ظ„ط¨)
+// Approve Schema (موافقة على طلب)
 // ============================================
 
 const ApproveSchema = z.object({
@@ -110,7 +110,7 @@ const ApproveSchema = z.object({
 });
 
 // ============================================
-// Reject Schema (ط±ظپط¶ ط·ظ„ط¨)
+// Reject Schema (رفض طلب)
 // ============================================
 
 const RejectSchema = z.object({
@@ -122,25 +122,25 @@ const RejectSchema = z.object({
 });
 
 // ============================================
-// Complete After Approval Schema (ط¥طھظ…ط§ظ… ط¨ط¹ط¯ ط§ظ„ظ…ظˆط§ظپظ‚ط©)
+// Complete After Approval Schema (إتمام بعد الموافقة)
 // ============================================
 
 const CompleteAfterApprovalSchema = z.object({
   assignmentId: z.string().cuid('Invalid assignment ID'),
-  
+
   // Used parts (must match approved parts or be subset)
   usedParts: z.array(PartSchema).min(1, 'At least one part required'),
-  
+
   // Resolution details
   actionTaken: z.string().min(1, 'Action taken required'),
   resolution: ResolutionType,
-  
+
   // Optional notes
   notes: z.string().optional(),
 });
 
 // ============================================
-// Create Assignment Schema (طھط¹ظٹظٹظ† ظ…ط®طھطµ)
+// Create Assignment Schema (تعيين مختص)
 // ============================================
 
 const CreateAssignmentSchema = z.object({
@@ -148,19 +148,19 @@ const CreateAssignmentSchema = z.object({
   serialNumber: z.string().min(1, 'Serial number required'),
   technicianId: z.string().cuid('Invalid technician ID'),
   technicianName: z.string().min(1, 'Technician name required'),
-  
+
   // Customer info
   customerId: z.string().optional(),
   customerName: z.string().optional(),
   requestId: z.string().optional(),
-  
+
   // Branch references
   centerBranchId: z.string().cuid('Invalid center branch ID'),
   originBranchId: z.string().cuid('Invalid origin branch ID'),
 });
 
 // ============================================
-// Record Payment Schema (طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯)
+// Record Payment Schema (تسجيل سداد)
 // ============================================
 
 const RecordPaymentSchema = z.object({
@@ -213,7 +213,7 @@ module.exports = {
   DebtType,
   DebtStatus,
   ResolutionType,
-  
+
   // Schemas
   PartSchema,
   RequestQuoteSchema,
@@ -223,7 +223,7 @@ module.exports = {
   CompleteAfterApprovalSchema,
   CreateAssignmentSchema,
   RecordPaymentSchema,
-  
+
   // Query Schemas
   GetAssignmentsQuerySchema,
   GetDebtsQuerySchema,

@@ -53,9 +53,9 @@ async function importMachines(machines, branchId, performedBy = 'System') {
                 if (existsWithCustomer) {
                     if (existsWithCustomer.customer && existsWithCustomer.customer.branchId !== branchId) {
                         const branchName = existsWithCustomer.customer.branch?.name || existsWithCustomer.customer.branchId;
-                        throw new Error(`ظ…ط§ظƒظٹظ†ط© ظ…ط³ط¬ظ„ط© ظ„ط¯ظ‰ ط¹ظ…ظٹظ„ ظپظٹ ظپط±ط¹ "${branchName}"`);
+                        throw new Error(`ماكينة مسجلة لدى عميل في فرع "${branchName}"`);
                     }
-                    throw new Error(`ظ…ط§ظƒظٹظ†ط© ظ…ط³ط¬ظ„ط© ظ„ط¯ظ‰ ط¹ظ…ظٹظ„ (${existsWithCustomer.customer?.name || existsWithCustomer.customerId})`);
+                    throw new Error(`ماكينة مسجلة لدى عميل (${existsWithCustomer.customer?.name || existsWithCustomer.customerId})`);
                 }
 
                 const detectedParams = detectMachineParams(serialNumber, machineParams);

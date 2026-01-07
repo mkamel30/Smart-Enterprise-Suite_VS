@@ -64,8 +64,8 @@ async function ensureSerialNotAssignedToCustomer(serialNumber) {
     });
 
     if (existing) {
-        const branchName = existing.customer?.branch?.name || existing.customer?.branchId || existing.branchId || 'ط؛ظٹط± ظ…ط­ط¯ط¯';
-        const message = `ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¨ط§ظ„ط³ظٹط±ظٹط§ظ„ ${serial} ظ…ط³ط¬ظ„ط© ط¨ط§ظ„ظپط¹ظ„ ظ„ط¯ظ‰ ط§ظ„ط¹ظ…ظٹظ„ ${existing.customer?.client_name || existing.customerId} ظپظٹ ظپط±ط¹ ${branchName}`;
+        const branchName = existing.customer?.branch?.name || existing.customer?.branchId || existing.branchId || 'غير محدد';
+        const message = `الماكينة بالسيريال ${serial} مسجلة بالفعل لدى العميل ${existing.customer?.client_name || existing.customerId} في فرع ${branchName}`;
         const err = new Error(message);
         err.status = 400;
         err.code = 'SERIAL_IN_USE';

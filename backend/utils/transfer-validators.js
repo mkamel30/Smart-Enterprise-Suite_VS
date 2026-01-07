@@ -1,13 +1,13 @@
 ﻿/**
  * Transfer Order Validation Utilities
- * ظ…ط¬ظ…ظˆط¹ط© ظ…ظ† ط§ظ„ظ€ validators ظ„ظ„طھط£ظƒط¯ ظ…ظ† طµط­ط© ط¹ظ…ظ„ظٹط§طھ ط§ظ„طھط­ظˆظٹظ„
+ * مجموعة من الـ validators للتأكد من صحة عمليات التحويل
  */
 
 const db = require('../db');
 
 /**
  * Validate that machines/sims are available for transfer
- * ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط£ظ† ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ/ط§ظ„ط´ط±ط§ط¦ط­ ظ…طھط§ط­ط© ظ„ظ„طھط­ظˆظٹظ„
+ * التحقق من أن الماكينات/الشرائح متاحة للتحويل
  * 
  * @param {string[]} serialNumbers - Array of serial numbers to validate
  * @param {string} type - Transfer type (MACHINE, SIM, MAINTENANCE)
@@ -19,12 +19,12 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
     const warnings = [];
 
     if (!serialNumbers || serialNumbers.length === 0) {
-        errors.push('ظ„ط§ طھظˆط¬ط¯ ط£طµظ†ط§ظپ ظ„ظ„طھط­ظˆظٹظ„');
+        errors.push('لا توجد أصناف للتحويل');
         return { valid: false, errors, warnings };
     }
 
     if (!fromBranchId) {
-        errors.push('ظپط±ط¹ ط§ظ„ظ…طµط¯ط± ظ…ط·ظ„ظˆط¨');
+        errors.push('فرع المصدر مطلوب');
         return { valid: false, errors, warnings };
     }
 
@@ -32,7 +32,7 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
     const existingPendingTransfers = await db.transferOrderItem.findMany({
         where: {
             serialNumber: { in: serialNumbers },
-            transferOrder: { 
+            transferOrder: {
                 status: { in: ['PENDING', 'PARTIAL'] }
             }
         },
@@ -49,9 +49,9 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
     if (existingPendingTransfers.length > 0) {
         const pendingDetails = existingPendingTransfers.map(item => {
             const order = item.transferOrder;
-            return `${item.serialNumber} (ط¥ط°ظ† ${order.orderNumber} ظ…ظ† ${order.fromBranch.name} ط¥ظ„ظ‰ ${order.toBranch.name})`;
+            return `${item.serialNumber} (إذن ${order.orderNumber} من ${order.fromBranch.name} إلى ${order.toBranch.name})`;
         });
-        errors.push(`ط§ظ„ط£طµظ†ط§ظپ ط§ظ„طھط§ظ„ظٹط© ظ…ظˆط¬ظˆط¯ط© ظپظٹ طھط­ظˆظٹظ„ط§طھ ظ…ط¹ظ„ظ‚ط©:\n${pendingDetails.join('\n')}`);
+        errors.push(`الأصناف التالية موجودة في تحويلات معلقة:\n${pendingDetails.join('\n')}`);
     }
 
     if (type === 'MACHINE' || type === 'MAINTENANCE' || type === 'SEND_TO_CENTER') {
@@ -70,16 +70,16 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
 
         // Check for machines not found in warehouse
         if (missingSerials.length > 0) {
-            errors.push(`ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ط§ظ„طھط§ظ„ظٹط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظ…ط®ط²ظ†:\n${missingSerials.join(', ')}`);
+            errors.push(`الماكينات التالية غير موجودة في المخزن:\n${missingSerials.join(', ')}`);
         }
 
         // Check for machines not in source branch
         const wrongBranchMachines = machines.filter(m => m.branchId !== fromBranchId);
         if (wrongBranchMachines.length > 0) {
-            const details = wrongBranchMachines.map(m => 
-                `${m.serialNumber} (ظ…ظˆط¬ظˆط¯ ظپظٹ ${m.branch?.name || 'ظپط±ط¹ ط¢ط®ط±'})`
+            const details = wrongBranchMachines.map(m =>
+                `${m.serialNumber} (موجود في ${m.branch?.name || 'فرع آخر'})`
             );
-            errors.push(`ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ط§ظ„طھط§ظ„ظٹط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظپط±ط¹ ط§ظ„ظ…ط±ط³ظ„:\n${details.join('\n')}`);
+            errors.push(`الماكينات التالية غير موجودة في الفرع المرسل:\n${details.join('\n')}`);
         }
 
         // Check for machines already in transit or locked
@@ -89,10 +89,10 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
         });
 
         if (invalidStatusMachines.length > 0) {
-            const details = invalidStatusMachines.map(m => 
-                `${m.serialNumber} (ط§ظ„ط­ط§ظ„ط©: ${getStatusArabic(m.status)})`
+            const details = invalidStatusMachines.map(m =>
+                `${m.serialNumber} (الحالة: ${getStatusArabic(m.status)})`
             );
-            errors.push(`ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ط§ظ„طھط§ظ„ظٹط© ط؛ظٹط± ظ…طھط§ط­ط© ظ„ظ„طھط­ظˆظٹظ„:\n${details.join('\n')}`);
+            errors.push(`الماكينات التالية غير متاحة للتحويل:\n${details.join('\n')}`);
         }
 
         // Warnings for machines with active maintenance requests
@@ -105,10 +105,10 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
         });
 
         if (activeMaintenance.length > 0 && type !== 'MAINTENANCE') {
-            const details = activeMaintenance.map(r => 
-                `${r.serialNumber} (ط·ظ„ط¨ طµظٹط§ظ†ط© ${r.status})`
+            const details = activeMaintenance.map(r =>
+                `${r.serialNumber} (طلب صيانة ${r.status})`
             );
-            warnings.push(`طھظ†ط¨ظٹظ‡: ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ط§ظ„طھط§ظ„ظٹط© ط¹ظ„ظٹظ‡ط§ ط·ظ„ط¨ط§طھ طµظٹط§ظ†ط© ظ†ط´ط·ط©:\n${details.join('\n')}`);
+            warnings.push(`تنبيه: الماكينات التالية عليها طلبات صيانة نشطة:\n${details.join('\n')}`);
         }
 
     } else if (type === 'SIM') {
@@ -126,23 +126,23 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
         const missingSerials = serialNumbers.filter(s => !foundSerials.has(s));
 
         if (missingSerials.length > 0) {
-            errors.push(`ط§ظ„ط´ط±ط§ط¦ط­ ط§ظ„طھط§ظ„ظٹط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظ…ط®ط²ظ†:\n${missingSerials.join(', ')}`);
+            errors.push(`الشرائح التالية غير موجودة في المخزن:\n${missingSerials.join(', ')}`);
         }
 
         const wrongBranchSims = sims.filter(s => s.branchId !== fromBranchId);
         if (wrongBranchSims.length > 0) {
-            const details = wrongBranchSims.map(s => 
-                `${s.serialNumber} (ظ…ظˆط¬ظˆط¯ ظپظٹ ${s.branch?.name || 'ظپط±ط¹ ط¢ط®ط±'})`
+            const details = wrongBranchSims.map(s =>
+                `${s.serialNumber} (موجود في ${s.branch?.name || 'فرع آخر'})`
             );
-            errors.push(`ط§ظ„ط´ط±ط§ط¦ط­ ط§ظ„طھط§ظ„ظٹط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظپط±ط¹ ط§ظ„ظ…ط±ط³ظ„:\n${details.join('\n')}`);
+            errors.push(`الشرائح التالية غير موجودة في الفرع المرسل:\n${details.join('\n')}`);
         }
 
         const invalidStatusSims = sims.filter(s => s.status === 'IN_TRANSIT' || s.status === 'SOLD');
         if (invalidStatusSims.length > 0) {
-            const details = invalidStatusSims.map(s => 
-                `${s.serialNumber} (ط§ظ„ط­ط§ظ„ط©: ${getStatusArabic(s.status)})`
+            const details = invalidStatusSims.map(s =>
+                `${s.serialNumber} (الحالة: ${getStatusArabic(s.status)})`
             );
-            errors.push(`ط§ظ„ط´ط±ط§ط¦ط­ ط§ظ„طھط§ظ„ظٹط© ط؛ظٹط± ظ…طھط§ط­ط© ظ„ظ„طھط­ظˆظٹظ„:\n${details.join('\n')}`);
+            errors.push(`الشرائح التالية غير متاحة للتحويل:\n${details.join('\n')}`);
         }
     }
 
@@ -158,17 +158,17 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
  */
 function getStatusArabic(status) {
     const statusMap = {
-        'IN_TRANSIT': 'ظ‚ظٹط¯ ط§ظ„ظ†ظ‚ظ„',
-        'SOLD': 'ظ…ط¨ط§ط¹ط©',
-        'ASSIGNED': 'ظ…ط¹ظٹظ†ط©',
-        'UNDER_MAINTENANCE': 'طھط­طھ ط§ظ„طµظٹط§ظ†ط©',
-        'NEW': 'ط¬ط¯ظٹط¯ط©',
-        'STANDBY': 'ط¬ط§ظ‡ط²ط©',
-        'RECEIVED_AT_CENTER': 'ظ…ط³طھظ„ظ…ط© ط¨ط§ظ„ظ…ط±ظƒط²',
-        'PENDING_APPROVAL': 'ط¨ط§ظ†طھط¸ط§ط± ط§ظ„ظ…ظˆط§ظپظ‚ط©',
-        'APPROVED': 'ظ…ظˆط§ظپظ‚ ط¹ظ„ظٹظ‡ط§',
-        'REJECTED': 'ظ…ط±ظپظˆط¶ط©',
-        'COMPLETED': 'ظ…ظƒطھظ…ظ„ط©'
+        'IN_TRANSIT': 'قيد النقل',
+        'SOLD': 'مباعة',
+        'ASSIGNED': 'معينة',
+        'UNDER_MAINTENANCE': 'تحت الصيانة',
+        'NEW': 'جديدة',
+        'STANDBY': 'جاهزة',
+        'RECEIVED_AT_CENTER': 'مستلمة بالمركز',
+        'PENDING_APPROVAL': 'بانتظار الموافقة',
+        'APPROVED': 'موافق عليها',
+        'REJECTED': 'مرفوضة',
+        'COMPLETED': 'مكتملة'
     };
     return statusMap[status] || status;
 }
@@ -180,12 +180,12 @@ async function validateBranches(fromBranchId, toBranchId, type) {
     const errors = [];
 
     if (!fromBranchId || !toBranchId) {
-        errors.push('ظپط±ط¹ ط§ظ„ظ…طµط¯ط± ظˆط§ظ„ظˆط¬ظ‡ط© ظ…ط·ظ„ظˆط¨ط§ظ†');
+        errors.push('فرع المصدر والوجهة مطلوبان');
         return { valid: false, errors };
     }
 
     if (fromBranchId === toBranchId) {
-        errors.push('ظ„ط§ ظٹظ…ظƒظ† ط§ظ„طھط­ظˆظٹظ„ ظ„ظ†ظپط³ ط§ظ„ظپط±ط¹');
+        errors.push('لا يمكن التحويل لنفس الفرع');
         return { valid: false, errors };
     }
 
@@ -195,21 +195,21 @@ async function validateBranches(fromBranchId, toBranchId, type) {
     ]);
 
     if (!fromBranch) {
-        errors.push('ظپط±ط¹ ط§ظ„ظ…طµط¯ط± ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+        errors.push('فرع المصدر غير موجود');
     } else if (!fromBranch.isActive) {
-        errors.push('ظپط±ط¹ ط§ظ„ظ…طµط¯ط± ط؛ظٹط± ظ†ط´ط·');
+        errors.push('فرع المصدر غير نشط');
     }
 
     if (!toBranch) {
-        errors.push('ظپط±ط¹ ط§ظ„ظˆط¬ظ‡ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+        errors.push('فرع الوجهة غير موجود');
     } else if (!toBranch.isActive) {
-        errors.push('ظپط±ط¹ ط§ظ„ظˆط¬ظ‡ط© ط؛ظٹط± ظ†ط´ط·');
+        errors.push('فرع الوجهة غير نشط');
     }
 
     // Validate type-specific branch requirements
     if (type === 'MAINTENANCE' || type === 'SEND_TO_CENTER') {
         if (toBranch && toBranch.type !== 'MAINTENANCE_CENTER') {
-            errors.push('ط§ظ„طھط­ظˆظٹظ„ ظ„ظ„طµظٹط§ظ†ط© ظٹط¬ط¨ ط£ظ† ظٹظƒظˆظ† ظ„ظ…ط±ظƒط² طµظٹط§ظ†ط©');
+            errors.push('التحويل للصيانة يجب أن يكون لمركز صيانة');
         }
     }
 
@@ -228,12 +228,12 @@ function validateUserPermission(user, fromBranchId) {
     const errors = [];
 
     if (!user) {
-        errors.push('ط§ظ„ظ…ط³طھط®ط¯ظ… ط؛ظٹط± ظ…طµط±ط­');
+        errors.push('المستخدم غير مصرح');
         return { valid: false, errors };
     }
 
     const isGlobalAdmin = ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS'].includes(user.role);
-    
+
     // Global admins can transfer from any branch
     if (isGlobalAdmin) {
         return { valid: true, errors };
@@ -241,7 +241,7 @@ function validateUserPermission(user, fromBranchId) {
 
     // Regular users can only transfer from their own branch
     if (user.branchId !== fromBranchId) {
-        errors.push('ظ„ظٹط³ ظ„ط¯ظٹظƒ طµظ„ط§ط­ظٹط© ط§ظ„طھط­ظˆظٹظ„ ظ…ظ† ظ‡ط°ط§ ط§ظ„ظپط±ط¹');
+        errors.push('ليس لديك صلاحية التحويل من هذا الفرع');
         return { valid: false, errors };
     }
 
@@ -276,7 +276,7 @@ async function validateTransferOrder(data, user) {
     // Validate items
     const serialNumbers = items.map(i => i.serialNumber).filter(s => s);
     const itemsCheck = await validateItemsForTransfer(serialNumbers, type, fromBranchId);
-    
+
     allErrors.push(...itemsCheck.errors);
     allWarnings.push(...itemsCheck.warnings);
 

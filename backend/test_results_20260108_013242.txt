@@ -1,0 +1,224 @@
+======================================================== 
+ SMART ENTERPRISE SUITE - BACKEND TEST REPORT 
+ Timestamp: 20260108_013242 
+======================================================== 
+ 
+[1/3] Running General Integration Tests (integration.test.js)... 
+-------------------------------------------------------- 
+  console.log
+    [MetricsCache] Initializing metrics cache...
+
+      at Object.log [as initializeCache] (services/metricsCache.js:308:17)
+
+  console.log
+    [MetricsCache] Starting metrics calculation...
+
+      at log (services/metricsCache.js:50:13)
+
+{"level":30,"time":"2026-01-07T23:32:48.317Z","name":"cs-dept-console","pid":21324,"hostname":"MKamel","env":"test","context":"Prisma","msg":"Starting a sqlite pool with 9 connections."}
+{"level":30,"time":"2026-01-07T23:32:48.389Z","name":"cs-dept-console","pid":21324,"hostname":"MKamel","env":"test","req":{"id":2,"method":"GET","url":"/api/dashboard","query":{},"params":{},"headers":{"host":"127.0.0.1:49248","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49249},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"99","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"312","etag":"W/\"138-3ioUDngPhLxTFcjyYslZGs1wJl4\""}},"responseTime":26,"msg":"GET / 200"}
+{"level":30,"time":"2026-01-07T23:32:48.414Z","name":"cs-dept-console","pid":21324,"hostname":"MKamel","env":"test","req":{"id":3,"method":"GET","url":"/api/machines","query":{},"params":{},"headers":{"host":"127.0.0.1:49250","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49251},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"98","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"2","etag":"W/\"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w\""}},"responseTime":9,"msg":"GET /machines 200"}
+  console.log
+    [MetricsCache] Metrics calculated in 287ms
+
+      at log (services/metricsCache.js:230:17)
+
+  console.log
+    [MetricsCache] Cache initialized successfully
+
+      at Object.log [as initializeCache] (services/metricsCache.js:310:17)
+
+{"level":30,"time":"2026-01-07T23:32:48.432Z","name":"cs-dept-console","pid":21324,"hostname":"MKamel","env":"test","req":{"id":4,"method":"GET","url":"/api/customers/lite","query":{},"params":{},"headers":{"host":"127.0.0.1:49252","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49253},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"97","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"2","etag":"W/\"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w\""}},"responseTime":5,"msg":"GET /lite 200"}
+{"level":30,"time":"2026-01-07T23:32:48.445Z","name":"cs-dept-console","pid":21324,"hostname":"MKamel","env":"test","req":{"id":5,"method":"GET","url":"/api/technicians","query":{},"params":{},"headers":{"host":"127.0.0.1:49254","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49255},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"96","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"675","etag":"W/\"2a3-jUn/+OH/B4TFC0I43hB0Kdc2mlw\""}},"responseTime":5,"msg":"GET / 200"}
+{"level":30,"time":"2026-01-07T23:32:48.461Z","name":"cs-dept-console","pid":21324,"hostname":"MKamel","env":"test","req":{"id":6,"method":"GET","url":"/api/machine-workflow/kanban","query":{},"params":{},"headers":{"host":"127.0.0.1:49256","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":49257},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"95","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"2","etag":"W/\"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w\""}},"responseTime":6,"msg":"GET /kanban 200"}
+PASS tests/integration.test.js
+  Backend Integration API
+    √ GET /health returns 200 (99 ms)
+    √ GET /api/dashboard returns structured data (45 ms)
+    √ GET /api/machines returns array (26 ms)
+    √ GET /api/customers/lite returns simplified list (13 ms)
+    √ GET /api/technicians returns list (13 ms)
+    √ GET /api/machine-workflow/kanban returns board data (17 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        3.618 s, estimated 4 s
+Ran all test suites matching tests/integration.test.js.
+
+Jest has detected the following 1 open handle potentially keeping Jest from exiting:
+
+  ●  Timeout
+
+    [0m [90m 317 |[39m
+     [90m 318 |[39m [90m// Refresh metrics cache every 5 minutes[39m
+    [31m[1m>[22m[39m[90m 319 |[39m cron[33m.[39mschedule([32m'*/5 * * * *'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m     |[39m      [31m[1m^[22m[39m
+     [90m 320 |[39m   logger[33m.[39mdebug([32m'Refreshing metrics cache...'[39m)[33m;[39m
+     [90m 321 |[39m   [36mtry[39m {
+     [90m 322 |[39m     [36mawait[39m metricsCache[33m.[39mcalculateAllMetrics()[33m;[39m[0m
+
+      at Runner.start (node_modules/node-cron/src/scheduler/runner.ts:167:29)
+      at InlineScheduledTask.start (node_modules/node-cron/src/tasks/inline-scheduled-task.ts:89:19)
+      at Object.schedule (node_modules/node-cron/src/node-cron.ts:46:10)
+      at Object.schedule (server.js:319:6)
+      at Object.require (tests/integration.test.js:21:17)
+
+  PASS 
+ 
+[2/3] Running Transfer Service Tests (transferService.test.js)... 
+-------------------------------------------------------- 
+FAIL tests/transferService.test.js
+  transferService
+    createTransferOrder
+      × should create a transfer order within a transaction (12 ms)
+      × should rollback if an error occurs during creation (22 ms)
+    receiveTransferOrder
+      × should receive a transfer order within a transaction (4 ms)
+      √ should throw if order not found (3 ms)
+      √ should rollback if an error occurs during reception (7 ms)
+    rejectOrder
+      × should reject a transfer order within a transaction (8 ms)
+      √ should throw if order not found for rejection (4 ms)
+      × should rollback if an error occurs during rejection (2 ms)
+    cancelOrder
+      × should cancel a transfer order within a transaction (3 ms)
+      √ should throw if order not found for cancellation (2 ms)
+      √ should rollback if an error occurs during cancellation (2 ms)
+
+  ● transferService › createTransferOrder › should create a transfer order within a transaction
+
+    TypeError: Cannot read properties of undefined (reading 'length')
+
+    [0m [90m 47 |[39m     })[33m;[39m
+     [90m 48 |[39m
+    [31m[1m>[22m[39m[90m 49 |[39m     [36mif[39m (existingPendingTransfers[33m.[39mlength [33m>[39m [35m0[39m) {
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 50 |[39m         [36mconst[39m pendingDetails [33m=[39m existingPendingTransfers[33m.[39mmap(item [33m=>[39m {
+     [90m 51 |[39m             [36mconst[39m order [33m=[39m item[33m.[39mtransferOrder[33m;[39m
+     [90m 52 |[39m             [36mreturn[39m [32m`${item.serialNumber} (ط¥ط°ظ† ${order.orderNumber} ظ…ظ† ${order.fromBranch.name} ط¥ظ„ظ‰ ${order.toBranch.name})`[39m[33m;[39m[0m
+
+      at length (utils/transfer-validators.js:49:34)
+      at validateTransferOrder (utils/transfer-validators.js:278:24)
+      at createTransferOrder (services/transferService.js:68:24)
+      at Object.<anonymous> (tests/transferService.test.js:118:28)
+
+  ● transferService › createTransferOrder › should rollback if an error occurs during creation
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "Database error"
+    Received message:   "Cannot read properties of undefined (reading 'length')"
+
+        [0m [90m 47 |[39m     })[33m;[39m
+         [90m 48 |[39m
+        [31m[1m>[22m[39m[90m 49 |[39m     [36mif[39m (existingPendingTransfers[33m.[39mlength [33m>[39m [35m0[39m) {
+         [90m    |[39m                                  [31m[1m^[22m[39m
+         [90m 50 |[39m         [36mconst[39m pendingDetails [33m=[39m existingPendingTransfers[33m.[39mmap(item [33m=>[39m {
+         [90m 51 |[39m             [36mconst[39m order [33m=[39m item[33m.[39mtransferOrder[33m;[39m
+         [90m 52 |[39m             [36mreturn[39m [32m`${item.serialNumber} (ط¥ط°ظ† ${order.orderNumber} ظ…ظ† ${order.fromBranch.name} ط¥ظ„ظ‰ ${order.toBranch.name})`[39m[33m;[39m[0m
+
+      at length (utils/transfer-validators.js:49:34)
+      at validateTransferOrder (utils/transfer-validators.js:278:24)
+      at createTransferOrder (services/transferService.js:68:24)
+      at Object.<anonymous> (tests/transferService.test.js:159:13)
+      at Object.toThrow (node_modules/expect/build/index.js:2155:20)
+      at Object.toThrow (tests/transferService.test.js:159:80)
+
+  ● transferService › receiveTransferOrder › should receive a transfer order within a transaction
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+    [0m [90m 226 |[39m             db[33m.[39mtransferOrder[33m.[39mfindFirst[33m.[39mmockResolvedValueOnce({ [33m...[39mmockTransferOrder[33m,[39m status[33m:[39m [32m'RECEIVED'[39m })[33m;[39m
+     [90m 227 |[39m             [36mconst[39m result [33m=[39m [36mawait[39m receiveTransferOrder(transferOrderId[33m,[39m {}[33m,[39m mockUser)[33m;[39m
+    [31m[1m>[22m[39m[90m 228 |[39m             expect(txUsed[33m.[39mwarehouseMachine[33m.[39mupdateMany)[33m.[39mtoHaveBeenCalled()[33m;[39m
+     [90m     |[39m                                                        [31m[1m^[22m[39m
+     [90m 229 |[39m             expect(result[33m.[39mstatus)[33m.[39mtoBe([32m'RECEIVED'[39m)[33m;[39m
+     [90m 230 |[39m         })[33m;[39m
+     [90m 231 |[39m[0m
+
+      at Object.toHaveBeenCalled (tests/transferService.test.js:228:56)
+
+  ● transferService › rejectOrder › should reject a transfer order within a transaction
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"data": ObjectContaining {"status": "REJECTED"}, "include": Any<Object>, "where": {"id": "transfer1"}}
+    Received: {"data": {"receivedAt": 2026-01-07T23:32:51.163Z, "receivedBy": undefined, "receivedByName": undefined, "rejectionReason": undefined, "status": "REJECTED"}, "where": {"branchId": "branchA", "id": "transfer1"}}
+
+    Number of calls: 1
+
+    [0m [90m 301 |[39m                 })
+     [90m 302 |[39m             )[33m;[39m
+    [31m[1m>[22m[39m[90m 303 |[39m             expect(db[33m.[39mtransferOrder[33m.[39mupdateMany)[33m.[39mtoHaveBeenCalledWith(
+     [90m     |[39m                                                 [31m[1m^[22m[39m
+     [90m 304 |[39m                 expect[33m.[39mobjectContaining({
+     [90m 305 |[39m                     where[33m:[39m { id[33m:[39m transferOrderId }[33m,[39m
+     [90m 306 |[39m                     data[33m:[39m expect[33m.[39mobjectContaining({ status[33m:[39m [32m'REJECTED'[39m })[33m,[39m[0m
+
+      at Object.toHaveBeenCalledWith (tests/transferService.test.js:303:49)
+
+  ● transferService › rejectOrder › should rollback if an error occurs during rejection
+
+    expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: {"branchId": "branchA", "fromBranchId": "branchA", "id": "transfer1", "items": [{"id": "tItem1", "quantity": 1, "serialNumber": "SN123", "status": "IN_TRANSIT", "warehouseItemId": "item1"}], "status": "PENDING", "toBranchId": "branchB", "type": "MACHINE"}
+
+    [0m [90m 349 |[39m             db[33m.[39mtransferOrder[33m.[39mupdate[33m.[39mmockRejectedValue(error)[33m;[39m
+     [90m 350 |[39m
+    [31m[1m>[22m[39m[90m 351 |[39m             [36mawait[39m expect(rejectOrder(transferOrderId[33m,[39m {}[33m,[39m mockUser))[33m.[39mrejects[33m.[39mtoThrow([32m'Rejection DB error'[39m)[33m;[39m
+     [90m     |[39m                   [31m[1m^[22m[39m
+     [90m 352 |[39m             [90m// Service calls $transaction twice for rejectOrder[39m
+     [90m 353 |[39m             db[33m.[39mwarehouseMachine[33m.[39mupdate [33m=[39m jest[33m.[39mfn()[33m.[39mmockResolvedValue({})[33m;[39m
+     [90m 354 |[39m             expect(db[33m.[39m$transaction)[33m.[39mtoHaveBeenCalledTimes([35m2[39m)[33m;[39m[0m
+
+      at expect (node_modules/expect/build/index.js:2116:15)
+      at Object.expect (tests/transferService.test.js:351:19)
+
+  ● transferService › cancelOrder › should cancel a transfer order within a transaction
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": {"id": "transfer1"}}
+    Received: {"include": {"items": true}, "where": {"branchId": {"not": null}, "id": "transfer1"}}
+
+    Number of calls: 1
+
+    [0m [90m 389 |[39m             [90m// Service calls $transaction once for cancelOrder[39m
+     [90m 390 |[39m             expect(db[33m.[39m$transaction)[33m.[39mtoHaveBeenCalledTimes([35m1[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 391 |[39m             expect(db[33m.[39mtransferOrder[33m.[39mfindFirst)[33m.[39mtoHaveBeenCalledWith(
+     [90m     |[39m                                                [31m[1m^[22m[39m
+     [90m 392 |[39m                 expect[33m.[39mobjectContaining({
+     [90m 393 |[39m                     where[33m:[39m { id[33m:[39m transferOrderId }[33m,[39m
+     [90m 394 |[39m                 })[0m
+
+      at Object.toHaveBeenCalledWith (tests/transferService.test.js:391:48)
+
+Test Suites: 1 failed, 1 total
+Tests:       6 failed, 5 passed, 11 total
+Snapshots:   0 total
+Time:        1.405 s, estimated 2 s
+Ran all test suites matching tests/transferService.test.js.
+  FAIL 
+ 
+[3/3] Running Transfer Smoke Tests (transferService.smoke2.test.js)... 
+-------------------------------------------------------- 
+PASS tests/transferService.smoke2.test.js
+  transferService smoke flows
+    √ creates a SIM transfer order (8 ms)
+    √ imports from excel requires buffer (3 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        0.935 s, estimated 2 s
+Ran all test suites matching tests/transferService.smoke2.test.js.
+  PASS 
+ 
+======================================================== 
+ TEST RUN COMPLETE 
+======================================================== 

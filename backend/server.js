@@ -176,6 +176,7 @@ app.use('/api/user', require('./routes/user-preferences'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/executive-dashboard', require('./routes/executive-dashboard'));
 app.use('/api/customers', require('./routes/customers'));
+app.use('/api/technicians', require('./routes/technicians'));
 app.use('/api', require('./routes/requests'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/pending-payments', require('./routes/pending-payments'));
@@ -183,7 +184,6 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Settings & Configuration
-app.use('/api/settings', require('./routes/settings'));
 app.use('/api/branches-lookup', require('./routes/branches'));
 app.use('/api/branches', require('./routes/branches'));
 
@@ -197,7 +197,12 @@ app.use('/api/warehouse-machines', require('./routes/warehouse-machines'));
 app.use('/api/warehouse-sims', require('./routes/warehouseSims'));
 
 // Machines & SimCards
-app.use('/api/machines', require('./routes/machines'));
+app.use('/api', require('./routes/machines'));
+app.use('/api/machine-workflow', require('./routes/machine-workflow'));
+app.use('/api', require('./routes/machine-history'));
+app.use('/api', require('./routes/repair-count'));
+app.use('/api', require('./routes/stats'));
+
 // Mount settings at /api to expose /api/machine-parameters correctly
 app.use('/api', require('./routes/settings'));
 app.use('/api', require('./routes/simcards'));
@@ -263,11 +268,18 @@ app.use(errorHandler);
 
 const PORT = config.port;
 
-const server = app.listen(PORT, () => {
-  logger.info(`ًںڑ€ Server running on port ${PORT}`);
-  logger.info(`ًں“ڑ API Docs: http://localhost:${PORT}/api-docs`);
-  logger.info(`ًں”’ Environment: ${config.nodeEnv}`);
-});
+let server;
+
+if (require.main === module) {
+  server = app.listen(PORT, () => {
+    logger.info(`ًںڑ€ Server running on port ${PORT}`);
+    logger.info(`ًں“ڑ API Docs: http://localhost:${PORT}/api-docs`);
+    logger.info(`ًں”’ Environment: ${config.nodeEnv}`);
+  });
+} else {
+  const http = require('http');
+  server = http.createServer(app);
+}
 
 // ===================== SOCKET.IO FOR REAL-TIME =====================
 

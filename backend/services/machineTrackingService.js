@@ -8,7 +8,7 @@ async function getTrackedMachines(filters, user) {
     const originBranchId = filters.branchId || user.branchId;
 
     if (!originBranchId) {
-        throw new Error('ظٹط±ط¬ظ‰ طھط­ط¯ظٹط¯ ط§ظ„ظپط±ط¹');
+        throw new Error('يرجى تحديد الفرع');
     }
 
     const where = {
@@ -58,7 +58,7 @@ async function getTrackedMachines(filters, user) {
             id: assignment.id || m.id,
             serialNumber: m.serialNumber,
             status: m.status,
-            technicianName: m.currentTechnicianName || 'ظ‚ظٹط¯ ط§ظ„ط§ظ†طھط¸ط§ط±',
+            technicianName: m.currentTechnicianName || 'قيد الانتظار',
             customerName: m.customerName,
             totalCost: assignment.totalCost || 0,
             assignedAt: assignment.assignedAt || m.updatedAt,
@@ -81,7 +81,7 @@ async function getTrackingSummary(filters, user) {
     const originBranchId = filters.branchId || user.branchId;
 
     if (!originBranchId) {
-        throw new Error('ظٹط±ط¬ظ‰ طھط­ط¯ظٹط¯ ط§ظ„ظپط±ط¹');
+        throw new Error('يرجى تحديد الفرع');
     }
 
     // RULE 1: MUST include branchId

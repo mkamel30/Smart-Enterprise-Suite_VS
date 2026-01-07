@@ -35,7 +35,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(notifications);
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ' });
+        res.status(500).json({ error: 'فشل في جلب الإشعارات' });
     }
 });
 
@@ -61,7 +61,7 @@ router.get('/count', authenticateToken, async (req, res) => {
         res.json({ count });
     } catch (error) {
         console.error('Failed to count notifications:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط¹ط¯ط¯ ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ' });
+        res.status(500).json({ error: 'فشل في جلب عدد الإشعارات' });
     }
 });
 
@@ -70,14 +70,14 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
     try {
         // Fetch first to enforce ownership/branch manually
         const notif = await db.notification.findUnique({ where: { id: req.params.id } });
-        if (!notif) return res.status(404).json({ error: 'ط§ظ„ط¥ط´ط¹ط§ط± ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+        if (!notif) return res.status(404).json({ error: 'الإشعار غير موجود' });
 
         // Authorization: allow if same branch or targeted user
         const sameBranch = notif.branchId && req.user.branchId && notif.branchId === req.user.branchId;
         const sameUser = notif.userId && notif.userId === req.user.id;
         const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
         if (!(sameBranch || sameUser || isAdmin)) {
-            return res.status(403).json({ error: 'ظ„ط§ طھظ…ظ„ظƒ طµظ„ط§ط­ظٹط© طھط­ط¯ظٹط« ظ‡ط°ط§ ط§ظ„ط¥ط´ط¹ط§ط±' });
+            return res.status(403).json({ error: 'لا تملك صلاحية تحديث هذا الإشعار' });
         }
 
         const notification = await db.notification.update({
@@ -87,7 +87,7 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
         res.json(notification);
     } catch (error) {
         console.error('Failed to mark notification as read:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ طھط­ط¯ظٹط« ط§ظ„ط¥ط´ط¹ط§ط±' });
+        res.status(500).json({ error: 'فشل في تحديث الإشعار' });
     }
 });
 
@@ -105,10 +105,10 @@ router.put('/read-all', authenticateToken, async (req, res) => {
             data: { isRead: true }
         }, req));
 
-        res.json({ message: 'طھظ… طھط¹ظ„ظٹظ… ظƒظ„ ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ ظƒظ…ظ‚ط±ظˆط،ط©' });
+        res.json({ message: 'تم تعليم كل الإشعارات كمقروءة' });
     } catch (error) {
         console.error('Failed to mark all as read:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ طھط­ط¯ظٹط« ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ' });
+        res.status(500).json({ error: 'فشل في تحديث الإشعارات' });
     }
 });
 
@@ -121,7 +121,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         });
 
         if (!notification) {
-            return res.status(404).json({ error: 'ط§ظ„ط¥ط´ط¹ط§ط± ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'الإشعار غير موجود' });
         }
 
         // Authorization check
@@ -130,17 +130,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
 
         if (!(sameBranch || sameUser || isAdmin)) {
-            return res.status(403).json({ error: 'ظ„ط§ طھظ…ظ„ظƒ طµظ„ط§ط­ظٹط© ط­ط°ظپ ظ‡ط°ط§ ط§ظ„ط¥ط´ط¹ط§ط±' });
+            return res.status(403).json({ error: 'لا تملك صلاحية حذف هذا الإشعار' });
         }
 
         await db.notification.delete({
             where: { id: req.params.id }
         });
 
-        res.json({ message: 'طھظ… ط­ط°ظپ ط§ظ„ط¥ط´ط¹ط§ط±' });
+        res.json({ message: 'تم حذف الإشعار' });
     } catch (error) {
         console.error('Failed to delete notification:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط­ط°ظپ ط§ظ„ط¥ط´ط¹ط§ط±' });
+        res.status(500).json({ error: 'فشل في حذف الإشعار' });
     }
 });
 
@@ -164,7 +164,7 @@ async function createNotification({ branchId, userId, type, title, message, data
         if (branchId) {
             global.io.to(`branch-${branchId}`).emit('notification', notification);
         }
-        
+
         // Send to specific user room
         if (userId) {
             global.io.to(`user-${userId}`).emit('notification', notification);

@@ -1,0 +1,129 @@
+======================================================== 
+ SMART ENTERPRISE SUITE - BACKEND TEST REPORT 
+ Timestamp: 20260108_013511 
+======================================================== 
+ 
+[1/3] Running General Integration Tests (integration.test.js)... 
+-------------------------------------------------------- 
+  console.log
+    [MetricsCache] Initializing metrics cache...
+
+      at Object.log [as initializeCache] (services/metricsCache.js:308:17)
+
+  console.log
+    [MetricsCache] Starting metrics calculation...
+
+      at log (services/metricsCache.js:50:13)
+
+{"level":30,"time":"2026-01-07T23:35:17.924Z","name":"cs-dept-console","pid":4788,"hostname":"MKamel","env":"test","context":"Prisma","msg":"Starting a sqlite pool with 9 connections."}
+{"level":30,"time":"2026-01-07T23:35:18.014Z","name":"cs-dept-console","pid":4788,"hostname":"MKamel","env":"test","req":{"id":2,"method":"GET","url":"/api/dashboard","query":{},"params":{},"headers":{"host":"127.0.0.1:61291","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":61292},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"99","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"312","etag":"W/\"138-3ioUDngPhLxTFcjyYslZGs1wJl4\""}},"responseTime":24,"msg":"GET / 200"}
+  console.log
+    [MetricsCache] Metrics calculated in 303ms
+
+      at log (services/metricsCache.js:230:17)
+
+  console.log
+    [MetricsCache] Cache initialized successfully
+
+      at Object.log [as initializeCache] (services/metricsCache.js:310:17)
+
+{"level":30,"time":"2026-01-07T23:35:18.039Z","name":"cs-dept-console","pid":4788,"hostname":"MKamel","env":"test","req":{"id":3,"method":"GET","url":"/api/machines","query":{},"params":{},"headers":{"host":"127.0.0.1:61293","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":61294},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"98","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"2","etag":"W/\"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w\""}},"responseTime":7,"msg":"GET /machines 200"}
+{"level":30,"time":"2026-01-07T23:35:18.055Z","name":"cs-dept-console","pid":4788,"hostname":"MKamel","env":"test","req":{"id":4,"method":"GET","url":"/api/customers/lite","query":{},"params":{},"headers":{"host":"127.0.0.1:61295","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":61296},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"97","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"2","etag":"W/\"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w\""}},"responseTime":6,"msg":"GET /lite 200"}
+{"level":30,"time":"2026-01-07T23:35:18.075Z","name":"cs-dept-console","pid":4788,"hostname":"MKamel","env":"test","req":{"id":5,"method":"GET","url":"/api/technicians","query":{},"params":{},"headers":{"host":"127.0.0.1:61297","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":61298},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"96","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"675","etag":"W/\"2a3-jUn/+OH/B4TFC0I43hB0Kdc2mlw\""}},"responseTime":5,"msg":"GET / 200"}
+{"level":30,"time":"2026-01-07T23:35:18.091Z","name":"cs-dept-console","pid":4788,"hostname":"MKamel","env":"test","req":{"id":6,"method":"GET","url":"/api/machine-workflow/kanban","query":{},"params":{},"headers":{"host":"127.0.0.1:61299","accept-encoding":"gzip, deflate","connection":"close"},"remoteAddress":"::ffff:127.0.0.1","remotePort":61300},"res":{"statusCode":200,"headers":{"content-security-policy":"default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';img-src 'self' data: https:;connect-src 'self';font-src 'self';object-src 'none';media-src 'self';frame-src 'self';base-uri 'self';form-action 'self';frame-ancestors 'self';script-src-attr 'none';upgrade-insecure-requests","cross-origin-embedder-policy":"require-corp","cross-origin-opener-policy":"same-origin","cross-origin-resource-policy":"cross-origin","origin-agent-cluster":"?1","referrer-policy":"strict-origin-when-cross-origin","strict-transport-security":"max-age=31536000; includeSubDomains; preload","x-content-type-options":"nosniff","x-dns-prefetch-control":"off","x-download-options":"noopen","x-frame-options":"DENY","x-permitted-cross-domain-policies":"none","x-xss-protection":"0","vary":"Origin","access-control-allow-credentials":"true","ratelimit-policy":"100;w=900","ratelimit-limit":"100","ratelimit-remaining":"95","ratelimit-reset":"900","content-type":"application/json; charset=utf-8","content-length":"2","etag":"W/\"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w\""}},"responseTime":6,"msg":"GET /kanban 200"}
+PASS tests/integration.test.js
+  Backend Integration API
+    √ GET /health returns 200 (136 ms)
+    √ GET /api/dashboard returns structured data (47 ms)
+    √ GET /api/machines returns array (23 ms)
+    √ GET /api/customers/lite returns simplified list (17 ms)
+    √ GET /api/technicians returns list (17 ms)
+    √ GET /api/machine-workflow/kanban returns board data (17 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        4.368 s
+Ran all test suites matching tests/integration.test.js.
+
+Jest has detected the following 1 open handle potentially keeping Jest from exiting:
+
+  ●  Timeout
+
+    [0m [90m 317 |[39m
+     [90m 318 |[39m [90m// Refresh metrics cache every 5 minutes[39m
+    [31m[1m>[22m[39m[90m 319 |[39m cron[33m.[39mschedule([32m'*/5 * * * *'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m     |[39m      [31m[1m^[22m[39m
+     [90m 320 |[39m   logger[33m.[39mdebug([32m'Refreshing metrics cache...'[39m)[33m;[39m
+     [90m 321 |[39m   [36mtry[39m {
+     [90m 322 |[39m     [36mawait[39m metricsCache[33m.[39mcalculateAllMetrics()[33m;[39m[0m
+
+      at Runner.start (node_modules/node-cron/src/scheduler/runner.ts:167:29)
+      at InlineScheduledTask.start (node_modules/node-cron/src/tasks/inline-scheduled-task.ts:89:19)
+      at Object.schedule (node_modules/node-cron/src/node-cron.ts:46:10)
+      at Object.schedule (server.js:319:6)
+      at Object.require (tests/integration.test.js:21:17)
+
+  PASS 
+ 
+[2/3] Running Transfer Service Tests (transferService.test.js)... 
+-------------------------------------------------------- 
+FAIL tests/transferService.test.js
+  transferService
+    createTransferOrder
+      √ should create a transfer order within a transaction (16 ms)
+      √ should rollback if an error occurs during creation (5 ms)
+    receiveTransferOrder
+      √ should receive a transfer order within a transaction (4 ms)
+      √ should throw if order not found (2 ms)
+      √ should rollback if an error occurs during reception (4 ms)
+    rejectOrder
+      × should reject a transfer order within a transaction (7 ms)
+      √ should throw if order not found for rejection (2 ms)
+      √ should rollback if an error occurs during rejection (3 ms)
+    cancelOrder
+      √ should cancel a transfer order within a transaction (5 ms)
+      √ should throw if order not found for cancellation (2 ms)
+      √ should rollback if an error occurs during cancellation (3 ms)
+
+  ● transferService › rejectOrder › should reject a transfer order within a transaction
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "REJECTED"
+    Received: "PENDING"
+
+    [0m [90m 316 |[39m                 [33m+[39m (db[33m.[39mwarehouseMachine[33m.[39mupdate[33m?[39m[33m.[39mmock[33m?[39m[33m.[39mcalls[33m.[39mlength [33m||[39m [35m0[39m)[33m;[39m
+     [90m 317 |[39m             expect(rejectUpdateCalls)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 318 |[39m             expect(result[33m.[39mstatus)[33m.[39mtoBe([32m'REJECTED'[39m)[33m;[39m
+     [90m     |[39m                                   [31m[1m^[22m[39m
+     [90m 319 |[39m         })[33m;[39m
+     [90m 320 |[39m
+     [90m 321 |[39m         it([32m'should throw if order not found for rejection'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.toBe (tests/transferService.test.js:318:35)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 10 passed, 11 total
+Snapshots:   0 total
+Time:        1.708 s, estimated 2 s
+Ran all test suites matching tests/transferService.test.js.
+  FAIL 
+ 
+[3/3] Running Transfer Smoke Tests (transferService.smoke2.test.js)... 
+-------------------------------------------------------- 
+PASS tests/transferService.smoke2.test.js
+  transferService smoke flows
+    √ creates a SIM transfer order (7 ms)
+    √ imports from excel requires buffer (2 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        0.651 s, estimated 1 s
+Ran all test suites matching tests/transferService.smoke2.test.js.
+  PASS 
+ 
+======================================================== 
+ TEST RUN COMPLETE 
+======================================================== 

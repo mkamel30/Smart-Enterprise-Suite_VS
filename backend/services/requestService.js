@@ -16,7 +16,7 @@ async function createRequest(data, user) {
         });
 
         if (!customer) {
-            throw new Error('ط§ظ„ط¹ظ…ظٹظ„ ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+            throw new Error('العميل غير موجود');
         }
 
         // Validate machine if provided - RULE 1: MUST include branchId
@@ -26,7 +26,7 @@ async function createRequest(data, user) {
             });
 
             if (!machine) {
-                throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©');
+                throw new Error('الماكينة غير موجودة');
             }
         }
 
@@ -98,11 +98,11 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
         console.log('DEBUG: closeRequest fetched:', request);
 
         if (!request) {
-            throw new Error('ط·ظ„ط¨ ط§ظ„طµظٹط§ظ†ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+            throw new Error('طلب الصيانة غير موجود');
         }
 
         if (request.status === 'Closed') {
-            throw new Error('ط§ظ„ط·ظ„ط¨ ظ…ط؛ظ„ظ‚ ط¨ط§ظ„ظپط¹ظ„');
+            throw new Error('الطلب مغلق بالفعل');
         }
 
         // 2. Calculate costs
@@ -206,7 +206,7 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
                 entityType: 'REQUEST',
                 entityId: requestId,
                 action: 'CLOSE',
-                details: `Closed with ${usedParts.length} parts. Total: ${totalCost} ط¬.ظ…`,
+                details: `Closed with ${usedParts.length} parts. Total: ${totalCost} ج.م`,
                 userId: user.id,
                 performedBy: user.name,
                 branchId: request.branchId

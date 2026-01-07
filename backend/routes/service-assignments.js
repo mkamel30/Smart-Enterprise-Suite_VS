@@ -36,7 +36,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(assignments);
     } catch (error) {
         console.error('Failed to fetch assignments:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„طھط¹ظٹظٹظ†ط§طھ' });
+        res.status(500).json({ error: 'فشل في جلب التعيينات' });
     }
 });
 
@@ -54,13 +54,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
         });
 
         if (!assignment) {
-            return res.status(404).json({ error: 'ط§ظ„طھط¹ظٹظٹظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'التعيين غير موجود' });
         }
 
         res.json(assignment);
     } catch (error) {
         console.error('Failed to fetch assignment:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„طھط¹ظٹظٹظ†' });
+        res.status(500).json({ error: 'فشل في جلب التعيين' });
     }
 });
 
@@ -86,7 +86,7 @@ router.post('/', authenticateToken, async (req, res) => {
         });
 
         if (!machine) {
-            return res.status(404).json({ error: 'ط§ظ„ظ…ط§ظƒظٹظ†ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©' });
+            return res.status(404).json({ error: 'الماكينة غير موجودة' });
         }
 
         // Create assignment with transaction
@@ -123,7 +123,7 @@ router.post('/', authenticateToken, async (req, res) => {
                 data: {
                     assignmentId: assignment.id,
                     action: 'ASSIGNED',
-                    details: `طھظ… طھط¹ظٹظٹظ† ${technicianName} ظ„ظ„ظ…ط§ظƒظٹظ†ط© ${serialNumber || machine.serialNumber}`,
+                    details: `تم تعيين ${technicianName} للماكينة ${serialNumber || machine.serialNumber}`,
                     performedBy: req.user.displayName || req.user.email,
                     performedById: req.user.id
                 }
@@ -138,8 +138,8 @@ router.post('/', authenticateToken, async (req, res) => {
                 userId: technicianId,
                 branchId,
                 type: 'ASSIGNMENT',
-                title: 'طھط¹ظٹظٹظ† ط¬ط¯ظٹط¯',
-                message: `طھظ… طھط¹ظٹظٹظ†ظƒ ظ„طµظٹط§ظ†ط© ط§ظ„ظ…ط§ظƒظٹظ†ط© ${serialNumber || machine.serialNumber}`,
+                title: 'تعيين جديد',
+                message: `تم تعيينك لصيانة الماكينة ${serialNumber || machine.serialNumber}`,
                 link: '/maintenance/shipments'
             });
         }
@@ -147,7 +147,7 @@ router.post('/', authenticateToken, async (req, res) => {
         res.status(201).json(result);
     } catch (error) {
         console.error('Failed to create assignment:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¥ظ†ط´ط§ط، ط§ظ„طھط¹ظٹظٹظ†' });
+        res.status(500).json({ error: 'فشل في إنشاء التعيين' });
     }
 });
 
@@ -159,7 +159,7 @@ router.put('/:id/start', authenticateToken, async (req, res) => {
         });
 
         if (!assignment) {
-            return res.status(404).json({ error: 'ط§ظ„طھط¹ظٹظٹظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'التعيين غير موجود' });
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -183,7 +183,7 @@ router.put('/:id/start', authenticateToken, async (req, res) => {
                 data: {
                     assignmentId: req.params.id,
                     action: 'STARTED',
-                    details: 'ط¨ط¯ط£ ط§ظ„ط¹ظ…ظ„ ط¹ظ„ظ‰ ط§ظ„ظ…ط§ظƒظٹظ†ط©',
+                    details: 'بدأ العمل على الماكينة',
                     performedBy: req.user.displayName || req.user.email,
                     performedById: req.user.id
                 }
@@ -195,7 +195,7 @@ router.put('/:id/start', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to start assignment:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¨ط¯ط، ط§ظ„ط¹ظ…ظ„' });
+        res.status(500).json({ error: 'فشل في بدء العمل' });
     }
 });
 
@@ -209,7 +209,7 @@ router.put('/:id/update-parts', authenticateToken, async (req, res) => {
         });
 
         if (!assignment) {
-            return res.status(404).json({ error: 'ط§ظ„طھط¹ظٹظٹظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'التعيين غير موجود' });
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -226,7 +226,7 @@ router.put('/:id/update-parts', authenticateToken, async (req, res) => {
                 data: {
                     assignmentId: req.params.id,
                     action: 'PARTS_ADDED',
-                    details: `طھظ… طھط­ط¯ظٹط« ظ‚ط·ط¹ ط§ظ„ط؛ظٹط§ط± - ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${totalCost || 0} ط¬.ظ…`,
+                    details: `تم تحديث قطع الغيار - الإجمالي: ${totalCost || 0} ج.م`,
                     performedBy: req.user.displayName || req.user.email,
                     performedById: req.user.id
                 }
@@ -238,7 +238,7 @@ router.put('/:id/update-parts', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to update parts:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ طھط­ط¯ظٹط« ط§ظ„ظ‚ط·ط¹' });
+        res.status(500).json({ error: 'فشل في تحديث القطع' });
     }
 });
 
@@ -252,7 +252,7 @@ router.post('/:id/request-approval', authenticateToken, async (req, res) => {
         });
 
         if (!assignment) {
-            return res.status(404).json({ error: 'ط§ظ„طھط¹ظٹظٹظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'التعيين غير موجود' });
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -293,7 +293,7 @@ router.post('/:id/request-approval', authenticateToken, async (req, res) => {
                 data: {
                     assignmentId: req.params.id,
                     action: 'APPROVAL_SENT',
-                    details: `طھظ… ط¥ط±ط³ط§ظ„ ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط© ط¨ظ‚ظٹظ…ط© ${totalRequestedCost} ط¬.ظ…`,
+                    details: `تم إرسال طلب موافقة بقيمة ${totalRequestedCost} ج.م`,
                     performedBy: req.user.displayName || req.user.email,
                     performedById: req.user.id
                 }
@@ -303,14 +303,14 @@ router.post('/:id/request-approval', authenticateToken, async (req, res) => {
         });
 
         // Build parts list for notification
-        const partsNames = requestedParts.map(p => p.name).join('طŒ ');
+        const partsNames = requestedParts.map(p => p.name).join('، ');
 
         // Notify the origin branch
         await createNotification({
             branchId: assignment.originBranchId,
             type: 'APPROVAL_REQUEST',
-            title: 'âڑ ï¸ڈ ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط© طµظٹط§ظ†ط©',
-            message: `ط§ظ„ظ…ط§ظƒظٹظ†ط© ${assignment.serialNumber} ظ„ظ„ط¹ظ…ظٹظ„ ${assignment.customerName || 'ط؛ظٹط± ظ…ط­ط¯ط¯'} طھط­طھط§ط¬ ظ…ظˆط§ظپظ‚ط© ط¨ظ‚ظٹظ…ط© ${totalRequestedCost} ط¬.ظ… - ط§ظ„ظ‚ط·ط¹: ${partsNames}`,
+            title: '⚠️ طلب موافقة صيانة',
+            message: `الماكينة ${assignment.serialNumber} للعميل ${assignment.customerName || 'غير محدد'} تحتاج موافقة بقيمة ${totalRequestedCost} ج.م - القطع: ${partsNames}`,
             link: '/maintenance-approvals',
             data: JSON.stringify({ assignmentId: assignment.id })
         });
@@ -318,7 +318,7 @@ router.post('/:id/request-approval', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to request approval:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¥ط±ط³ط§ظ„ ط·ظ„ط¨ ط§ظ„ظ…ظˆط§ظپظ‚ط©' });
+        res.status(500).json({ error: 'فشل في إرسال طلب الموافقة' });
     }
 });
 
@@ -333,13 +333,13 @@ router.put('/:id/complete', authenticateToken, async (req, res) => {
         });
 
         if (!assignment) {
-            return res.status(404).json({ error: 'ط§ظ„طھط¹ظٹظٹظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'التعيين غير موجود' });
         }
 
         // Check if approval was needed but not received
         if (assignment.totalCost > 0 &&
             assignment.approvalStatus === 'PENDING') {
-            return res.status(400).json({ error: 'ظٹط¬ط¨ ط§ظ†طھط¸ط§ط± ظ…ظˆط§ظپظ‚ط© ط§ظ„ظپط±ط¹' });
+            return res.status(400).json({ error: 'يجب انتظار موافقة الفرع' });
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -405,7 +405,7 @@ router.put('/:id/complete', authenticateToken, async (req, res) => {
                                 partId: part.partId,
                                 type: 'OUT',
                                 quantity: part.quantity,
-                                reason: `طµظٹط§ظ†ط© ظ…ط§ظƒظٹظ†ط© ${assignment.serialNumber}`,
+                                reason: `صيانة ماكينة ${assignment.serialNumber}`,
                                 requestId: assignment.requestId,
                                 performedBy: req.user.displayName || req.user.email,
                                 branchId: assignment.branchId
@@ -420,7 +420,7 @@ router.put('/:id/complete', authenticateToken, async (req, res) => {
                 data: {
                     assignmentId: req.params.id,
                     action: 'COMPLETED',
-                    details: `طھظ… ط¥ظƒظ…ط§ظ„ ط§ظ„طµظٹط§ظ†ط© - ${resolution || 'REPAIRED'}`,
+                    details: `تم إكمال الصيانة - ${resolution || 'REPAIRED'}`,
                     performedBy: req.user.displayName || req.user.email,
                     performedById: req.user.id
                 }
@@ -432,7 +432,7 @@ router.put('/:id/complete', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to complete assignment:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¥ظƒظ…ط§ظ„ ط§ظ„طµظٹط§ظ†ط©' });
+        res.status(500).json({ error: 'فشل في إكمال الصيانة' });
     }
 });
 
@@ -457,7 +457,7 @@ router.get('/my-assignments', authenticateToken, async (req, res) => {
         res.json(assignments);
     } catch (error) {
         console.error('Failed to fetch my assignments:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ طھط¹ظٹظٹظ†ط§طھظٹ' });
+        res.status(500).json({ error: 'فشل في جلب تعييناتي' });
     }
 });
 

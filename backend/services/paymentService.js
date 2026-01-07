@@ -34,7 +34,7 @@ async function createMaintenancePayment(parts, requestId, customer, user, receip
 
     // Build detailed reason string
     const partsList = paidParts
-        .map(p => `${p.name} (${p.quantity}أ—${p.cost})`)
+        .map(p => `${p.name} (${p.quantity}×${p.cost})`)
         .join(' + ');
 
     // Create payment
@@ -45,8 +45,8 @@ async function createMaintenancePayment(parts, requestId, customer, user, receip
             requestId: requestId,
             amount: totalCost,
             type: 'MAINTENANCE',
-            reason: `ظ‚ط·ط¹ ط؛ظٹط§ط±: ${partsList}`,
-            paymentPlace: 'ط¶ط§ظ…ظ†',
+            reason: `قطع غيار: ${partsList}`,
+            paymentPlace: 'ضامن',
             receiptNumber: receiptNumber,
             userId: user.id,
             userName: user.name,
@@ -72,7 +72,7 @@ async function createManualPayment(data, user) {
         });
 
         if (!customer) {
-            throw new Error('ط§ظ„ط¹ظ…ظٹظ„ ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+            throw new Error('العميل غير موجود');
         }
 
         // Create payment

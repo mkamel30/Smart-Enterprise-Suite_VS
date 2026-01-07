@@ -20,8 +20,10 @@
 
 const express = require('express');
 const router = express.Router();
+const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
+const { asyncHandler, AppError } = require('../utils/errorHandler');
 const dashboardService = require('../services/dashboardService');
 
 /**
@@ -31,62 +33,51 @@ const dashboardService = require('../services/dashboardService');
  * For SUPER_ADMIN/MANAGEMENT: Global view or filtered by ?branchId=X
  * For others: Scoped to their branch
  */
-router.get('/', authenticateToken, async (req, res) => {
-    try {
-        const user = req.user;
-        const targetBranchId = req.query.branchId;
+router.get('/', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    const targetBranchId = req.query.branchId;
 
-        // Build branch filter based on user role and optional filter
-        const branchFilter = dashboardService.buildBranchFilter(user, targetBranchId);
+    // Build branch filter based on user role and optional filter
+    const branchFilter = dashboardService.buildBranchFilter(user, targetBranchId);
 
-        // Determine if user is admin (can see global data)
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
-        const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH'].includes(user.role);
+    // Determine if user is admin (can see global data)
+    const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
+    const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH'].includes(user.role);
 
-        // Fetch all metrics in parallel for performance
-        const [
-            monthlyRevenue,
-            weeklyTrend,
-            requestStats,
-            inventoryStats,
-            overdueInstallments,
-            pendingTransfers,
-            recentPayments
-        ] = await Promise.all([
-            dashboardService.getMonthlyRevenue(branchFilter),
-            dashboardService.getWeeklyRevenueTrend(branchFilter),
-            dashboardService.getRequestStats(branchFilter),
-            dashboardService.getInventoryStats(branchFilter),
-            // Hide installments for center roles
-            isCenterRole ? Promise.resolve(0) : dashboardService.getOverdueInstallmentsCount(branchFilter),
-            dashboardService.getPendingTransfersCount(user.branchId, isAdmin),
-            dashboardService.getRecentPayments(branchFilter)
-        ]);
+    // Fetch all metrics in parallel for performance
+    const [
+        monthlyRevenue,
+        weeklyTrend,
+        requestStats,
+        inventoryStats,
+        overdueInstallments,
+        pendingTransfers,
+        recentPayments
+    ] = await Promise.all([
+        dashboardService.getMonthlyRevenue(branchFilter),
+        dashboardService.getWeeklyRevenueTrend(branchFilter),
+        dashboardService.getRequestStats(branchFilter),
+        dashboardService.getInventoryStats(branchFilter),
+        // Hide installments for center roles
+        isCenterRole ? Promise.resolve(0) : dashboardService.getOverdueInstallmentsCount(branchFilter),
+        dashboardService.getPendingTransfersCount(user.branchId, isAdmin),
+        dashboardService.getRecentPayments(branchFilter)
+    ]);
 
-        res.json({
-            revenue: {
-                monthly: monthlyRevenue,
-                trend: weeklyTrend
-            },
-            requests: requestStats,
-            inventory: inventoryStats,
-            alerts: {
-                overdueInstallments: overdueInstallments,
-                pendingTransfers: pendingTransfers
-            },
-            recentActivity: recentPayments
-        });
-
-    } catch (error) {
-        console.error('Dashboard error:', error);
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-        res.status(500).json({
-            error: 'فشل في تحميل بيانات لوحة التحكم',
-            details: error.message
-        });
-    }
-});
+    res.json({
+        revenue: {
+            monthly: monthlyRevenue,
+            trend: weeklyTrend
+        },
+        requests: requestStats,
+        inventory: inventoryStats,
+        alerts: {
+            overdueInstallments: overdueInstallments,
+            pendingTransfers: pendingTransfers
+        },
+        recentActivity: recentPayments
+    });
+}));
 
 /**
  * GET /api/dashboard/admin-summary
@@ -94,61 +85,50 @@ router.get('/', authenticateToken, async (req, res) => {
  * Admin-only endpoint with global statistics
  * Shows: Total users, branches, machines, daily ops, branch performance
  */
-router.get('/admin-summary', authenticateToken, async (req, res) => {
+router.get('/admin-summary', authenticateToken, asyncHandler(async (req, res) => {
     // Only Super Admin can access this endpoint
     if (req.user.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ error: 'صلاحية الوصول مرفوضة: مدير النظام فقط' });
+        throw new AppError('صلاحية الوصول مرفوضة: مدير النظام فقط', 403, 'FORBIDDEN');
     }
 
-    try {
-        const summary = await dashboardService.getAdminSummary();
+    const summary = await dashboardService.getAdminSummary();
 
-        // Calculate system health (based on recent logs)
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const db = require('../db');
+    // Calculate system health (based on recent logs)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-        const [totalRecentLogs, errorLogs] = await Promise.all([
-            db.systemLog.count({
-                where: {
-                    createdAt: { gte: twentyFourHoursAgo },
-                    branchId: { not: null }
-                }
-            }),
-            db.systemLog.count({
-                where: {
-                    createdAt: { gte: twentyFourHoursAgo },
-                    branchId: { not: null },
-                    OR: [
-                        { action: { contains: 'ERROR' } },
-                        { details: { contains: 'failed' } },
-                        { details: { contains: 'خطأ' } }
-                    ]
-                }
-            })
-        ]);
-
-        const healthScore = totalRecentLogs > 0
-            ? Math.max(0, Math.min(100, 100 - (errorLogs / totalRecentLogs * 100)))
-            : 100;
-
-        res.json({
-            ...summary,
-            systemHealth: {
-                score: Math.round(healthScore),
-                errorCount: errorLogs,
-                totalOps: totalRecentLogs
+    const [totalRecentLogs, errorLogs] = await Promise.all([
+        db.systemLog.count({
+            where: {
+                createdAt: { gte: twentyFourHoursAgo },
+                branchId: { not: null }
             }
-        });
+        }),
+        db.systemLog.count({
+            where: {
+                createdAt: { gte: twentyFourHoursAgo },
+                branchId: { not: null },
+                OR: [
+                    { action: { contains: 'ERROR' } },
+                    { details: { contains: 'failed' } },
+                    { details: { contains: 'خطأ' } }
+                ]
+            }
+        })
+    ]);
 
-    } catch (error) {
-        console.error('Admin summary error:', error);
-        console.error('Error stack:', error.stack);
-        res.status(500).json({
-            error: 'فشل في تحميل ملخص الإدارة',
-            details: error.message
-        });
-    }
-});
+    const healthScore = totalRecentLogs > 0
+        ? Math.max(0, Math.min(100, 100 - (errorLogs / totalRecentLogs * 100)))
+        : 100;
+
+    res.json({
+        ...summary,
+        systemHealth: {
+            score: Math.round(healthScore),
+            errorCount: errorLogs,
+            totalOps: totalRecentLogs
+        }
+    });
+}));
 
 /**
  * GET /api/dashboard/search
@@ -156,68 +136,61 @@ router.get('/admin-summary', authenticateToken, async (req, res) => {
  * Global search across machines and customers
  * Used by the search bar in the dashboard header
  */
-router.get('/search', authenticateToken, async (req, res) => {
-    try {
-        const { q } = req.query;
-        if (!q || q.length < 2) {
-            return res.json({ machines: [], customers: [] });
-        }
-
-        const branchFilter = getBranchFilter(req);
-        const db = require('../db');
-
-        // Ensure branchId filter is present
-        const whereBase = { ...branchFilter };
-        if (!whereBase.branchId) {
-            whereBase.branchId = { not: null };
-        }
-
-        // Search in parallel
-        const [machines, customers] = await Promise.all([
-            // Search machines by serial number
-            db.warehouseMachine.findMany({
-                where: {
-                    ...whereBase,
-                    serialNumber: { contains: q }
-                },
-                take: 10,
-                select: {
-                    id: true,
-                    serialNumber: true,
-                    model: true,
-                    status: true,
-                    branch: { select: { name: true } }
-                }
-            }),
-            // Search customers by BK code or name
-            db.customer.findMany({
-                where: {
-                    ...whereBase,
-                    OR: [
-                        { bkcode: { contains: q } },
-                        { client_name: { contains: q } }
-                    ]
-                },
-                take: 10,
-                select: {
-                    id: true,
-                    bkcode: true,
-                    client_name: true,
-                    branch: { select: { name: true } }
-                }
-            })
-        ]);
-
-        res.json({
-            machines: machines.map(m => ({ ...m, type: 'MACHINE' })),
-            customers: customers.map(c => ({ ...c, type: 'CUSTOMER' }))
-        });
-
-    } catch (error) {
-        console.error('Global search error:', error);
-        res.status(500).json({ error: 'فشل في البحث' });
+router.get('/search', authenticateToken, asyncHandler(async (req, res) => {
+    const { q } = req.query;
+    if (!q || q.length < 2) {
+        return res.json({ machines: [], customers: [] });
     }
-});
+
+    const branchFilter = getBranchFilter(req);
+
+    // Ensure branchId filter is present
+    const whereBase = { ...branchFilter };
+    if (!whereBase.branchId) {
+        whereBase.branchId = { not: null };
+    }
+
+    // Search in parallel
+    const [machines, customers] = await Promise.all([
+        // Search machines by serial number
+        db.warehouseMachine.findMany({
+            where: {
+                ...whereBase,
+                serialNumber: { contains: q }
+            },
+            take: 10,
+            select: {
+                id: true,
+                serialNumber: true,
+                model: true,
+                status: true,
+                branch: { select: { name: true } }
+            }
+        }),
+        // Search customers by BK code or name
+        db.customer.findMany({
+            where: {
+                ...whereBase,
+                OR: [
+                    { bkcode: { contains: q } },
+                    { client_name: { contains: q } }
+                ]
+            },
+            take: 10,
+            select: {
+                id: true,
+                bkcode: true,
+                client_name: true,
+                branch: { select: { name: true } }
+            }
+        })
+    ]);
+
+    res.json({
+        machines: machines.map(m => ({ ...m, type: 'MACHINE' })),
+        customers: customers.map(c => ({ ...c, type: 'CUSTOMER' }))
+    });
+}));
 
 /**
  * GET /api/dashboard/metrics-reference
@@ -225,7 +198,7 @@ router.get('/search', authenticateToken, async (req, res) => {
  * Debug endpoint - returns documentation of how each metric is calculated
  * Useful for verifying data accuracy
  */
-router.get('/metrics-reference', authenticateToken, async (req, res) => {
+router.get('/metrics-reference', authenticateToken, asyncHandler(async (req, res) => {
     res.json({
         metrics: [
             {
@@ -287,6 +260,6 @@ router.get('/metrics-reference', authenticateToken, async (req, res) => {
         ],
         generated: new Date().toISOString()
     });
-});
+}));
 
 module.exports = router;

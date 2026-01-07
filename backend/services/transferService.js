@@ -120,7 +120,7 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
                 branchId: destinationBranchId,
                 type,
                 createdBy: createdBy || user.displayName || user.name || 'system',
-                createdByName: createdByName || user.displayName || user.name || 'ط§ظ„ظ†ط¸ط§ظ…',
+                createdByName: createdByName || user.displayName || user.name || 'النظام',
                 createdByUserId: user.id,
                 notes,
                 items: { create: processedItems }
@@ -163,7 +163,7 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
 
     // Notification after successful transaction
     try {
-        await createNotification({ branchId: destinationBranchId, type: 'TRANSFER_ORDER', title: 'ط¥ط°ظ† طµط±ظپ ط¬ط¯ظٹط¯', message: `طھظ… ط¥ط±ط³ط§ظ„ ط¥ط°ظ† طµط±ظپ ط¬ط¯ظٹط¯ ط±ظ‚ظ… ${orderNumber} ظٹط­طھظˆظٹ ط¹ظ„ظ‰ ${items.length} طµظ†ظپ`, data: { orderId: order.id, orderNumber }, link: `/receive-orders?orderId=${order.id}` });
+        await createNotification({ branchId: destinationBranchId, type: 'TRANSFER_ORDER', title: 'إذن صرف جديد', message: `تم إرسال إذن صرف جديد رقم ${orderNumber} يحتوي على ${items.length} صنف`, data: { orderId: order.id, orderNumber }, link: `/receive-orders?orderId=${order.id}` });
     } catch (notifErr) {
         console.warn('Failed to create notification for transfer order', notifErr);
     }
@@ -191,13 +191,13 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
     }
 
     if (!order) {
-        const err = new Error('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+        const err = new Error('الإذن غير موجود');
         err.status = 404;
         throw err;
     }
 
     if (order.status !== 'PENDING') {
-        const err = new Error('ط§ظ„ط¥ط°ظ† ظ„ظٹط³ ظپظٹ ط­ط§ظ„ط© ط§ظ†طھط¸ط§ط±');
+        const err = new Error('الإذن ليس في حالة انتظار');
         err.status = 400;
         throw err;
     }
@@ -235,7 +235,7 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
                 });
                 let simObj;
                 if (!existing) {
-                    simObj = await tx.warehouseSim.create({ data: { branchId: order.branchId, serialNumber: item.serialNumber, type: item.type || 'ط£ط®ط±ظ‰', status: 'ACTIVE', notes: `طھظ… ط§ظ„ط¥ط¶ط§ظپط© ظ…ظ† ط¥ط°ظ† ${order.orderNumber}` } });
+                    simObj = await tx.warehouseSim.create({ data: { branchId: order.branchId, serialNumber: item.serialNumber, type: item.type || 'أخرى', status: 'ACTIVE', notes: `تم الإضافة من إذن ${order.orderNumber}` } });
                 } else {
                     await tx.warehouseSim.updateMany({ where: { id: existing.id, branchId: { not: null } }, data: { branchId: order.branchId, status: existing.status === 'IN_TRANSIT' ? 'ACTIVE' : existing.status } });
                     simObj = await tx.warehouseSim.findFirst({ where: { id: existing.id, branchId: { not: null } } });
@@ -263,7 +263,7 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
                 }
 
                 if (!existing) {
-                    await tx.warehouseMachine.create({ data: { branchId: order.branchId, serialNumber: item.serialNumber, model: item.type || 'Unknown', manufacturer: item.manufacturer || 'Unknown', status: newStatus, notes: `طھظ… ط§ظ„ط¥ط¶ط§ظپط© ظ…ظ† ط¥ط°ظ† ${order.orderNumber}` } });
+                    await tx.warehouseMachine.create({ data: { branchId: order.branchId, serialNumber: item.serialNumber, model: item.type || 'Unknown', manufacturer: item.manufacturer || 'Unknown', status: newStatus, notes: `تم الإضافة من إذن ${order.orderNumber}` } });
                 } else {
                     const updateData = { branchId: order.branchId, status: newStatus };
                     if (['MAINTENANCE', 'SEND_TO_CENTER'].includes(order.type) && order.toBranch.type === 'MAINTENANCE_CENTER') updateData.originBranchId = order.fromBranchId;
@@ -407,13 +407,13 @@ async function createBulkTransfer({ serialNumbers, toBranchId, waybillNumber, no
             where: { id: fromBranchId },
             select: { name: true }
         });
-        const fromBranchName = fromBranch?.name || 'ظپط±ط¹ ط؛ظٹط± ظ…ط¹ط±ظˆظپ';
+        const fromBranchName = fromBranch?.name || 'فرع غير معروف';
 
         await createNotification({
             branchId: toBranchId,
             type: 'TRANSFER_ORDER',
-            title: 'ط¥ط°ظ† طµط±ظپ طµظٹط§ظ†ط© ط¬ط¯ظٹط¯',
-            message: `طھظ… ط¥ط±ط³ط§ظ„ ط¥ط°ظ† طµط±ظپ طµظٹط§ظ†ط© ط¬ظ…ط§ط¹ظٹ ظ…ظ† ${fromBranchName} - ط±ظ‚ظ… ${result.orderNumber} ظٹط­طھظˆظٹ ط¹ظ„ظ‰ ${serialNumbers.length} ظ…ط§ظƒظٹظ†ط© - ط¨ظˆظ„ظٹطµط©: ${waybillNumber}`,
+            title: 'إذن صرف صيانة جديد',
+            message: `تم إرسال إذن صرف صيانة جماعي من ${fromBranchName} - رقم ${result.orderNumber} يحتوي على ${serialNumbers.length} ماكينة - بوليصة: ${waybillNumber}`,
             data: {
                 orderId: result.id,
                 orderNumber: result.orderNumber,
@@ -492,7 +492,7 @@ async function getTransferOrderById(id, user) {
         });
     }
 
-    if (!order) { const err = new Error('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯'); err.status = 404; throw err; }
+    if (!order) { const err = new Error('الإذن غير موجود'); err.status = 404; throw err; }
     return order;
 }
 
@@ -518,12 +518,12 @@ async function importTransferFromExcel(buffer, { branchId, type, createdBy, crea
     // Create order inside transaction and notify after commit
     const orderNumber = await generateOrderNumber();
     const order = await db.$transaction(async (tx) => {
-        const o = await tx.transferOrder.create({ data: { orderNumber, branchId, type, createdBy: createdBy || 'system', createdByName: createdByName || 'ط§ظ„ظ†ط¸ط§ظ…', notes, items: { create: items } }, include: { branch: true, items: true } });
+        const o = await tx.transferOrder.create({ data: { orderNumber, branchId, type, createdBy: createdBy || 'system', createdByName: createdByName || 'النظام', notes, items: { create: items } }, include: { branch: true, items: true } });
         return o;
     });
 
     try {
-        await createNotification({ branchId, type: 'TRANSFER_ORDER', title: 'ط¥ط°ظ† ط¥ط¯ط®ط§ظ„ ط¬ط¯ظٹط¯', message: `طھظ… ط¥ط±ط³ط§ظ„ ط¥ط°ظ† ط¥ط¯ط®ط§ظ„ ط¬ط¯ظٹط¯ ط±ظ‚ظ… ${orderNumber} ظٹط­طھظˆظٹ ط¹ظ„ظ‰ ${items.length} طµظ†ظپ`, data: { orderId: order.id, orderNumber }, link: `/transfer-orders?orderId=${order.id}` });
+        await createNotification({ branchId, type: 'TRANSFER_ORDER', title: 'إذن إدخال جديد', message: `تم إرسال إذن إدخال جديد رقم ${orderNumber} يحتوي على ${items.length} صنف`, data: { orderId: order.id, orderNumber }, link: `/transfer-orders?orderId=${order.id}` });
     } catch (e) { console.warn('Failed to send notification for importTransferFromExcel', e); }
 
     return { order, imported: items.length };
@@ -544,8 +544,8 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
             }
         });
     }
-    if (!order) { const err = new Error('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯'); err.status = 404; throw err; }
-    if (order.status !== 'PENDING') { const err = new Error('ط§ظ„ط¥ط°ظ† ظ„ظٹط³ ظپظٹ ط­ط§ظ„ط© ط§ظ†طھط¸ط§ط±'); err.status = 400; throw err; }
+    if (!order) { const err = new Error('الإذن غير موجود'); err.status = 404; throw err; }
+    if (order.status !== 'PENDING') { const err = new Error('الإذن ليس في حالة انتظار'); err.status = 400; throw err; }
 
     const orderWithItems = isAdmin ? await db.transferOrder.findFirst({
         where: { id, branchId: { not: null } },
@@ -605,7 +605,7 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
             include: { items: true, fromBranch: true, toBranch: true }
         });
     });
-    await createNotification({ branchId: orderWithItems.fromBranchId, type: 'TRANSFER_REJECTED', title: 'طھظ… ط±ظپط¶ ط¥ط°ظ† ط§ظ„طµط±ظپ', message: `طھظ… ط±ظپط¶ ط¥ط°ظ† ط§ظ„طµط±ظپ ط±ظ‚ظ… ${order.orderNumber}${rejectionReason ? `: ${rejectionReason}` : ''}`, data: { orderId: order.id, orderNumber: order.orderNumber }, link: `/transfer-orders?orderId=${order.id}` });
+    await createNotification({ branchId: orderWithItems.fromBranchId, type: 'TRANSFER_REJECTED', title: 'تم رفض إذن الصرف', message: `تم رفض إذن الصرف رقم ${order.orderNumber}${rejectionReason ? `: ${rejectionReason}` : ''}`, data: { orderId: order.id, orderNumber: order.orderNumber }, link: `/transfer-orders?orderId=${order.id}` });
     return updated;
 }
 
@@ -628,12 +628,12 @@ async function cancelOrder(id, user) {
             include: { items: true }
         });
     }
-    if (!order) { const err = new Error('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯'); err.status = 404; throw err; }
+    if (!order) { const err = new Error('الإذن غير موجود'); err.status = 404; throw err; }
     const isCreator = user.id === order.createdByUserId;
 
     const isAdminOrAffairs = isAdmin;
-    if (!isCreator && !isAdmin) { const err = new Error('ط؛ظٹط± ظ…طµط±ط­ ظ„ظƒ ط¨ط¥ظ„ط؛ط§ط، ظ‡ط°ط§ ط§ظ„ط¥ط°ظ†'); err.status = 403; throw err; }
-    if (order.status !== 'PENDING') { const err = new Error('ظ„ط§ ظٹظ…ظƒظ† ط¥ظ„ط؛ط§ط، ط¥ط°ظ† ط؛ظٹط± ظ…ط¹ظ„ظ‚'); err.status = 400; throw err; }
+    if (!isCreator && !isAdmin) { const err = new Error('غير مصرح لك بإلغاء هذا الإذن'); err.status = 403; throw err; }
+    if (order.status !== 'PENDING') { const err = new Error('لا يمكن إلغاء إذن غير معلق'); err.status = 400; throw err; }
 
     const serialNumbers = order.items.map(item => item.serialNumber).filter(s => s);
     await db.$transaction(async (tx) => {
@@ -653,7 +653,7 @@ async function cancelOrder(id, user) {
                 status: 'CANCELLED',
                 receivedBy: user.id,
                 receivedByName: user.displayName || user.name,
-                rejectionReason: 'طھظ… ط§ظ„ط¥ظ„ط؛ط§ط، ظ…ظ† ظ‚ط¨ظ„ ط§ظ„ظ…ط±ط³ظ„'
+                rejectionReason: 'تم الإلغاء من قبل المرسل'
             }
         });
 
@@ -662,7 +662,7 @@ async function cancelOrder(id, user) {
         }
     });
 
-    return { message: 'طھظ… ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط°ظ† ط¨ظ†ط¬ط§ط­' };
+    return { message: 'تم إلغاء الإذن بنجاح' };
 }
 
 async function getStatsSummary({ branchId, fromDate, toDate }, user) {

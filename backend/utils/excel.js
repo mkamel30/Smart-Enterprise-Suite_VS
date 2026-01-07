@@ -8,7 +8,7 @@
  */
 async function generateTemplate(columns, filename) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('ط¨ظٹط§ظ†ط§طھ');
+    const worksheet = workbook.addWorksheet('بيانات');
 
     // Set columns
     worksheet.columns = columns;
@@ -63,7 +63,7 @@ async function parseExcelFile(buffer) {
  */
 async function exportToExcel(data, columns, filename) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('ط¨ظٹط§ظ†ط§طھ');
+    const worksheet = workbook.addWorksheet('بيانات');
 
     // Set columns
     worksheet.columns = columns;

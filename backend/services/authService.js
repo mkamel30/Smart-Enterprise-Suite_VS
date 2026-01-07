@@ -62,7 +62,7 @@ async function changePassword(userId, currentPassword, newPassword) {
 
     const hashed = await bcrypt.hash(newPassword, 10);
     await db.user.updateMany({ where: { id: userId, branchId: { not: null } }, data: { password: hashed } });
-    return { message: 'طھظ… طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط¨ظ†ط¬ط§ط­' };
+    return { message: 'تم تغيير كلمة المرور بنجاح' };
 }
 
 async function login({ identifier, password, branchId: requestedBranchId }) {

@@ -1,10 +1,11 @@
-﻿const db = require('../db');
+﻿const { getBranchFilter } = require('../middleware/permissions');
+const db = require('../db');
 const { logAction } = require('../utils/logger');
 const { roundMoney } = require('./paymentService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 async function getInventory(req) {
-  const branchFilter = (req && req.getBranchFilter) ? req.getBranchFilter() : null;
+  const branchFilter = getBranchFilter(req);
   const parts = await db.sparePart.findMany({
     include: { inventoryItems: { where: branchFilter || {} } }
   });
@@ -38,7 +39,7 @@ async function stockIn(req, { partId, quantity, reason, branchId }) {
   }
 
   try {
-    await db.stockMovement.create({ data: { branchId: bId, partId, type: 'IN', quantity, reason: reason || 'طھط­ظˆظٹظ„ ظ…ظ† ط§ظ„ط¥ط¯ط§ط±ط©', createdAt: new Date(), userId: req.user?.id, performedBy: req.user?.displayName || 'System' } });
+    await db.stockMovement.create({ data: { branchId: bId, partId, type: 'IN', quantity, reason: reason || 'تحويل من الإدارة', createdAt: new Date(), userId: req.user?.id, performedBy: req.user?.displayName || 'System' } });
   } catch (e) { /* ignore logging failures */ }
 
   return { newQuantity: inventoryItem.quantity };
@@ -60,7 +61,7 @@ async function importStock(req, items, branchId) {
       await db.inventoryItem.create({ data: { branchId: bId, partId: item.partId, quantity: item.quantity, minLevel: 0 } });
     }
     try {
-      await db.stockMovement.create({ data: { branchId: bId, partId: item.partId, type: 'IN', quantity: item.quantity, reason: 'ط§ط³طھظٹط±ط§ط¯ ظ…ظ† ظ…ظ„ظپ Excel', createdAt: new Date(), performedBy: req.user?.displayName || 'System' } });
+      await db.stockMovement.create({ data: { branchId: bId, partId: item.partId, type: 'IN', quantity: item.quantity, reason: 'استيراد من ملف Excel', createdAt: new Date(), performedBy: req.user?.displayName || 'System' } });
     } catch (e) { }
     updated++;
   }
@@ -93,7 +94,7 @@ async function stockOut(req, { partId, quantity, reason, requestId, cost, custom
   if (!bId) throw new Error('Branch ID required');
 
   const inventoryItem = await db.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: bId } }, req));
-  if (!inventoryItem || inventoryItem.quantity < quantity) throw new Error('ط§ظ„ظƒظ…ظٹط© ط؛ظٹط± ظƒط§ظپظٹط©');
+  if (!inventoryItem || inventoryItem.quantity < quantity) throw new Error('الكمية غير كافية');
 
   const result = await db.$transaction(async (tx) => {
     await tx.inventoryItem.updateMany({
@@ -101,12 +102,12 @@ async function stockOut(req, { partId, quantity, reason, requestId, cost, custom
       data: { quantity: inventoryItem.quantity - quantity }
     });
     try {
-      await tx.stockMovement.create({ data: { branchId: bId, partId, type: 'OUT', quantity, reason: reason || 'طµظٹط§ظ†ط© ظ…ط§ظƒظٹظ†ط©', requestId, createdAt: new Date(), userId, performedBy: userName } });
+      await tx.stockMovement.create({ data: { branchId: bId, partId, type: 'OUT', quantity, reason: reason || 'صيانة ماكينة', requestId, createdAt: new Date(), userId, performedBy: userName } });
     } catch (e) { }
 
     let payment = null;
     if (cost && cost > 0 && customerId) {
-      payment = await tx.payment.create({ data: { branchId: bId, customerId, customerName, requestId, amount: roundMoney(cost), type: 'MAINTENANCE', reason: 'ظ‚ط·ط¹ ط؛ظٹط§ط± طµظٹط§ظ†ط©', paymentPlace: 'ط¶ط§ظ…ظ†', notes: reason || 'ظ‚ط·ط¹ ط؛ظٹط§ط± طµظٹط§ظ†ط©', userId, userName } });
+      payment = await tx.payment.create({ data: { branchId: bId, customerId, customerName, requestId, amount: roundMoney(cost), type: 'MAINTENANCE', reason: 'قطع غيار صيانة', paymentPlace: 'ضامن', notes: reason || 'قطع غيار صيانة', userId, userName } });
     }
 
     return { newQuantity: inventoryItem.quantity - quantity, payment };
@@ -154,7 +155,7 @@ async function getMovements(req) {
   // sparePart ظ„ظٹط³ ظ„ط¯ظٹظ‡ branchIdطŒ ظ„ط°ظ„ظƒ ظ„ط§ ظ†ط·ط¨ظ‚ ensureBranchWhere ظ‡ظ†ط§
   const parts = await db.sparePart.findMany({ where: { id: { in: partIds } }, select: { id: true, name: true, partNumber: true } });
   const partMap = Object.fromEntries(parts.map(p => [p.id, p]));
-  return movements.map(m => ({ ...m, partName: partMap[m.partId]?.name || 'ط؛ظٹط± ظ…ط¹ط±ظˆظپ', partNumber: partMap[m.partId]?.partNumber || '' }));
+  return movements.map(m => ({ ...m, partName: partMap[m.partId]?.name || 'غير معروف', partNumber: partMap[m.partId]?.partNumber || '' }));
 }
 
 // Note: `db` is declared at top of the file; ensure single export at bottom.
@@ -191,14 +192,14 @@ async function deductParts(parts, requestId, performedBy, branchId, tx = null) {
     });
 
     if (!invItem) {
-      throw new Error(`ط§ظ„ظ‚ط·ط¹ط© "${part.name}" ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظ…ط®ط²ظ†`);
+      throw new Error(`القطعة "${part.name}" غير موجودة في المخزن`);
     }
 
     // 2. VALIDATE quantity
     if (invItem.quantity < part.quantity) {
       throw new Error(
-        `ط§ظ„ظƒظ…ظٹط© ط§ظ„ظ…طھط§ط­ط© ظ…ظ† "${part.name}" ط؛ظٹط± ظƒط§ظپظٹط©. ` +
-        `ظ…طھظˆظپط±: ${invItem.quantity}طŒ ظ…ط·ظ„ظˆط¨: ${part.quantity}`
+        `الكمية المتاحة من "${part.name}" غير كافية. ` +
+        `متوفر: ${invItem.quantity}، مطلوب: ${part.quantity}`
       );
     }
 
@@ -218,7 +219,7 @@ async function deductParts(parts, requestId, performedBy, branchId, tx = null) {
         partId: part.partId,
         type: 'OUT',
         quantity: part.quantity,
-        reason: part.reason || 'ظ‚ط·ط¹ ط؛ظٹط§ط± طµظٹط§ظ†ط©',
+        reason: part.reason || 'قطع غيار صيانة',
         requestId: requestId,
         performedBy: performedBy,
         branchId: branchId

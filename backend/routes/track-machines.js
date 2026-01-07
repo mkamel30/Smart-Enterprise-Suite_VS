@@ -10,7 +10,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to fetch tracked machines:', error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط­ط§ظ„ط© ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل في جلب حالة الماكينات' });
     }
 });
 
@@ -21,7 +21,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to fetch tracking summary:', error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ظ…ظ„ط®طµ ط§ظ„ظ…طھط§ط¨ط¹ط©' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل في جلب ملخص المتابعة' });
     }
 });
 
@@ -30,12 +30,12 @@ router.get('/:serialNumber', authenticateToken, async (req, res) => {
     try {
         const result = await machineTrackingService.getMachineTrackingInfo(req.params.serialNumber, req.user);
         if (!result) {
-            return res.status(404).json({ error: 'ط§ظ„ظ…ط§ظƒظٹظ†ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط© ظپظٹ ط§ظ„ظ…ط±ظƒط²' });
+            return res.status(404).json({ error: 'الماكينة غير موجودة في المركز' });
         }
         res.json(result);
     } catch (error) {
         console.error('Failed to fetch machine tracking:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط­ط§ظ„ط© ط§ظ„ظ…ط§ظƒظٹظ†ط©' });
+        res.status(500).json({ error: 'فشل في جلب حالة الماكينة' });
     }
 });
 

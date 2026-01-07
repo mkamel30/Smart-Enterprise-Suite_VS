@@ -223,7 +223,7 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to cancel order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ظپظٹ ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط°ظ†' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل في إلغاء الإذن' });
     }
 });
 
@@ -234,7 +234,7 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
         res.json(stats);
     } catch (error) {
         console.error('Failed to get stats:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط¥ط­طµط§ط¦ظٹط§طھ' });
+        res.status(500).json({ error: 'فشل في جلب الإحصائيات' });
     }
 });
 

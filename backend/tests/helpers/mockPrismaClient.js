@@ -11,6 +11,7 @@ function createMockPrismaClient() {
         transferOrder: {
             create: jest.fn(),
             update: jest.fn(),
+            updateMany: jest.fn(),
             findUnique: jest.fn(),
             findMany: jest.fn(),
             findFirst: jest.fn(),
@@ -19,6 +20,7 @@ function createMockPrismaClient() {
             findMany: jest.fn(),
             updateMany: jest.fn(),
             update: jest.fn(),
+            deleteMany: jest.fn(),
         },
         warehouseItem: {
             updateMany: jest.fn(),
@@ -27,6 +29,7 @@ function createMockPrismaClient() {
         warehouseMachine: {
             updateMany: jest.fn(),
             findUnique: jest.fn(),
+            findFirst: jest.fn(),
             update: jest.fn(),
             create: jest.fn(),
         },
@@ -34,6 +37,8 @@ function createMockPrismaClient() {
             updateMany: jest.fn(),
             update: jest.fn(),
             findUnique: jest.fn(),
+            findMany: jest.fn(),
+            findFirst: jest.fn(),
             create: jest.fn(),
         },
         maintenanceRequest: {

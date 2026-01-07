@@ -12,6 +12,11 @@ mockDb.warehouseMachine.updateMany.mockResolvedValue({ count: 0 });
 mockDb.warehouseSim.updateMany.mockResolvedValue({ count: 0 });
 mockDb.maintenanceRequest.findMany.mockResolvedValue([]);
 mockDb.transferOrderItem.findMany.mockResolvedValue([]);
+mockDb.branch.findUnique.mockImplementation(async ({ where }) => ({ id: where.id, isActive: true, type: 'BRANCH' }));
+mockDb.warehouseSim.findUnique.mockResolvedValue({ status: 'ACTIVE', branchId: 'branchA' });
+mockDb.warehouseSim.findMany.mockResolvedValue([{ serialNumber: 'S1', status: 'ACTIVE', branchId: 'branchA' }]);
+
+
 
 jest.doMock('../db', () => mockDb);
 

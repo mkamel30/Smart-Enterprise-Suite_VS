@@ -48,7 +48,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(payments);
     } catch (error) {
         console.error('Failed to fetch pending payments:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ظ…ط³طھط­ظ‚ط§طھ' });
+        res.status(500).json({ error: 'فشل في جلب المستحقات' });
     }
 });
 
@@ -85,7 +85,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
         res.json({ totalAmount, count });
     } catch (error) {
         console.error('Failed to fetch payments summary:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ظ…ظ„ط®طµ ط§ظ„ظ…ط³طھط­ظ‚ط§طھ' });
+        res.status(500).json({ error: 'فشل في جلب ملخص المستحقات' });
     }
 });
 
@@ -97,7 +97,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         });
 
         if (!payment) {
-            return res.status(404).json({ error: 'ط§ظ„ظ…ط³طھط­ظ‚ ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'المستحق غير موجود' });
         }
 
         // Authorization: check branch access
@@ -111,17 +111,17 @@ router.get('/:id', authenticateToken, async (req, res) => {
         res.json(payment);
     } catch (error) {
         console.error('Failed to fetch pending payment:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ظ…ط³طھط­ظ‚' });
+        res.status(500).json({ error: 'فشل في جلب المستحق' });
     }
 });
 
-// Pay pending payment (ط§ظ„ظپط±ط¹ ظٹط³ط¯ط¯)
+// Pay pending payment (الفرع يسدد)
 router.put('/:id/pay', authenticateToken, async (req, res) => {
     try {
         const { receiptNumber, paymentPlace } = req.body;
 
         if (!receiptNumber) {
-            return res.status(400).json({ error: 'ظٹط±ط¬ظ‰ ط¥ط¯ط®ط§ظ„ ط±ظ‚ظ… ط§ظ„ط¥ظٹطµط§ظ„' });
+            return res.status(400).json({ error: 'يرجى إدخال رقم الإيصال' });
         }
 
         const payment = await db.pendingPayment.findUnique({
@@ -129,7 +129,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         });
 
         if (!payment) {
-            return res.status(404).json({ error: 'ط§ظ„ظ…ط³طھط­ظ‚ ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'المستحق غير موجود' });
         }
 
         // Authorization: check branch access
@@ -141,7 +141,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         }
 
         if (payment.status !== 'PENDING') {
-            return res.status(400).json({ error: 'طھظ… ط³ط¯ط§ط¯ ظ‡ط°ط§ ط§ظ„ظ…ط³طھط­ظ‚ ظ…ط³ط¨ظ‚ط§ظ‹' });
+            return res.status(400).json({ error: 'تم سداد هذا المستحق مسبقاً' });
         }
 
         // Check if receipt number already exists
@@ -150,7 +150,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         }, req));
 
         if (existingReceipt) {
-            return res.status(400).json({ error: 'ط±ظ‚ظ… ط§ظ„ط¥ظٹطµط§ظ„ ظ…ط³ط¬ظ„ ظ…ظ† ظ‚ط¨ظ„' });
+            return res.status(400).json({ error: 'رقم الإيصال مسجل من قبل' });
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -160,7 +160,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
                 data: {
                     status: 'PAID',
                     receiptNumber,
-                    paymentPlace: paymentPlace || 'ط¶ط§ظ…ظ†',
+                    paymentPlace: paymentPlace || 'ضامن',
                     paidAt: new Date(),
                     paidBy: req.user.displayName || req.user.email,
                     paidByUserId: req.user.id
@@ -174,8 +174,8 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
                     customerName: payment.customerName,
                     amount: payment.amount,
                     type: 'MAINTENANCE_CENTER',
-                    reason: `ظ‚ط·ط¹ ط؛ظٹط§ط± طµظٹط§ظ†ط© ظ…ط±ظƒط² - ${payment.machineSerial}`,
-                    paymentPlace: paymentPlace || 'ط¶ط§ظ…ظ†',
+                    reason: `قطع غيار صيانة مركز - ${payment.machineSerial}`,
+                    paymentPlace: paymentPlace || 'ضامن',
                     receiptNumber,
                     userId: req.user.id,
                     userName: req.user.displayName || req.user.email,
@@ -207,15 +207,15 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         await createNotification({
             branchId: payment.centerBranchId,
             type: 'PAYMENT_RECEIVED',
-            title: 'ًں’° طھظ… ط§ط³طھظ„ط§ظ… ط³ط¯ط§ط¯',
-            message: `طھظ… طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯ ${payment.amount} ط¬.ظ… ظ„ظ„ظ…ط§ظƒظٹظ†ط© ${payment.machineSerial} - ط¥ظٹطµط§ظ„: ${receiptNumber}`,
+            title: '💰 تم استلام سداد',
+            message: `تم تسجيل سداد ${payment.amount} ج.م للماكينة ${payment.machineSerial} - إيصال: ${receiptNumber}`,
             link: '/pending-payments'
         });
 
         res.json(result);
     } catch (error) {
         console.error('Failed to pay pending payment:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ طھط³ط¬ظٹظ„ ط§ظ„ط³ط¯ط§ط¯' });
+        res.status(500).json({ error: 'فشل في تسجيل السداد' });
     }
 });
 

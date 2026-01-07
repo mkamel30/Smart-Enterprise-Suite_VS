@@ -54,8 +54,8 @@ class RateLimitError extends AppError {
 
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch((error) => {
-    logger.error({ 
-      error: error.message, 
+    logger.error({
+      error: error.message,
       stack: error.stack,
       path: req.path,
       method: req.method,
@@ -69,25 +69,25 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 const errorHandler = (err, req, res, next) => {
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
+
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
   let code = err.code || 'INTERNAL_ERROR';
   let details = err.details || null;
 
   // ===================== PRISMA ERROR HANDLING =====================
-  
+
   if (err.code === 'P2002') {
     statusCode = 409;
     code = 'DUPLICATE_RECORD';
     const field = err.meta?.target?.[0] || 'field';
     message = `Record with this ${field} already exists`;
-  } 
+  }
   else if (err.code === 'P2025') {
     statusCode = 404;
     code = 'NOT_FOUND';
     message = 'Record not found';
-  } 
+  }
   else if (err.code === 'P2024') {
     statusCode = 400;
     code = 'INVALID_RELATION';
@@ -105,7 +105,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // ===================== JWT ERROR HANDLING =====================
-  
+
   if (err.name === 'JsonWebTokenError') {
     statusCode = 403;
     code = 'INVALID_TOKEN';
@@ -118,7 +118,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // ===================== VALIDATION ERROR HANDLING =====================
-  
+
   if (err instanceof ValidationError && err.details) {
     statusCode = 400;
     code = 'VALIDATION_ERROR';
@@ -126,7 +126,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // ===================== STRUCTURED LOGGING =====================
-  
+
   const errorLog = {
     code,
     message,
@@ -137,8 +137,10 @@ const errorHandler = (err, req, res, next) => {
     userRole: req.user?.role,
     ip: req.ip,
     timestamp: new Date().toISOString(),
-    ...(isDevelopment && { 
-      stack: err.stack,
+    timestamp: new Date().toISOString(),
+    // Always include the raw error object for the logger to serialize (includes stack)
+    err: err,
+    ...(isDevelopment && {
       details: err
     })
   };
@@ -150,7 +152,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // ===================== RESPONSE FORMATTING =====================
-  
+
   const response = {
     error: {
       message,
@@ -172,7 +174,7 @@ const errorHandler = (err, req, res, next) => {
 
 const notFoundHandler = (req, res) => {
   logger.warn({ path: req.path, method: req.method }, 'Route not found');
-  
+
   res.status(404).json({
     error: {
       message: `Route ${req.path} not found`,

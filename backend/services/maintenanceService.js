@@ -142,7 +142,7 @@ async function createBranchDebt(data, tx = db) {
 // ============================================
 
 /**
- * Create Service Assignment (طھط¹ظٹظٹظ† ظ…ط®طھطµ)
+ * Create Service Assignment (تعيين مختص)
  */
 async function createAssignment(data, user) {
   logger.http({ data, user: user.id }, 'Creating service assignment');
@@ -216,7 +216,7 @@ async function createAssignment(data, user) {
 }
 
 /**
- * Request Approval (ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط© - Quote only, NO stock deduction)
+ * Request Approval (طلب موافقة - Quote only, NO stock deduction)
  */
 async function requestApproval(data, user) {
   logger.http({ data, user: user.id }, 'Requesting approval');
@@ -290,7 +290,7 @@ async function requestApproval(data, user) {
 }
 
 /**
- * Complete Direct (طµظٹط§ظ†ط© ظ…ط¨ط§ط´ط±ط© - immediate stock deduction)
+ * Complete Direct (صيانة مباشرة - immediate stock deduction)
  */
 async function completeDirect(data, user) {
   logger.http({ data, user: user.id }, 'Completing direct maintenance');
@@ -383,7 +383,7 @@ async function completeDirect(data, user) {
 }
 
 /**
- * Respond to Approval (ظ…ظˆط§ظپظ‚ط© ط£ظˆ ط±ظپط¶)
+ * Respond to Approval (موافقة أو رفض)
  */
 async function respondApproval(approvalRequestId, response, user) {
   logger.http({ approvalRequestId, response, user: user.id }, 'Responding to approval');
@@ -460,7 +460,7 @@ async function respondApproval(approvalRequestId, response, user) {
 }
 
 /**
- * Complete After Approval (ط¥طھظ…ط§ظ… ط¨ط¹ط¯ ط§ظ„ظ…ظˆط§ظپظ‚ط© - NOW deduct stock)
+ * Complete After Approval (إتمام بعد الموافقة - NOW deduct stock)
  */
 async function completeAfterApproval(data, user) {
   logger.http({ data, user: user.id }, 'Completing maintenance after approval');
@@ -658,7 +658,7 @@ async function getBranchDebts(filters, user) {
 }
 
 /**
- * Record Payment (طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯)
+ * Record Payment (تسجيل سداد)
  */
 async function recordPayment(data, user) {
   logger.http({ data, user: user.id }, 'Recording payment');

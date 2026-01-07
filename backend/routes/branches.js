@@ -24,7 +24,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(branches);
     } catch (error) {
         console.error('Failed to fetch branches:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ظپط±ظˆط¹' });
+        res.status(500).json({ error: 'فشل في جلب الفروع' });
     }
 });
 
@@ -54,12 +54,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
             }
         });
         if (!branch) {
-            return res.status(404).json({ error: 'ط§ظ„ظپط±ط¹ ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'الفرع غير موجود' });
         }
         res.json(branch);
     } catch (error) {
         console.error('Failed to fetch branch:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ظپط±ط¹' });
+        res.status(500).json({ error: 'فشل في جلب الفرع' });
     }
 });
 
@@ -69,7 +69,7 @@ router.post('/', authenticateToken, async (req, res) => {
         const { code, name, address, type, maintenanceCenterId, isActive } = req.body;
 
         if (!code || !name) {
-            return res.status(400).json({ error: 'ط§ظ„ظƒظˆط¯ ظˆط§ظ„ط§ط³ظ… ظ…ط·ظ„ظˆط¨ط§ظ†' });
+            return res.status(400).json({ error: 'الكود والاسم مطلوبان' });
         }
 
         // Check for duplicate code
@@ -77,7 +77,7 @@ router.post('/', authenticateToken, async (req, res) => {
             where: { code }
         });
         if (existing) {
-            return res.status(400).json({ error: 'ظƒظˆط¯ ط§ظ„ظپط±ط¹ ظ…ظˆط¬ظˆط¯ ظ…ط³ط¨ظ‚ط§ظ‹' });
+            return res.status(400).json({ error: 'كود الفرع موجود مسبقاً' });
         }
 
         // Validate maintenanceCenterId if provided
@@ -86,7 +86,7 @@ router.post('/', authenticateToken, async (req, res) => {
                 where: { id: maintenanceCenterId }
             });
             if (!center || center.type !== 'MAINTENANCE_CENTER') {
-                return res.status(400).json({ error: 'ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© ط؛ظٹط± طµط§ظ„ط­' });
+                return res.status(400).json({ error: 'مركز الصيانة غير صالح' });
             }
         }
 
@@ -104,7 +104,7 @@ router.post('/', authenticateToken, async (req, res) => {
         res.status(201).json(branch);
     } catch (error) {
         console.error('Failed to create branch:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¥ظ†ط´ط§ط، ط§ظ„ظپط±ط¹' });
+        res.status(500).json({ error: 'فشل في إنشاء الفرع' });
     }
 });
 
@@ -156,7 +156,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         res.json(branch);
     } catch (error) {
         console.error('Failed to update branch:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ طھط­ط¯ظٹط« ط§ظ„ظپط±ط¹' });
+        res.status(500).json({ error: 'فشل في تحديث الفرع' });
     }
 });
 
@@ -189,7 +189,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
         if (totalRelated > 0) {
             return res.status(400).json({
-                error: 'ظ„ط§ ظٹظ…ظƒظ† ط­ط°ظپ ط§ظ„ظپط±ط¹ ظ„ظˆط¬ظˆط¯ ط¨ظٹط§ظ†ط§طھ ظ…ط±طھط¨ط·ط© ط¨ظ‡.'
+                error: 'لا يمكن حذف الفرع لوجود بيانات مرتبطة به.'
             });
         }
 
@@ -197,10 +197,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             where: { id: req.params.id }
         });
 
-        res.json({ message: 'طھظ… ط­ط°ظپ ط§ظ„ظپط±ط¹ ط¨ظ†ط¬ط§ط­' });
+        res.json({ message: 'تم حذف الفرع بنجاح' });
     } catch (error) {
         console.error('Failed to delete branch:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط­ط°ظپ ط§ظ„ظپط±ط¹' });
+        res.status(500).json({ error: 'فشل في حذف الفرع' });
     }
 });
 
@@ -242,7 +242,7 @@ router.get('/centers/with-branches', authenticateToken, async (req, res) => {
         res.json(centers);
     } catch (error) {
         console.error('Failed to fetch centers:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ظ…ط±ط§ظƒط² ط§ظ„طµظٹط§ظ†ط©' });
+        res.status(500).json({ error: 'فشل في جلب مراكز الصيانة' });
     }
 });
 
@@ -257,7 +257,7 @@ router.get('/center/:centerId/branches', authenticateToken, async (req, res) => 
         res.json(branches);
     } catch (error) {
         console.error('Failed to fetch center branches:', error);
-        res.status(500).json({ error: 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ظپط±ظˆط¹ ط§ظ„ظ…ط±ظƒط²' });
+        res.status(500).json({ error: 'فشل في جلب فروع المركز' });
     }
 });
 

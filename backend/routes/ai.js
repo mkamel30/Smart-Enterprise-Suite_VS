@@ -200,7 +200,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
                             ]
                         });
                         if (completion.choices && completion.choices[0]) {
-                            return res.json({ answer: "âڑ ï¸ڈ (ط¥ط¬ط§ط¨ط© طھظ‚ط±ظٹط¨ظٹط©): " + completion.choices[0].message.content });
+                            return res.json({ answer: "⚠️ (إجابة تقريبية): " + completion.choices[0].message.content });
                         }
                     } catch (e) { }
                 }
@@ -208,7 +208,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
                 console.error("Fallback error:", fbError);
             }
 
-            return res.json({ answer: "ط¹ط°ط±ط§ظ‹طŒ ظ„ظ… ط£طھظ…ظƒظ† ظ…ظ† ظپظ‡ظ… ط·ظ„ط¨ظƒ ط£ظˆ ط§ظ„ظˆطµظˆظ„ ظ„ظ„ط¨ظٹط§ظ†ط§طھ." });
+            return res.json({ answer: "عذراً، لم أتمكن من فهم طلبك أو الوصول للبيانات." });
         }
 
         // 3. Step 2: Execute SQL (Safely)
@@ -226,7 +226,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
 
         } catch (dbError) {
             console.error('SQL Execution Error:', dbError);
-            return res.json({ answer: `ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„ط¨ط­ط« ظپظٹ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ: ${dbError.message}` });
+            return res.json({ answer: `حدث خطأ أثناء البحث في قاعدة البيانات: ${dbError.message}` });
         }
 
         // 4. Step 3: Summarize Answer
@@ -261,7 +261,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
             }
         }
 
-        res.json({ answer: finalAnswer || "ط¹ط°ط±ط§ظ‹طŒ ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، طµظٹط§ط؛ط© ط§ظ„ط¥ط¬ط§ط¨ط©." });
+        res.json({ answer: finalAnswer || "عذراً، حدث خطأ أثناء صياغة الإجابة." });
 
     } catch (error) {
         console.error('AI Query Error Full:', error);

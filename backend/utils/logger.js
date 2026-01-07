@@ -216,7 +216,7 @@ async function logAction({ entityType, entityId, action, details, userId, perfor
                 entityType,
                 entityId,
                 action,
-                details, // Ensure this is a string
+                details: typeof details === 'object' ? JSON.stringify(details) : details,
                 userId,
                 performedBy,
                 branchId

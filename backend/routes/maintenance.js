@@ -68,7 +68,7 @@ router.post('/machine/:serial/transition', authenticateToken, asyncHandler(async
 
 /**
  * POST /api/maintenance/assignments
- * Create service assignment (طھط¹ظٹظٹظ† ظ…ط®طھطµ)
+ * Create service assignment (تعيين مختص)
  */
 router.post(
   '/assignments',
@@ -83,7 +83,7 @@ router.post(
         assignmentId: assignment.id,
         machineSerial: assignment.serialNumber,
         customerName: assignment.customerName,
-        message: `ًں”§ طھظ… طھط¹ظٹظٹظ†ظƒ ظ„ظ„ظ…ط§ظƒظٹظ†ط© ${assignment.serialNumber}`,
+        message: `🔧 تم تعيينك للماكينة ${assignment.serialNumber}`,
       });
     }
 
@@ -125,7 +125,7 @@ router.post(
         customerName: req.body.customerName,
         proposedTotal: approvalRequest.proposedTotal,
         centerBranchId: req.body.centerBranchId,
-        message: `âڑ ï¸ڈ ط·ظ„ط¨ ظ…ظˆط§ظپظ‚ط© طµظٹط§ظ†ط©: ${req.body.machineSerial} ظ„ظ„ط¹ظ…ظٹظ„ ${req.body.customerName} - ${approvalRequest.proposedTotal} ط¬.ظ…`,
+        message: `⚠️ طلب موافقة صيانة: ${req.body.machineSerial} للعميل ${req.body.customerName} - ${approvalRequest.proposedTotal} ج.م`,
       });
     }
 
@@ -152,7 +152,7 @@ router.post(
         machineSerial: assignment.serialNumber,
         resolution: req.body.resolution,
         totalCost: assignment.totalCost,
-        message: `âœ… طھظ…طھ ط§ظ„طµظٹط§ظ†ط©: ${assignment.serialNumber} - ${req.body.resolution}`,
+        message: `✅ تمت الصيانة: ${assignment.serialNumber} - ${req.body.resolution}`,
       });
     }
 
@@ -179,7 +179,7 @@ router.post(
         machineSerial: assignment.serialNumber,
         resolution: req.body.resolution,
         totalCost: assignment.totalCost,
-        message: `âœ… طھظ…طھ ط§ظ„طµظٹط§ظ†ط© ط¨ط¹ط¯ ط§ظ„ظ…ظˆط§ظپظ‚ط©: ${assignment.serialNumber} - ${req.body.resolution}`,
+        message: `✅ تمت الصيانة بعد الموافقة: ${assignment.serialNumber} - ${req.body.resolution}`,
       });
     }
 
@@ -207,8 +207,8 @@ router.post(
     if (req.app.get('io')) {
       const message =
         req.body.status === 'APPROVED'
-          ? `âœ… طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ طµظٹط§ظ†ط© ${assignment.serialNumber}`
-          : `â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„ظ…ظˆط§ظپظ‚ط© ظ„ظ„ظ…ط§ظƒظٹظ†ط© ${assignment.serialNumber}`;
+          ? `✅ تمت الموافقة على صيانة ${assignment.serialNumber}`
+          : `❌ تم رفض طلب الموافقة للماكينة ${assignment.serialNumber}`;
 
       req.app.get('io').to(`branch_${assignment.centerBranchId}`).emit('maintenance:approval-responded', {
         assignmentId: assignment.id,
@@ -270,7 +270,7 @@ router.post(
         receiptNumber: req.body.receiptNumber,
         remainingAmount: debt.remainingAmount,
         status: debt.status,
-        message: `ًں’° طھظ… طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯ ${req.body.amount} ط¬.ظ… - ط¥ظٹطµط§ظ„: ${req.body.receiptNumber}`,
+        message: `💰 تم تسجيل سداد ${req.body.amount} ج.م - إيصال: ${req.body.receiptNumber}`,
       });
     }
 

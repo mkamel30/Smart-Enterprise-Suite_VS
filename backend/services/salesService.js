@@ -70,8 +70,8 @@ const salesService = {
 
         // 1. Validation
         if (parseFloat(paidAmount) > 0) {
-            if (!paymentMethod && !paymentPlace) throw new AppError('ظٹط¬ط¨ ط§ط®طھظٹط§ط± ظ…ظƒط§ظ† ط§ظ„ط¯ظپط¹', 400);
-            if (!receiptNumber || receiptNumber.trim() === '') throw new AppError('ظٹط¬ط¨ ط¥ط¯ط®ط§ظ„ ط±ظ‚ظ… ط§ظ„ط¥ظٹطµط§ظ„', 400);
+            if (!paymentMethod && !paymentPlace) throw new AppError('يجب اختيار مكان الدفع', 400);
+            if (!receiptNumber || receiptNumber.trim() === '') throw new AppError('يجب إدخال رقم الإيصال', 400);
         }
 
         // 2. Receipt Check
@@ -143,7 +143,7 @@ const salesService = {
                             dueDate,
                             amount: amountToCharge,
                             isPaid: false,
-                            description: `ط§ظ„ظ‚ط³ط· ط±ظ‚ظ… ${i} ظ…ظ† ${installmentCount}`
+                            description: `القسط رقم ${i} من ${installmentCount}`
                         }
                     });
                     sumOfInstallments = roundMoney(sumOfInstallments + amountToCharge);
@@ -187,11 +187,11 @@ const salesService = {
                         customerId,
                         customerName: customer.client_name,
                         amount: roundedPaidAmount,
-                        reason: `ط¨ظٹط¹ ظ…ط§ظƒظٹظ†ط© ${serialNumber}`,
+                        reason: `بيع ماكينة ${serialNumber}`,
                         type: 'SALE',
-                        paymentPlace: paymentPlace || paymentMethod || 'ط¶ط§ظ…ظ†',
+                        paymentPlace: paymentPlace || paymentMethod || 'ضامن',
                         receiptNumber,
-                        notes: `ط¯ظپط¹ط© ${type === 'CASH' ? 'ظƒط§ظ…ظ„ط©' : 'ظ…ظ‚ط¯ظ…'} - ${notes || ''}`,
+                        notes: `دفعة ${type === 'CASH' ? 'كاملة' : 'مقدم'} - ${notes || ''}`,
                         userId: user.id,
                         userName: user.displayName || performedBy,
                         createdAt: new Date()
@@ -210,7 +210,7 @@ const salesService = {
             ...result,
             model: machine.model,
             manufacturer: machine.manufacturer,
-            paymentMethod: paymentPlace || paymentMethod || 'ط¶ط§ظ…ظ†',
+            paymentMethod: paymentPlace || paymentMethod || 'ضامن',
             receiptNumber
         };
     },
@@ -219,19 +219,19 @@ const salesService = {
      * Pay a specific installment
      */
     async payInstallment(id, { amount, receiptNumber, paymentPlace }, user, req) {
-        if (!paymentPlace) throw new AppError('ظٹط¬ط¨ ط§ط®طھظٹط§ط± ظ…ظƒط§ظ† ط§ظ„ط¯ظپط¹', 400);
-        if (!receiptNumber || receiptNumber.trim() === '') throw new AppError('ظٹط¬ط¨ ط¥ط¯ط®ط§ظ„ ط±ظ‚ظ… ط§ظ„ط¥ظٹطµط§ظ„', 400);
+        if (!paymentPlace) throw new AppError('يجب اختيار مكان الدفع', 400);
+        if (!receiptNumber || receiptNumber.trim() === '') throw new AppError('يجب إدخال رقم الإيصال', 400);
 
         // 1. Receipt Duplication Checks
         const existingPayment = await db.payment.findFirst({
             where: { receiptNumber: receiptNumber.trim() }
         });
-        if (existingPayment) throw new AppError('ط±ظ‚ظ… ط§ظ„ط¥ظٹطµط§ظ„ ظ…ط³طھط®ط¯ظ… ظ…ظ† ظ‚ط¨ظ„', 400);
+        if (existingPayment) throw new AppError('رقم الإيصال مستخدم من قبل', 400);
 
         const existingInstallment = await db.installment.findFirst(ensureBranchWhere({
             where: { receiptNumber: receiptNumber.trim(), isPaid: true }
         }, req));
-        if (existingInstallment) throw new AppError('ط±ظ‚ظ… ط§ظ„ط¥ظٹطµط§ظ„ ظ…ط³طھط®ط¯ظ… ظ…ظ† ظ‚ط¨ظ„', 400);
+        if (existingInstallment) throw new AppError('رقم الإيصال مستخدم من قبل', 400);
 
         // 2. Fetch Installment - RULE 1
         const existing = await db.installment.findFirst({
@@ -269,10 +269,10 @@ const salesService = {
                         customerName: existing.sale.customer.client_name,
                         amount: payAmount,
                         type: 'INSTALLMENT',
-                        reason: existing.description || 'ط³ط¯ط§ط¯ ظ‚ط³ط·',
+                        reason: existing.description || 'سداد قسط',
                         paymentPlace,
                         receiptNumber,
-                        notes: `ط³ط¯ط§ط¯ ${existing.description}`,
+                        notes: `سداد ${existing.description}`,
                         userId: user.id,
                         userName: user.displayName
                     }
@@ -287,7 +287,7 @@ const salesService = {
             entityType: 'INSTALLMENT',
             entityId: id,
             action: 'PAY',
-            details: `ط¯ظپط¹ ظ‚ط³ط· ط¨ظ…ط¨ظ„ط؛ ${amount || existing.amount} - ط¥ظٹطµط§ظ„ ${receiptNumber}`,
+            details: `دفع قسط بمبلغ ${amount || existing.amount} - إيصال ${receiptNumber}`,
             userId: user.id,
             performedBy: user.displayName || 'System',
             branchId: existing.branchId || existing.sale.branchId || user.branchId
@@ -336,7 +336,7 @@ const salesService = {
                         branchId: user.branchId || sale.branchId,
                         amount: amountToCharge,
                         dueDate,
-                        description: `ط§ظ„ظ‚ط³ط· ط±ظ‚ظ… ${i} ظ…ظ† ${newCount}`
+                        description: `القسط رقم ${i} من ${newCount}`
                     }
                 });
                 news.push(inst);
@@ -349,7 +349,7 @@ const salesService = {
             entityType: 'SALE',
             entityId: saleId,
             action: 'RECALCULATE_INSTALLMENTS',
-            details: `ط¥ط¹ط§ط¯ط© ط­ط³ط§ط¨ ط§ظ„ط£ظ‚ط³ط§ط· - ط§ظ„ظ…طھط¨ظ‚ظٹ: ${totalRemaining} - ط¹ط¯ط¯ ط§ظ„ط£ظ‚ط³ط§ط· ط§ظ„ط¬ط¯ظٹط¯ط©: ${newCount}`,
+            details: `إعادة حساب الأقساط - المتبقي: ${totalRemaining} - عدد الأقساط الجديدة: ${newCount}`,
             userId: user.id,
             performedBy: user.displayName,
             branchId: user.branchId || sale.branchId

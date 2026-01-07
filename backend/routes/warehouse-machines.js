@@ -252,13 +252,13 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
             if (machines.length !== serialNumbers.length) {
                 const found = machines.map(m => m.serialNumber);
                 const missing = serialNumbers.filter(s => !found.includes(s));
-                throw new Error(`ط¨ط¹ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ط؛ظٹط± ط¬ط§ظ‡ط²ط© ظ„ظ„ط¥ط±ط¬ط§ط¹ ط£ظˆ ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©: ${missing.join(', ')}`);
+                throw new Error(`بعض الماكينات غير جاهزة للإرجاع أو غير موجودة: ${missing.join(', ')}`);
             }
 
             // Verify all machines are returning to their origin branch
             const wrongBranch = machines.filter(m => m.originBranchId && m.originBranchId !== toBranchId);
             if (wrongBranch.length > 0) {
-                throw new Error(`ط¨ط¹ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ ظ„ط§ طھظ†طھظ…ظٹ ظ„ظ„ظپط±ط¹ ط§ظ„ظ…ط­ط¯ط¯: ${wrongBranch.map(m => m.serialNumber).join(', ')}`);
+                throw new Error(`بعض الماكينات لا تنتمي للفرع المحدد: ${wrongBranch.map(m => m.serialNumber).join(', ')}`);
             }
 
             const machineMap = new Map(machines.map(m => [m.serialNumber, m]));
@@ -273,7 +273,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                     toBranchId,
                     branchId: toBranchId,
                     type: 'RETURN', // New type for returns
-                    notes: notes || 'ط¥ط±ط¬ط§ط¹ ظ…ط§ظƒظٹظ†ط§طھ ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©',
+                    notes: notes || 'إرجاع ماكينات من مركز الصيانة',
                     createdByUserId: req.user.id,
                     createdByName: performedBy || req.user.displayName,
                     items: {
@@ -297,7 +297,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                     where: { serialNumber: serial },
                     data: {
                         status: 'RETURNING',
-                        notes: `ظپظٹ ط·ط±ظٹظ‚ ط§ظ„ط¹ظˆط¯ط© ظ„ظ„ظپط±ط¹ - ط¥ط°ظ† ${orderNumber} - ط¨ظˆظ„ظٹطµط©: ${waybillNumber || 'ط¨ط¯ظˆظ†'}`,
+                        notes: `في طريق العودة للفرع - إذن ${orderNumber} - بوليصة: ${waybillNumber || 'بدون'}`,
                         branchId: toBranchId // Transfer ownership back to branch
                     }
                 });
@@ -308,7 +308,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                         machineId: machine.id,
                         serialNumber: serial,
                         action: 'RETURN_TO_BRANCH',
-                        details: `ط¥ط±ط¬ط§ط¹ ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© - ط¥ط°ظ† ${orderNumber} - ط¨ظˆظ„ظٹطµط©: ${waybillNumber || 'ط¨ط¯ظˆظ†'} - ط§ظ„ظ†طھظٹط¬ط©: ${machine.resolution || 'ط؛ظٹط± ظ…ط­ط¯ط¯'}`,
+                        details: `إرجاع من مركز الصيانة - إذن ${orderNumber} - بوليصة: ${waybillNumber || 'بدون'} - النتيجة: ${machine.resolution || 'غير محدد'}`,
                         performedBy: performedBy || req.user.displayName,
                         branchId: fromBranchId
                     }
@@ -320,7 +320,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
                         where: { id: machine.requestId },
                         data: {
                             status: 'RETURNING_FROM_CENTER',
-                            actionTaken: machine.resolution === 'REPAIRED' ? 'طھظ… ط§ظ„ط¥طµظ„ط§ط­ ط¨ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©' : machine.resolution === 'SCRAPPED' ? 'طھط§ظ„ظپط© - ط®ط±ط¯ط©' : 'طھظ… ط§ظ„ط±ظپط¶'
+                            actionTaken: machine.resolution === 'REPAIRED' ? 'تم الإصلاح بمركز الصيانة' : machine.resolution === 'SCRAPPED' ? 'تالفة - خردة' : 'تم الرفض'
                         }
                     });
                 }
@@ -336,8 +336,8 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
             await createNotification({
                 branchId: toBranchId,
                 type: 'TRANSFER_ORDER',
-                title: 'ظ…ط§ظƒظٹظ†ط§طھ ط¹ط§ط¦ط¯ط© ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©',
-                message: `طھظ… ط¥ط±ط³ط§ظ„ ${serialNumbers.length} ظ…ط§ظƒظٹظ†ط© ظ…ظ† ${fromBranch?.name || 'ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©'} - ط¥ط°ظ† ${orderNumber} - ط¨ظˆظ„ظٹطµط©: ${waybillNumber || 'ط¨ط¯ظˆظ†'}`,
+                title: 'ماكينات عائدة من مركز الصيانة',
+                message: `تم إرسال ${serialNumbers.length} ماكينة من ${fromBranch?.name || 'مركز الصيانة'} - إذن ${orderNumber} - بوليصة: ${waybillNumber || 'بدون'}`,
                 data: {
                     orderId: order.id,
                     orderNumber: order.orderNumber,
@@ -356,7 +356,7 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Return to branch failed:', error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ط¥ط±ط¬ط§ط¹ ط§ظ„ظ…ط§ظƒظٹظ†ط§طھ' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل إرجاع الماكينات' });
     }
 });
 
@@ -437,17 +437,17 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
             });
 
             if (!machine) {
-                throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©');
+                throw new Error('الماكينة غير موجودة');
             }
 
             // Verify machine is in RETURNING status
             if (machine.status !== 'RETURNING') {
-                throw new Error(`ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظٹط³طھ ظپظٹ ط­ط§ظ„ط© "ظپظٹ ط·ط±ظٹظ‚ ط§ظ„ط¹ظˆط¯ط©". ط§ظ„ط­ط§ظ„ط© ط§ظ„ط­ط§ظ„ظٹط©: ${machine.status}`);
+                throw new Error(`الماكينة ليست في حالة "في طريق العودة". الحالة الحالية: ${machine.status}`);
             }
 
             // Verify user has access to this branch
             if (req.user.branchId && machine.branchId !== req.user.branchId) {
-                throw new Error('ظ„ظٹط³ ظ„ط¯ظٹظƒ طµظ„ط§ط­ظٹط© ط§ط³طھظ„ط§ظ… ظ‡ط°ظ‡ ط§ظ„ظ…ط§ظƒظٹظ†ط©');
+                throw new Error('ليس لديك صلاحية استلام هذه الماكينة');
             }
 
             // Update machine status to COMPLETED - RULE 1
@@ -455,7 +455,7 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
                 where: { id: machineId, branchId: { not: null } },
                 data: {
                     status: 'COMPLETED',
-                    notes: `طھظ… ط§ط³طھظ„ط§ظ…ظ‡ط§ ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© - ${machine.resolution || 'ط؛ظٹط± ظ…ط­ط¯ط¯'}`,
+                    notes: `تم استلامها من مركز الصيانة - ${machine.resolution || 'غير محدد'}`,
                     readyForPickup: machine.resolution === 'REPAIRED' // Ready if repaired
                 }
             });
@@ -468,7 +468,7 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
                     machineId: machine.id,
                     serialNumber: machine.serialNumber,
                     action: 'RECEIVED_FROM_CENTER',
-                    details: `طھظ… ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ…ظ† ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© - ط§ظ„ظ†طھظٹط¬ط©: ${machine.resolution || 'ط؛ظٹط± ظ…ط­ط¯ط¯'}`,
+                    details: `تم استلام الماكينة من مركز الصيانة - النتيجة: ${machine.resolution || 'غير محدد'}`,
                     performedBy: performedBy || req.user.displayName,
                     branchId: machine.branchId
                 }
@@ -492,7 +492,7 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Failed to receive return:', error);
-        res.status(error.status || 500).json({ error: error.message || 'ظپط´ظ„ ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط§ظƒظٹظ†ط©' });
+        res.status(error.status || 500).json({ error: error.message || 'فشل استلام الماكينة' });
     }
 });
 
@@ -514,7 +514,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         // IN_TRANSIT can only be set through transfer orders
         if (data.status === 'IN_TRANSIT' && existing.status !== 'IN_TRANSIT') {
             return res.status(400).json({
-                error: 'ظ„ط§ ظٹظ…ظƒظ† طھط؛ظٹظٹط± ط§ظ„ط­ط§ظ„ط© ط¥ظ„ظ‰ "ظ‚ظٹط¯ ط§ظ„ظ†ظ‚ظ„" ظٹط¯ظˆظٹط§ظ‹. ظٹط¬ط¨ ط¥ظ†ط´ط§ط، ط¥ط°ظ† طھط­ظˆظٹظ„.'
+                error: 'لا يمكن تغيير الحالة إلى "قيد النقل" يدوياً. يجب إنشاء إذن تحويل.'
             });
         }
 
@@ -883,7 +883,7 @@ router.post('/return-to-customer', authenticateToken, async (req, res) => {
             if (req.user.branchId && machine.branchId !== req.user.branchId) throw new Error('Access denied to machine');
 
             if (machine.status === 'AT_CENTER') {
-                throw new Error('ط§ظ„ظ…ط§ظƒظٹظ†ط© ظپظٹ ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط©. ظٹط¬ط¨ ط§ط³طھظ„ط§ظ…ظ‡ط§ ط£ظˆظ„ط§ظ‹.');
+                throw new Error('الماكينة في مركز الصيانة. يجب استلامها أولاً.');
             }
 
             if (machine.status !== 'CLIENT_REPAIR' && machine.status !== 'READY_DELIVERY') {
@@ -1304,7 +1304,7 @@ router.post('/external-repair/withdraw', authenticateToken, async (req, res) => 
                 customerId,
                 customerName: customerName || customerMachine.customer?.client_name,
                 requestId,
-                notes: notes || 'ط³ط­ط¨ ظ„ظ„طµظٹط§ظ†ط© ط§ظ„ط®ط§ط±ط¬ظٹط©',
+                notes: notes || 'سحب للصيانة الخارجية',
                 importDate: new Date(),
                 updatedAt: new Date()
             }
@@ -1336,7 +1336,7 @@ router.post('/external-repair/withdraw', authenticateToken, async (req, res) => 
 
         res.json({
             success: true,
-            message: 'طھظ… ط³ط­ط¨ ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظ„طµظٹط§ظ†ط© ط§ظ„ط®ط§ط±ط¬ظٹط©',
+            message: 'تم سحب الماكينة للصيانة الخارجية',
             machine: warehouseMachine
         });
 
@@ -1399,14 +1399,14 @@ router.put('/external-repair/:id/ready', authenticateToken, async (req, res) => 
                 machineId: id,
                 serialNumber: machine.serialNumber,
                 action: 'READY_FOR_PICKUP',
-                details: 'ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¬ط§ظ‡ط²ط© ظ„ظ„طھط³ظ„ظٹظ… ظ„ظ„ط¹ظ…ظٹظ„',
+                details: 'الماكينة جاهزة للتسليم للعميل',
                 performedBy
             }
         });
 
         res.json({
             success: true,
-            message: 'طھظ… طھط­ط¯ظٹط« ط­ط§ظ„ط© ط§ظ„ظ…ط§ظƒظٹظ†ط© - ط¬ط§ظ‡ط²ط© ظ„ظ„طھط³ظ„ظٹظ…',
+            message: 'تم تحديث حالة الماكينة - جاهزة للتسليم',
             machine
         });
 
@@ -1444,7 +1444,7 @@ router.post('/external-repair/:id/deliver', authenticateToken, async (req, res) 
                     closingUserName: performedBy,
                     actionTaken: (await db.maintenanceRequest.findUnique({
                         where: { id: machine.requestId }
-                    }))?.actionTaken + '\nطھظ… طھط³ظ„ظٹظ… ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظ„ط¹ظ…ظٹظ„ ط¨ط¹ط¯ ط§ظ„طµظٹط§ظ†ط© ط§ظ„ط®ط§ط±ط¬ظٹط©'
+                    }))?.actionTaken + '\nتم تسليم الماكينة للعميل بعد الصيانة الخارجية'
                 }
             });
         }
@@ -1471,7 +1471,7 @@ router.post('/external-repair/:id/deliver', authenticateToken, async (req, res) 
 
         res.json({
             success: true,
-            message: 'طھظ… طھط³ظ„ظٹظ… ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظ„ط¹ظ…ظٹظ„ ظˆط¥ط؛ظ„ط§ظ‚ ط§ظ„ط·ظ„ط¨',
+            message: 'تم تسليم الماكينة للعميل وإغلاق الطلب',
             deliveredMachine: machine
         });
 

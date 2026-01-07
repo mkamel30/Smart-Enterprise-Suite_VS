@@ -353,11 +353,11 @@ const executiveHandler = async (req, res) => {
             const type = p.type || '';
             const reason = p.reason || '';
 
-            if (type === 'INSTALLMENT' || type === 'MACHINE_SALE' || reason.includes('ظ…ط§ظƒظٹظ†ط©') || reason.includes('ظ‚ط³ط·')) {
+            if (type === 'INSTALLMENT' || type === 'MACHINE_SALE' || reason.includes('ماكينة') || reason.includes('قسط')) {
                 breakdown.machines += p.amount;
-            } else if (type === 'SIM_PURCHASE' || type === 'SIM_EXCHANGE' || reason.includes('ط´ط±ظٹط­ط©')) {
+            } else if (type === 'SIM_PURCHASE' || type === 'SIM_EXCHANGE' || reason.includes('شريحة')) {
                 breakdown.sims += p.amount;
-            } else if (type === 'MAINTENANCE' || reason.includes('طµظٹط§ظ†ط©') || reason.includes('ظ‚ط·ط¹ ط؛ظٹط§ط±')) {
+            } else if (type === 'MAINTENANCE' || reason.includes('صيانة') || reason.includes('قطع غيار')) {
                 breakdown.maintenance += p.amount;
             } else if (type === 'MANUAL') {
                 breakdown.manual += p.amount;
@@ -387,7 +387,7 @@ const executiveHandler = async (req, res) => {
 
             // Non-machine payments in this branch
             const bNonMachine = bPayments
-                .filter(p => !['INSTALLMENT', 'MACHINE_SALE'].includes(p.type) && !p.reason?.includes('ظ…ط§ظƒظٹظ†ط©') && !p.reason?.includes('ظ‚ط³ط·'))
+                .filter(p => !['INSTALLMENT', 'MACHINE_SALE'].includes(p.type) && !p.reason?.includes('ماكينة') && !p.reason?.includes('قسط'))
                 .reduce((sum, p) => sum + p.amount, 0);
 
             return {
@@ -446,7 +446,7 @@ const executiveHandler = async (req, res) => {
 
         // Add non-machine payments to sales (since they are direct sales)
         trendPayments.forEach(p => {
-            if (!['INSTALLMENT', 'MACHINE_SALE'].includes(p.type) && !p.reason?.includes('ظ…ط§ظƒظٹظ†ط©') && !p.reason?.includes('ظ‚ط³ط·')) {
+            if (!['INSTALLMENT', 'MACHINE_SALE'].includes(p.type) && !p.reason?.includes('ماكينة') && !p.reason?.includes('قسط')) {
                 const month = p.createdAt.toLocaleString('ar-EG', { month: 'long' });
                 trends[month].sales += p.amount;
             }

@@ -56,6 +56,12 @@ describe('transferService', () => {
         mockPrismaClient.warehouseItem.findMany.mockReset();
         mockPrismaClient.maintenanceRequest.update.mockReset();
         mockPrismaClient.notification.create.mockReset();
+        mockPrismaClient.notification.create.mockReset();
+        mockPrismaClient.transferOrder.updateMany.mockReset();
+        mockPrismaClient.warehouseMachine.findFirst.mockReset();
+        mockPrismaClient.warehouseSim.findMany.mockReset();
+        mockPrismaClient.transferOrderItem.findMany.mockResolvedValue([]);
+        mockPrismaClient.maintenanceRequest.findMany.mockResolvedValue([]);
         // Also reset the directly imported db mock
         db.$transaction.mockImplementation(async (callback) => await callback(mockPrismaClient));
         db.transferOrder.create.mockReset();
@@ -65,7 +71,14 @@ describe('transferService', () => {
         db.warehouseItem.updateMany.mockReset();
         db.warehouseItem.findMany.mockReset();
         db.maintenanceRequest.update.mockReset();
+        db.maintenanceRequest.update.mockReset();
         db.notification.create.mockReset();
+        db.branch.findUnique.mockReset();
+
+        // Default behavior: Active branches to pass standard validation
+        const activeBranchMock = { isActive: true, type: 'BRANCH' };
+        mockPrismaClient.branch.findUnique.mockImplementation(async ({ where }) => ({ id: where.id, name: 'Branch ' + where.id, ...activeBranchMock }));
+        db.branch.findUnique.mockImplementation(async ({ where }) => ({ id: where.id, name: 'Branch ' + where.id, ...activeBranchMock }));
     });
 
     describe('createTransferOrder', () => {
@@ -74,7 +87,7 @@ describe('transferService', () => {
             const mockOrderData = {
                 toBranchId: 'branchB',
                 type: 'SIM',
-                items: [{ id: 'item1', quantity: 1 }],
+                items: [{ id: 'item1', quantity: 1, serialNumber: 'S1' }],
                 description: 'Test transfer',
             };
             const mockTransferOrder = {
@@ -84,6 +97,20 @@ describe('transferService', () => {
                 status: 'PENDING',
                 // ... other fields
             };
+
+
+
+            // Validation requires active branches
+            db.branch.findUnique.mockResolvedValue({ id: 'branchA', isActive: true, type: 'BRANCH' });
+            // Mock items validation lookups if needed (warehouseMachine/Sim)
+            db.warehouseSim.findUnique.mockResolvedValue({ id: 'item1', quantity: 1, status: 'ACTIVE' });
+            db.warehouseMachine.findUnique.mockResolvedValue({ id: 'item1', status: 'NEW' });
+
+            // Mock items validation lookups if needed (warehouseMachine/Sim)
+            db.warehouseSim.findUnique.mockResolvedValue({ id: 'item1', quantity: 1, status: 'ACTIVE' });
+            // Validator uses findMany for SIMs
+            db.warehouseSim.findMany.mockResolvedValue([{ id: 'item1', quantity: 1, status: 'ACTIVE', branchId: 'branchA', serialNumber: 'S1' }]);
+            db.warehouseMachine.findUnique.mockResolvedValue({ id: 'item1', status: 'NEW' });
 
             db.transferOrder.create.mockResolvedValue(mockTransferOrder);
             db.warehouseSim.updateMany.mockResolvedValue({ count: 1 });
@@ -115,10 +142,19 @@ describe('transferService', () => {
             const mockOrderData = {
                 toBranchId: 'branchB',
                 type: 'SIM',
-                items: [{ id: 'item1', quantity: 1 }],
+                items: [{ id: 'item1', quantity: 1, serialNumber: 'S1' }],
                 description: 'Test transfer',
             };
             const error = new Error('Database error');
+
+
+
+            // Validation must pass first
+            db.branch.findUnique.mockResolvedValue({ id: 'branchA', isActive: true, type: 'BRANCH' });
+            // Validation must pass first
+            db.branch.findUnique.mockResolvedValue({ id: 'branchA', isActive: true, type: 'BRANCH' });
+            db.warehouseSim.findUnique.mockResolvedValue({ id: 'item1', quantity: 1, status: 'ACTIVE' });
+            db.warehouseSim.findMany.mockResolvedValue([{ id: 'item1', quantity: 1, status: 'ACTIVE', branchId: 'branchA', serialNumber: 'S1' }]);
 
             db.transferOrder.create.mockRejectedValue(error);
 
@@ -134,11 +170,11 @@ describe('transferService', () => {
 
     describe('receiveTransferOrder', () => {
         it('should receive a transfer order within a transaction', async () => {
-                                                            db.maintenanceRequest.updateMany = jest.fn().mockResolvedValue({ count: 1 });
-                                                            db.warehouseMachine.updateMany = jest.fn().mockResolvedValue({ count: 1 });
-                                                db.warehouseMachine.update = jest.fn().mockResolvedValue({});
-                                    db.warehouseMachine.update = jest.fn().mockResolvedValue({});
-                        db.warehouseMachine.update = jest.fn().mockResolvedValue({});
+            db.maintenanceRequest.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+            db.warehouseMachine.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+            db.warehouseMachine.update = jest.fn().mockResolvedValue({});
+            db.warehouseMachine.update = jest.fn().mockResolvedValue({});
+            db.warehouseMachine.update = jest.fn().mockResolvedValue({});
             const mockUser = { id: 'user2', branchId: 'branchB', role: 'SUPER_ADMIN' };
             const transferOrderId = 'transfer1';
             const mockTransferOrder = {
@@ -152,7 +188,7 @@ describe('transferService', () => {
             };
 
             // initial findUnique should return the pending order, then after transaction return RECEIVED
-            db.transferOrder.findUnique.mockResolvedValueOnce(mockTransferOrder);
+            db.transferOrder.findFirst.mockResolvedValueOnce(mockTransferOrder);
             db.transferOrder.update.mockResolvedValue({ ...mockTransferOrder, status: 'RECEIVED' });
             db.warehouseItem.updateMany.mockResolvedValue({ count: 1 });
             db.warehouseMachine.updateMany.mockResolvedValue({ count: 1 });
@@ -160,47 +196,48 @@ describe('transferService', () => {
             db.notification.create.mockResolvedValue({});
 
             // Add required args: receivedBy, receivedByName, receivedItems, user
-                // Use only the transaction context for all mocks and assertions
-                let txUsed;
-                db.$transaction.mockImplementationOnce(async (callback) => {
-                    const tx = {
-                        ...mockPrismaClient,
-                        warehouseMachine: {
-                            ...mockPrismaClient.warehouseMachine,
-                            update: jest.fn().mockResolvedValue({}),
-                            findUnique: jest.fn(({ where }) => {
-                                if (where && where.serialNumber) {
-                                    return { id: 'machine-' + where.serialNumber, branchId: 'branchA', status: 'IN_TRANSIT' };
-                                }
-                                return null;
-                            }),
-                        },
-                        transferOrder: {
-                            ...mockPrismaClient.transferOrder,
-                            update: jest.fn().mockResolvedValue({ ...mockTransferOrder, status: 'RECEIVED' }),
-                        },
-                        maintenanceRequest: {
-                            ...mockPrismaClient.maintenanceRequest,
-                            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-                        },
-                    };
-                    txUsed = tx;
-                    return await callback(tx);
-                });
-                // Ensure the final read after transaction returns the updated status
-                db.transferOrder.findUnique.mockResolvedValueOnce({ ...mockTransferOrder, status: 'RECEIVED' });
-                const result = await receiveTransferOrder(transferOrderId, {}, mockUser);
-                expect(txUsed.warehouseMachine.update).toHaveBeenCalled();
-                expect(result.status).toBe('RECEIVED');
+            // Use only the transaction context for all mocks and assertions
+            let txUsed;
+            db.$transaction.mockImplementationOnce(async (callback) => {
+                const tx = {
+                    ...mockPrismaClient,
+                    warehouseMachine: {
+                        ...mockPrismaClient.warehouseMachine,
+                        update: jest.fn().mockResolvedValue({}),
+                        findFirst: jest.fn(({ where }) => {
+                            if (where && where.serialNumber) {
+                                return { id: 'machine-' + where.serialNumber, branchId: 'branchA', status: 'IN_TRANSIT' };
+                            }
+                            return null;
+                        }),
+                    },
+                    transferOrder: {
+                        ...mockPrismaClient.transferOrder,
+                        update: jest.fn().mockResolvedValue({ ...mockTransferOrder, status: 'RECEIVED' }),
+                        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+                    },
+                    maintenanceRequest: {
+                        ...mockPrismaClient.maintenanceRequest,
+                        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+                    },
+                };
+                txUsed = tx;
+                return await callback(tx);
+            });
+            // Ensure the final read after transaction returns the updated status
+            db.transferOrder.findFirst.mockResolvedValueOnce({ ...mockTransferOrder, status: 'RECEIVED' });
+            const result = await receiveTransferOrder(transferOrderId, {}, mockUser);
+            expect(txUsed.warehouseMachine.updateMany).toHaveBeenCalled();
+            expect(result.status).toBe('RECEIVED');
         });
 
         it('should throw if order not found', async () => {
             const mockUser = { id: 'user2', branchId: 'branchB', role: 'MANAGEMENT' };
             const transferOrderId = 'transfer1';
 
-            db.transferOrder.findUnique.mockResolvedValue(null);
+            db.transferOrder.findFirst.mockResolvedValue(null);
 
-            await expect(receiveTransferOrder(transferOrderId, {}, mockUser)).rejects.toThrow('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+            await expect(receiveTransferOrder(transferOrderId, {}, mockUser)).rejects.toThrow('الإذن غير موجود');
             expect(db.$transaction).toHaveBeenCalledTimes(0); // No transaction should start if order not found
         });
 
@@ -217,13 +254,13 @@ describe('transferService', () => {
             };
             const error = new Error('DB update error');
 
-            db.transferOrder.findUnique.mockResolvedValue(mockTransferOrder);
-            db.transferOrder.update.mockRejectedValue(error);
+            db.transferOrder.findFirst.mockResolvedValue(mockTransferOrder);
+            db.transferOrder.updateMany.mockRejectedValue(error);
 
             await expect(receiveTransferOrder(transferOrderId, {}, mockUser)).rejects.toThrow('DB update error');
             expect(db.$transaction).toHaveBeenCalledTimes(1);
-            expect(db.transferOrder.findUnique).toHaveBeenCalledTimes(1);
-            expect(db.transferOrder.update).toHaveBeenCalledTimes(1);
+            expect(db.transferOrder.findFirst).toHaveBeenCalledTimes(1);
+            expect(db.transferOrder.updateMany).toHaveBeenCalledTimes(1);
             expect(db.warehouseItem.updateMany).not.toHaveBeenCalled(); // Should not have been called if update fails
             expect(db.notification.create).not.toHaveBeenCalled();
         });
@@ -231,11 +268,11 @@ describe('transferService', () => {
 
     describe('rejectOrder', () => {
         it('should reject a transfer order within a transaction', async () => {
-                                                db.maintenanceRequest.updateMany = jest.fn().mockResolvedValue({ count: 1 });
-                                                db.warehouseMachine.updateMany = jest.fn().mockResolvedValue({ count: 1 });
-                                    db.warehouseMachine.findUnique.mockResolvedValue({ id: 'machine1', branchId: 'branchA', status: 'IN_TRANSIT' });
-                                    db.warehouseMachine.update = jest.fn().mockResolvedValue({});
-                        db.warehouseMachine.update = jest.fn().mockResolvedValue({});
+            db.maintenanceRequest.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+            db.warehouseMachine.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+            db.warehouseMachine.findUnique.mockResolvedValue({ id: 'machine1', branchId: 'branchA', status: 'IN_TRANSIT' });
+            db.warehouseMachine.update = jest.fn().mockResolvedValue({});
+            db.warehouseMachine.update = jest.fn().mockResolvedValue({});
             const mockUser = { id: 'user2', branchId: 'branchB', role: 'MANAGEMENT' };
             const transferOrderId = 'transfer1';
             const mockTransferOrder = {
@@ -248,7 +285,15 @@ describe('transferService', () => {
                 items: [{ id: 'tItem1', warehouseItemId: 'item1', quantity: 1, status: 'IN_TRANSIT', serialNumber: 'SN123' }],
             };
 
-            db.transferOrder.findUnique.mockResolvedValue(mockTransferOrder);
+
+
+            db.warehouseMachine.findFirst.mockResolvedValue({ id: 'machine1', branchId: 'branchA', status: 'IN_TRANSIT' });
+            db.transferOrder.findFirst
+                .mockResolvedValueOnce(mockTransferOrder)
+                .mockResolvedValueOnce(mockTransferOrder)
+                .mockResolvedValueOnce({ ...mockTransferOrder, status: 'REJECTED' });
+            // In rejectOrder, findFirst is called at start (if admin) or with where clause. Service uses findFirst.
+
             db.transferOrder.update.mockResolvedValue({ ...mockTransferOrder, status: 'REJECTED' });
             db.warehouseItem.updateMany.mockResolvedValue({ count: 1 });
             db.notification.create.mockResolvedValue({});
@@ -256,16 +301,15 @@ describe('transferService', () => {
             const result = await rejectOrder(transferOrderId, {}, mockUser);
 
             expect(db.$transaction).toHaveBeenCalledTimes(2);
-            expect(db.transferOrder.findUnique).toHaveBeenCalledWith(
+            expect(db.transferOrder.findFirst).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    where: { id: transferOrderId },
+                    where: expect.objectContaining({ id: transferOrderId }),
                 })
             );
-            expect(db.transferOrder.update).toHaveBeenCalledWith(
+            expect(db.transferOrder.updateMany).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    where: { id: transferOrderId },
-                    data: expect.objectContaining({ status: 'REJECTED' }),
-                    include: expect.any(Object)
+                    where: expect.objectContaining({ id: transferOrderId }),
+                    data: expect.objectContaining({ status: 'REJECTED' })
                 })
             );
             // Accept any call to update or updateMany for warehouseItem or warehouseMachine
@@ -281,17 +325,17 @@ describe('transferService', () => {
             const mockUser = { id: 'user2', branchId: 'branchB', role: 'MANAGEMENT' };
             const transferOrderId = 'transfer1';
 
-            db.transferOrder.findUnique.mockResolvedValue(null);
+            db.transferOrder.findFirst.mockResolvedValue(null);
 
-            await expect(rejectOrder(transferOrderId, {}, mockUser)).rejects.toThrow('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+            await expect(rejectOrder(transferOrderId, {}, mockUser)).rejects.toThrow('الإذن غير موجود');
             expect(db.$transaction).toHaveBeenCalledTimes(0);
         });
 
         it('should rollback if an error occurs during rejection', async () => {
-                                    db.maintenanceRequest.updateMany = jest.fn().mockResolvedValue({ count: 1 });
-                                    db.warehouseMachine.updateMany = jest.fn().mockResolvedValue({ count: 1 });
-                        db.warehouseMachine.findUnique.mockResolvedValue({ id: 'machine1', branchId: 'branchA', status: 'IN_TRANSIT' });
-                        db.warehouseMachine.update = jest.fn().mockResolvedValue({});
+            db.maintenanceRequest.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+            db.warehouseMachine.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+            db.warehouseMachine.findUnique.mockResolvedValue({ id: 'machine1', branchId: 'branchA', status: 'IN_TRANSIT' });
+            db.warehouseMachine.update = jest.fn().mockResolvedValue({});
             const mockUser = { id: 'user2', branchId: 'branchB', role: 'MANAGEMENT' };
             const transferOrderId = 'transfer1';
             const mockTransferOrder = {
@@ -305,16 +349,18 @@ describe('transferService', () => {
             };
             const error = new Error('Rejection DB error');
 
-            db.transferOrder.findUnique.mockResolvedValue(mockTransferOrder);
-            db.transferOrder.update.mockRejectedValue(error);
+            db.transferOrder.findFirst.mockResolvedValue(mockTransferOrder);
+            db.transferOrder.findFirst.mockResolvedValue(mockTransferOrder);
+            db.transferOrder.findFirst.mockResolvedValue(mockTransferOrder);
+            db.transferOrder.updateMany.mockRejectedValue(error);
 
             await expect(rejectOrder(transferOrderId, {}, mockUser)).rejects.toThrow('Rejection DB error');
             // Service calls $transaction twice for rejectOrder
             db.warehouseMachine.update = jest.fn().mockResolvedValue({});
             expect(db.$transaction).toHaveBeenCalledTimes(2);
             // Service may call findUnique in both transaction contexts
-            expect(db.transferOrder.findUnique).toHaveBeenCalledTimes(2);
-            expect(db.transferOrder.update).toHaveBeenCalledTimes(1);
+            expect(db.transferOrder.findFirst).toHaveBeenCalledTimes(2);
+            expect(db.transferOrder.updateMany).toHaveBeenCalledTimes(1);
             expect(db.warehouseItem.updateMany).not.toHaveBeenCalled();
             expect(db.notification.create).not.toHaveBeenCalled();
         });
@@ -322,8 +368,8 @@ describe('transferService', () => {
 
     describe('cancelOrder', () => {
         it('should cancel a transfer order within a transaction', async () => {
-                        db.maintenanceRequest.updateMany = jest.fn().mockResolvedValue({ count: 1 });
-                        db.warehouseMachine.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+            db.maintenanceRequest.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+            db.warehouseMachine.updateMany = jest.fn().mockResolvedValue({ count: 1 });
             const mockUser = { id: 'user1', branchId: 'branchA', role: 'ADMIN_AFFAIRS' };
             const transferOrderId = 'transfer1';
             const mockTransferOrder = {
@@ -336,7 +382,9 @@ describe('transferService', () => {
                 items: [{ id: 'tItem1', warehouseItemId: 'item1', quantity: 1, status: 'IN_TRANSIT', serialNumber: 'SN123' }],
             };
 
-            db.transferOrder.findUnique.mockResolvedValue(mockTransferOrder);
+
+
+            db.transferOrder.findFirst.mockResolvedValue(mockTransferOrder);
             db.transferOrder.update.mockResolvedValue({ ...mockTransferOrder, status: 'CANCELLED' });
             db.warehouseMachine.updateMany.mockResolvedValue({ count: 1 });
             db.notification.create.mockResolvedValue({});
@@ -346,57 +394,57 @@ describe('transferService', () => {
 
             // Service calls $transaction once for cancelOrder
             expect(db.$transaction).toHaveBeenCalledTimes(1);
-            expect(db.transferOrder.findUnique).toHaveBeenCalledWith(
+            expect(db.transferOrder.findFirst).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    where: { id: transferOrderId },
+                    where: expect.objectContaining({ id: transferOrderId }),
                 })
             );
-            expect(db.transferOrder.update).toHaveBeenCalledWith(
+            expect(db.transferOrder.updateMany).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    where: { id: transferOrderId },
+                    where: expect.objectContaining({ id: transferOrderId }),
                     data: expect.objectContaining({ status: 'CANCELLED', rejectionReason: expect.any(String), receivedBy: expect.any(String) }),
                 })
             );
-                // Use only the transaction context for all mocks and assertions
-                let txUsed;
-                db.$transaction.mockImplementationOnce(async (callback) => {
-                    const tx = {
-                        ...mockPrismaClient,
-                        warehouseMachine: {
-                            ...mockPrismaClient.warehouseMachine,
-                            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-                            findUnique: jest.fn(({ where }) => {
-                                if (where && where.serialNumber) {
-                                    return { id: 'machine-' + where.serialNumber, branchId: 'branchA', status: 'IN_TRANSIT' };
-                                }
-                                return null;
-                            }),
-                        },
-                        transferOrder: {
-                            ...mockPrismaClient.transferOrder,
-                            update: jest.fn().mockResolvedValue({ ...mockTransferOrder, status: 'CANCELLED' }),
-                        },
-                        maintenanceRequest: {
-                            ...mockPrismaClient.maintenanceRequest,
-                            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-                        },
-                    };
-                    txUsed = tx;
-                    return await callback(tx);
-                });
-                const result = await cancelOrder(transferOrderId, mockUser);
-                expect(txUsed.warehouseMachine.updateMany).toHaveBeenCalled();
-                // cancelOrder returns a success message, not the updated order
-                expect(result.message).toBe('طھظ… ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط°ظ† ط¨ظ†ط¬ط§ط­');
+            // Use only the transaction context for all mocks and assertions
+            let txUsed;
+            db.$transaction.mockImplementationOnce(async (callback) => {
+                const tx = {
+                    ...mockPrismaClient,
+                    warehouseMachine: {
+                        ...mockPrismaClient.warehouseMachine,
+                        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+                        findUnique: jest.fn(({ where }) => {
+                            if (where && where.serialNumber) {
+                                return { id: 'machine-' + where.serialNumber, branchId: 'branchA', status: 'IN_TRANSIT' };
+                            }
+                            return null;
+                        }),
+                    },
+                    transferOrder: {
+                        ...mockPrismaClient.transferOrder,
+                        update: jest.fn().mockResolvedValue({ ...mockTransferOrder, status: 'CANCELLED' }),
+                    },
+                    maintenanceRequest: {
+                        ...mockPrismaClient.maintenanceRequest,
+                        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+                    },
+                };
+                txUsed = tx;
+                return await callback(tx);
+            });
+            const result = await cancelOrder(transferOrderId, mockUser);
+            expect(txUsed.warehouseMachine.updateMany).toHaveBeenCalled();
+            // cancelOrder returns a success message, not the updated order
+            expect(result.message).toBe('تم إلغاء الإذن بنجاح');
         });
 
         it('should throw if order not found for cancellation', async () => {
             const mockUser = { id: 'user1', branchId: 'branchA', role: 'ADMIN_AFFAIRS' };
             const transferOrderId = 'transfer1';
 
-            db.transferOrder.findUnique.mockResolvedValue(null);
+            db.transferOrder.findFirst.mockResolvedValue(null);
 
-            await expect(cancelOrder(transferOrderId, mockUser)).rejects.toThrow('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯');
+            await expect(cancelOrder(transferOrderId, mockUser)).rejects.toThrow('الإذن غير موجود');
             expect(db.$transaction).toHaveBeenCalledTimes(0);
         });
 
@@ -413,14 +461,14 @@ describe('transferService', () => {
             };
             const error = new Error('Cancellation DB error');
 
-            db.transferOrder.findUnique.mockResolvedValue(mockTransferOrder);
-            db.transferOrder.update.mockRejectedValue(error);
+            db.transferOrder.findFirst.mockResolvedValue(mockTransferOrder);
+            db.transferOrder.updateMany.mockRejectedValue(error);
 
             await expect(cancelOrder(transferOrderId, mockUser)).rejects.toThrow('Cancellation DB error');
             // Service calls $transaction once for cancelOrder
             expect(db.$transaction).toHaveBeenCalledTimes(1);
-            expect(db.transferOrder.findUnique).toHaveBeenCalledTimes(1);
-            expect(db.transferOrder.update).toHaveBeenCalledTimes(1);
+            expect(db.transferOrder.findFirst).toHaveBeenCalledTimes(1);
+            expect(db.transferOrder.updateMany).toHaveBeenCalledTimes(1);
             expect(db.warehouseItem.updateMany).not.toHaveBeenCalled();
             expect(db.notification.create).not.toHaveBeenCalled();
         });
