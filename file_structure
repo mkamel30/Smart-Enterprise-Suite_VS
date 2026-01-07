@@ -1,0 +1,37 @@
+Smart-Enterprise-Suite_VS/
+├── setup.bat                      ✅ Run this first
+├── start-dev.bat                  ✅ Start servers
+├── stop-servers.bat               ✅ Stop servers
+├── view-logs.bat                  ✅ View logs
+├── clear-logs.bat                 ✅ Clear logs
+├── logs/                          📁 Auto-created
+├── uploads/                       📁 Auto-created
+├── backups/                       📁 Auto-created
+├── backend/
+│   ├── .env.development           ⚙️ Config file
+│   ├── validation/
+│   │   └── schemas/
+│   │       ├── request.schema.js
+│   │       ├── auth.schema.js
+│   │       └── customer.schema.js
+│   ├── middleware/
+│   │   ├── validation.js
+│   │   ├── csrf.js
+│   │   ├── rateLimits.js
+│   │   ├── auth.js               (Updated)
+│   │   └── security.js           (New)
+│   ├── utils/
+│   │   └── errorHandler.js       (Updated)
+│   ├── config/
+│   │   └── index.js              (Updated)
+│   └── node_modules/
+├── frontend/
+│   ├── .env.development           ⚙️ Config file
+│   ├── src/
+│   │   ├── utils/
+│   │   │   └── api.js            (Updated)
+│   │   └── hooks/
+│   │       └── useAuth.js        (New)
+│   └── node_modules/
+└── prisma/
+    └── schema.prisma
