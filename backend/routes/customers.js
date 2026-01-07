@@ -1,433 +1,440 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const { z } = require('zod');
+const multer = require('multer');
 const ExcelJS = require('exceljs');
-const authenticateToken = require('../middleware/auth');
-const { getBranchFilter, requirePermission, PERMISSIONS } = require('../middleware/permissions');
-const { ensureBranchWhere } = require('../prisma/branchHelpers');
-const asyncHandler = require('../utils/asyncHandler');
-const validate = require('../utils/validation/middleware');
-const schemas = require('../utils/validation/schemas');
-const { NotFoundError, ForbiddenError, AppError } = require('../utils/errors');
+
+// Database and services
+const db = require('../db');
+
+// Middleware
+const { authenticateToken, requireManager } = require('../middleware/auth');
+const { getBranchFilter } = require('../middleware/permissions');
+const { validateRequest, validateQuery } = require('../middleware/validation');
+const { createLimiter, updateLimiter, deleteLimiter, uploadLimiter } = require('../middleware/rateLimits');
+
+// Utilities
+const { asyncHandler, AppError, NotFoundError } = require('../utils/errorHandler');
+const { logAction } = require('../utils/logger');
 const logger = require('../utils/logger');
 
-// NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
-// NOTE: automated inserted imports for branch-filtering and safe raw SQL
+// ===================== VALIDATION SCHEMAS =====================
+
+const listQuerySchema = z.object({
+  branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
+  limit: z.string().regex(/^\d+$/).transform(Number).refine(n => n > 0 && n <= 100, 'Limit must be between 1 and 100').optional().default('50'),
+  offset: z.string().regex(/^\d+$/).transform(Number).refine(n => n >= 0, 'Offset must be non-negative').optional().default('0'),
+  sortBy: z.enum(['client_name', 'bkcode', 'telephone_1', 'createdAt']).default('client_name'),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+  search: z.string().max(50).optional()
+});
+
+const createCustomerSchema = z.object({
+  bkcode: z.string().min(3, 'Customer code required').max(50),
+  client_name: z.string().min(2, 'Customer name required').max(255),
+  supply_office: z.string().max(255).optional(),
+  operating_date: z.string().datetime().optional(),
+  address: z.string().max(500).optional(),
+  contact_person: z.string().max(100).optional(),
+  scanned_id_path: z.string().max(500).optional(),
+  national_id: z.string().max(20).optional(),
+  dept: z.string().max(100).optional(),
+  telephone_1: z.string().regex(/^[0-9\+\-\s]{1,20}$/).optional(),
+  telephone_2: z.string().regex(/^[0-9\+\-\s]{1,20}$/).optional(),
+  has_gates: z.boolean().optional().default(false),
+  bk_type: z.string().max(50).optional(),
+  clienttype: z.string().max(100).optional(),
+  notes: z.string().max(1000).optional(),
+  papers_date: z.string().datetime().optional(),
+  isSpecial: z.boolean().optional().default(false),
+  branchId: z.string().regex(/^[a-z0-9]{25}$/).optional()
+});
+
+const updateCustomerSchema = createCustomerSchema.partial();
+
+const idParamSchema = z.object({
+  id: z.string().min(3).max(50)
+});
+
+// ===================== MULTER CONFIG =====================
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    if (!file.originalname.match(/\.(xlsx|xls)$/)) {
+      return cb(new AppError('Only Excel files are allowed', 400, 'INVALID_FILE_TYPE'));
+    }
+    cb(null, true);
+  }
+});
+
+// ===================== HELPER FUNCTIONS =====================
 
 /**
- * @route GET /api/customers
- * @summary Get all customers
- * @security bearerAuth
- * @returns {Array<Object>} List of customers
+ * Build where clause with proper search and filtering
  */
-router.get('/customers', authenticateToken, asyncHandler(async (req, res) => {
-    const where = getBranchFilter(req);
-    const customers = await db.customer.findMany(ensureBranchWhere({
-        where,
-        orderBy: { bkcode: 'asc' },
-        include: {
-            machines: true,
-            simCards: true,
-            branch: true
-        }
-    }, req));
-    // Transform to match frontend expectations
-    const transformed = customers.map(c => ({
-        ...c,
-        posMachines: c.machines,
-        machines: undefined
-    }));
-    res.json(transformed);
-}));
+const buildWhereClause = (validated, user) => {
+  const where = {};
+  
+  // Apply branch filter for non-super-admins
+  const branchFilter = getBranchFilter(user);
+  Object.assign(where, branchFilter);
+  
+  // Admin-only branch filtering
+  if (validated.branchId) {
+    if (!['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(user.role)) {
+      throw new AppError('Insufficient permissions to filter by branch', 403, 'FORBIDDEN');
+    }
+    where.branchId = validated.branchId;
+  }
+  
+  // Search functionality
+  if (validated.search && validated.search.trim()) {
+    const searchTerm = validated.search.trim();
+    where.OR = [
+      { client_name: { contains: searchTerm, mode: 'insensitive' } },
+      { bkcode: { contains: searchTerm, mode: 'insensitive' } },
+      { telephone_1: { contains: searchTerm } },
+      { national_id: { contains: searchTerm } }
+    ];
+  }
+  
+  return where;
+};
 
+// ===================== GET ALL CUSTOMERS =====================
 /**
- * @route GET /api/customers/lite
- * @summary Get customers in lightweight format for dropdowns
+ * @route GET /customers
+ * @summary Get all customers with pagination and search
  * @security bearerAuth
- * @returns {Array<Object>} Lightweight customer list
+ * @queryParam {number} limit - Results per page (max 100)
+ * @queryParam {number} offset - Page offset
+ * @queryParam {string} search - Search by name, code, phone
+ * @returns {Object} Paginated customer list
  */
-router.get('/customers/lite', authenticateToken, asyncHandler(async (req, res) => {
-    const where = getBranchFilter(req);
-    const customers = await db.customer.findMany(ensureBranchWhere({
+router.get(
+  '/customers',
+  authenticateToken,
+  validateQuery(listQuerySchema),
+  asyncHandler(async (req, res) => {
+    const validated = req.query;
+    
+    // Build filter with security checks
+    const where = buildWhereClause(validated, req.user);
+    
+    // Safe pagination
+    const limit = Math.min(validated.limit, 100);
+    const offset = Math.max(0, validated.offset);
+    
+    // Fetch data in parallel
+    const [customers, total] = await Promise.all([
+      db.customer.findMany({
         where,
         select: {
-            bkcode: true,
-            client_name: true,
-            machines: {
-                select: {
-                    id: true,
-                    serialNumber: true,
-                    model: true
-                }
-            },
-            simCards: {
-                select: {
-                    id: true,
-                    serialNumber: true
-                }
-            }
+          bkcode: true,
+          client_name: true,
+          supply_office: true,
+          telephone_1: true,
+          telephone_2: true,
+          address: true,
+          national_id: true,
+          contact_person: true,
+          branchId: true,
+          isSpecial: true,
+          createdAt: true
         },
-        orderBy: { client_name: 'asc' },
-    }, req));
-    // Transform to match frontend expectations
-    const transformed = customers.map(c => ({
-        ...c,
-        posMachines: c.machines,
-        machines: undefined
-    }));
-    res.json(transformed);
-}));
+        orderBy: { [validated.sortBy]: validated.sortOrder },
+        take: limit,
+        skip: offset
+      }),
+      db.customer.count({ where })
+    ]);
+    
+    res.json({
+      data: customers,
+      pagination: {
+        total,
+        limit,
+        offset,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  })
+);
 
+// ===================== GET CUSTOMER - LIGHTWEIGHT =====================
 /**
- * @route GET /api/customers/:id
- * @summary Get single customer by ID
+ * @route GET /customers/lite/all
+ * @summary Get lightweight customer list for dropdowns
+ * @security bearerAuth
+ * @returns {Array} Lightweight customer list
+ */
+router.get(
+  '/customers/lite/all',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const branchFilter = getBranchFilter(req.user);
+    
+    const customers = await db.customer.findMany({
+      where: branchFilter,
+      select: {
+        bkcode: true,
+        client_name: true
+      },
+      orderBy: { client_name: 'asc' },
+      take: 1000 // Reasonable limit for dropdown
+    });
+    
+    res.json(customers);
+  })
+);
+
+// ===================== GET SINGLE CUSTOMER =====================
+/**
+ * @route GET /customers/:id
+ * @summary Get specific customer with all details
  * @security bearerAuth
  * @param {string} id - Customer code (bkcode)
- * @returns {Object} Customer details
+ * @returns {Object} Complete customer details
  */
-router.get('/customers/:id', authenticateToken, asyncHandler(async (req, res) => {
-    const customer = await db.customer.findUnique(ensureBranchWhere({
-        where: { bkcode: req.params.id },
-        include: {
-            machines: true,
-            simCards: true
+router.get(
+  '/customers/:id',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    
+    const customer = await db.customer.findUnique({
+      where: { bkcode: id },
+      include: {
+        machines: {
+          select: {
+            id: true,
+            serialNumber: true,
+            model: true,
+            manufacturer: true,
+            status: true
+          }
+        },
+        simCards: {
+          select: {
+            id: true,
+            serialNumber: true,
+            status: true
+          }
         }
-    }, req));
-
-    // Manual check for branch isolation since findUnique doesn't support additional where clauses easily with same logic
-    if (customer && req.user.branchId && customer.branchId !== req.user.branchId) {
-        throw new ForbiddenError('Access denied to this customer');
-    }
+      }
+    });
+    
     if (!customer) {
-        throw new NotFoundError('Customer');
+      throw new NotFoundError('Customer');
     }
+    
+    // Branch isolation check
+    if (req.user.branchId && customer.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Access denied', 403, 'FORBIDDEN');
+    }
+    
     res.json(customer);
-}));
+  })
+);
 
+// ===================== CREATE CUSTOMER =====================
 /**
- * @route POST /api/customers
- * @summary Create a new customer
+ * @route POST /customers
+ * @summary Create new customer
  * @security bearerAuth
  * @body {Object} Customer data
  * @returns {Object} Created customer
  */
-router.post('/customers', authenticateToken, validate('body', schemas.customer.create), asyncHandler(async (req, res) => {
-    const branchId = req.user.branchId || req.body.branchId;
-    if (!branchId || typeof branchId !== 'string' || branchId.trim() === '') {
-        throw new ForbiddenError('Branch ID is required');
+router.post(
+  '/customers',
+  authenticateToken,
+  requireManager,
+  createLimiter,
+  validateRequest(createCustomerSchema),
+  asyncHandler(async (req, res) => {
+    const validated = req.validated;
+    
+    // Determine branch
+    const branchId = req.user.branchId || validated.branchId;
+    if (!branchId) {
+      throw new AppError('Branch ID is required', 400, 'MISSING_BRANCH');
     }
-
+    
+    // Check if customer code already exists
+    const existing = await db.customer.findUnique({
+      where: { bkcode: validated.bkcode }
+    });
+    
+    if (existing) {
+      throw new AppError('Customer code already exists', 409, 'DUPLICATE_CUSTOMER');
+    }
+    
+    // Create customer
     const customer = await db.customer.create({
-        data: {
-            branchId,
-            bkcode: req.body.bkcode,
-            client_name: req.body.client_name,
-            supply_office: req.body.supply_office,
-            operating_date: req.body.operating_date ? new Date(req.body.operating_date) : null,
-            address: req.body.address,
-            contact_person: req.body.contact_person,
-            scanned_id_path: req.body.scanned_id_path,
-            national_id: req.body.national_id,
-            dept: req.body.dept,
-            telephone_1: req.body.telephone_1,
-            telephone_2: req.body.telephone_2,
-            has_gates: req.body.has_gates,
-            bk_type: req.body.bk_type,
-            clienttype: req.body.clienttype,
-            notes: req.body.notes,
-            papers_date: req.body.papers_date ? new Date(req.body.papers_date) : null,
-            isSpecial: req.body.isSpecial,
-        }
+      data: {
+        branchId,
+        bkcode: validated.bkcode,
+        client_name: validated.client_name,
+        supply_office: validated.supply_office,
+        operating_date: validated.operating_date,
+        address: validated.address,
+        contact_person: validated.contact_person,
+        scanned_id_path: validated.scanned_id_path,
+        national_id: validated.national_id,
+        dept: validated.dept,
+        telephone_1: validated.telephone_1,
+        telephone_2: validated.telephone_2,
+        has_gates: validated.has_gates,
+        bk_type: validated.bk_type,
+        clienttype: validated.clienttype,
+        notes: validated.notes,
+        papers_date: validated.papers_date,
+        isSpecial: validated.isSpecial
+      }
     });
-
+    
+    // Audit logging
     await logAction({
-        entityType: 'CUSTOMER',
-        entityId: customer.bkcode,
-        action: 'CREATE',
-        details: `Created customer ${customer.client_name}`,
-        userId: req.user?.id,
-        performedBy: req.user?.displayName || 'System',
-        branchId: branchId
+      entityType: 'CUSTOMER',
+      entityId: customer.bkcode,
+      action: 'CREATE',
+      details: `Created customer: ${customer.client_name}`,
+      userId: req.user.id,
+      performedBy: req.user.displayName,
+      branchId
     });
-
+    
     res.status(201).json(customer);
-}));
+  })
+);
 
-const { logAction } = require('../utils/logger');
-
+// ===================== UPDATE CUSTOMER =====================
 /**
- * @route PUT /api/customers/:id
- * @summary Update customer
+ * @route PUT /customers/:id
+ * @summary Update customer details
  * @security bearerAuth
  * @param {string} id - Customer code
  * @body {Object} Updated customer data
  * @returns {Object} Updated customer
  */
-router.put('/customers/:id', authenticateToken, validate('body', schemas.customer.update), asyncHandler(async (req, res) => {
-    const existingCustomer = await db.customer.findUnique({ where: { bkcode: req.params.id } });
-
-    if (!existingCustomer) throw new NotFoundError('Customer');
-
-    if (req.user.branchId && existingCustomer.branchId !== req.user.branchId) {
-        throw new ForbiddenError('Access denied');
-    }
-
-    const customer = await db.customer.update({
-        where: { bkcode: req.params.id },
-        data: {
-            client_name: req.body.client_name,
-            supply_office: req.body.supply_office,
-            operating_date: req.body.operating_date ? new Date(req.body.operating_date) : null,
-            address: req.body.address,
-            contact_person: req.body.contact_person,
-            scanned_id_path: req.body.scanned_id_path,
-            national_id: req.body.national_id,
-            dept: req.body.dept,
-            telephone_1: req.body.telephone_1,
-            telephone_2: req.body.telephone_2,
-            has_gates: req.body.has_gates,
-            bk_type: req.body.bk_type,
-            clienttype: req.body.clienttype,
-            notes: req.body.notes,
-            papers_date: req.body.papers_date ? new Date(req.body.papers_date) : null,
-            isSpecial: req.body.isSpecial,
-        }
+router.put(
+  '/customers/:id',
+  authenticateToken,
+  requireManager,
+  updateLimiter,
+  validateRequest(updateCustomerSchema),
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const validated = req.validated;
+    
+    // Find existing
+    const existing = await db.customer.findUnique({
+      where: { bkcode: id }
     });
-
-    // Identify what changed
-    const changes = {};
-    const fieldsToCheck = ['client_name', 'telephone_1', 'telephone_2', 'address', 'contact_person', 'national_id', 'clienttype'];
-
-    if (existingCustomer) {
-        fieldsToCheck.forEach(field => {
-            if (existingCustomer[field] !== customer[field] && (existingCustomer[field] || customer[field])) {
-                changes[field] = { old: existingCustomer[field], new: customer[field] };
-            }
-        });
-
-        if (Object.keys(changes).length > 0) {
-            await logAction({
-                entityType: 'CUSTOMER',
-                entityId: customer.bkcode,
-                action: 'UPDATE',
-                details: JSON.stringify(changes),
-                userId: req.user?.id,
-                performedBy: req.user?.displayName || 'System',
-                branchId: req.user?.branchId
-            });
-        }
+    
+    if (!existing) {
+      throw new NotFoundError('Customer');
     }
+    
+    // Branch isolation
+    if (req.user.branchId && existing.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Access denied', 403, 'FORBIDDEN');
+    }
+    
+    // Prepare update data (only include provided fields)
+    const updateData = {};
+    Object.entries(validated).forEach(([key, value]) => {
+      if (value !== undefined) {
+        updateData[key] = value;
+      }
+    });
+    
+    // If changing bkcode, check for duplicates
+    if (updateData.bkcode && updateData.bkcode !== existing.bkcode) {
+      const duplicate = await db.customer.findUnique({
+        where: { bkcode: updateData.bkcode }
+      });
+      if (duplicate) {
+        throw new AppError('Customer code already exists', 409, 'DUPLICATE_CUSTOMER');
+      }
+    }
+    
+    // Update
+    const updated = await db.customer.update({
+      where: { bkcode: id },
+      data: updateData
+    });
+    
+    // Audit logging
+    await logAction({
+      entityType: 'CUSTOMER',
+      entityId: id,
+      action: 'UPDATE',
+      details: `Updated customer: ${updated.client_name}`,
+      userId: req.user.id,
+      performedBy: req.user.displayName,
+      branchId: req.user.branchId
+    });
+    
+    res.json(updated);
+  })
+);
 
-    res.json(customer);
-}));
-
+// ===================== DELETE CUSTOMER =====================
 /**
- * @route DELETE /api/customers/:id
- * @summary Delete customer
+ * @route DELETE /customers/:id
+ * @summary Delete customer (with validation)
  * @security bearerAuth
  * @param {string} id - Customer code
  * @returns {Object} Success message
  */
-router.delete('/customers/:id', authenticateToken, asyncHandler(async (req, res) => {
-    const existing = await db.customer.findUnique({ where: { bkcode: req.params.id } });
-    if (existing) {
-        if (req.user.branchId && existing.branchId !== req.user.branchId) {
-            throw new ForbiddenError('Access denied');
-        }
-        await db.customer.delete({
-            where: { bkcode: req.params.id }
-        });
+router.delete(
+  '/customers/:id',
+  authenticateToken,
+  requireManager,
+  deleteLimiter,
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    
+    // Find customer
+    const customer = await db.customer.findUnique({
+      where: { bkcode: id }
+    });
+    
+    if (!customer) {
+      throw new NotFoundError('Customer');
     }
-    res.json({ success: true });
-}));
-
-/**
- * @route GET /api/customers/:id/machines
- * @summary Get customer's machines
- * @security bearerAuth
- * @param {string} id - Customer ID
- * @returns {Array<Object>} List of customer's machines
- */
-router.get('/customers/:id/machines', authenticateToken, asyncHandler(async (req, res) => {
-    const machines = await db.posMachine.findMany(ensureBranchWhere({
-        where: {
-            customerId: req.params.id,
-            ...getBranchFilter(req)
-        }
-    }, req));
-    res.json(machines);
-}));
-
-const multer = require('multer');
-const { parseExcelFile } = require('../utils/excel');
-const upload = multer({ storage: multer.memoryStorage() });
-
-// POST import customers
-router.post('/customers/import', authenticateToken, upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
-
-        const customers = await parseExcelFile(req.file.buffer);
-
-        const branchId = req.user.branchId || req.body.branchId;
-        if (!branchId || typeof branchId !== 'string' || branchId.trim() === '') {
-            return res.status(400).json({ error: 'Branch ID is required for import' });
-        }
-
-        // WRAP ALL OPERATIONS IN TRANSACTION FOR ATOMICITY
-        const result = await db.$transaction(async (tx) => {
-            let count = 0;
-            let errors = [];
-
-            for (const c of customers) {
-                // Map Arabic headers to DB fields
-                const mapped = {
-                    bkcode: c['رقم العميل'] || c.bkcode,
-                    client_name: c['اسم العميل'] || c.client_name,
-                    address: c['العنوان'] || c.address,
-                    national_id: c['الرقم القومي'] || c.national_id,
-                    supply_office: c['مكتب التموين'] || c.supply_office,
-                    dept: c['إدارة التموين'] || c.dept,
-                    contact_person: c['الشخص المسؤول'] || c.contact_person,
-                    telephone_1: c['رقم الهاتف 1'] || c.telephone_1,
-                    telephone_2: c['رقم الهاتف 2'] || c.telephone_2,
-                    notes: c['ملاحظات'] || c.notes,
-                    clienttype: c['نوع العميل'] || c['تصنيف العميل'] || c.clienttype,
-                    isSpecial: c.isSpecial
-                };
-
-                if (!mapped.bkcode || !mapped.client_name) {
-                    errors.push({ bkcode: mapped.bkcode || 'UNKNOWN', error: 'Missing required fields (bkcode, client_name)' });
-                    continue;
-                }
-
-                // Check if customer exists (branch-scoped)
-                const existing = await tx.customer.findFirst({
-                    where: {
-                        bkcode: mapped.bkcode.toString(),
-                        branchId
-                    }
-                });
-
-                if (existing) {
-                    // Update
-                    try {
-                        await tx.customer.update({
-                            where: { bkcode: mapped.bkcode.toString() },
-                            data: {
-                                client_name: mapped.client_name,
-                                address: mapped.address || existing.address,
-                                telephone_1: mapped.telephone_1?.toString() || existing.telephone_1,
-                                telephone_2: mapped.telephone_2?.toString() || existing.telephone_2,
-                                contact_person: mapped.contact_person || existing.contact_person,
-                                national_id: mapped.national_id?.toString() || existing.national_id,
-                                supply_office: mapped.supply_office || existing.supply_office,
-                                dept: mapped.dept || existing.dept,
-                                clienttype: mapped.clienttype || existing.clienttype,
-                                notes: mapped.notes || existing.notes,
-                                isSpecial: mapped.isSpecial === 'true' || mapped.isSpecial === true || existing.isSpecial
-                            }
-                        });
-                        count++;
-                    } catch (updateError) {
-                        errors.push({ bkcode: mapped.bkcode, error: updateError.message });
-                    }
-                } else {
-                    // Create
-                    try {
-                        await tx.customer.create({
-                            data: {
-                                bkcode: mapped.bkcode.toString(),
-                                branchId,
-                                client_name: mapped.client_name,
-                                address: mapped.address || null,
-                                telephone_1: mapped.telephone_1?.toString() || null,
-                                telephone_2: mapped.telephone_2?.toString() || null,
-                                contact_person: mapped.contact_person || null,
-                                national_id: mapped.national_id?.toString() || null,
-                                supply_office: mapped.supply_office || null,
-                                dept: mapped.dept || null,
-                                clienttype: mapped.clienttype || null,
-                                notes: mapped.notes || null,
-                                has_gates: false,
-                                isSpecial: mapped.isSpecial === 'true' || mapped.isSpecial === true
-                            }
-                        });
-                        count++;
-                    } catch (createError) {
-                        errors.push({ bkcode: mapped.bkcode, error: createError.message });
-                    }
-                }
-            }
-
-            return { count, errors };
-        });
-
-        // Log successful import (AFTER transaction)
-        await logAction({
-            entityType: 'CUSTOMER',
-            entityId: 'BULK_IMPORT',
-            action: 'IMPORT',
-            details: `استيراد عملاء - المعالج: ${result.count}, أخطاء: ${result.errors.length}`,
-            userId: req.user?.id,
-            performedBy: req.user?.displayName || 'System',
-            branchId
-        });
-
-        res.json({ success: true, count: result.count, errors: result.errors.length > 0 ? result.errors : undefined });
-    } catch (error) {
-        logger.error({ err: error, userId: req.user?.id, branchId: req.user?.branchId }, 'Failed to import customers');
-        res.status(500).json({ error: 'Failed to import customers' });
+    
+    // Branch isolation
+    if (req.user.branchId && customer.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
-});
-
-
-
-// GET customer template
-router.get('/customers/template/download', async (req, res) => {
-    try {
-        const workbook = new ExcelJS.Workbook();
-
-        // Sheet 1: Template
-        const worksheet = workbook.addWorksheet('Clients');
-        worksheet.columns = [
-            { header: 'رقم العميل', key: 'bkcode', width: 15 },
-            { header: 'اسم العميل', key: 'client_name', width: 30 },
-            { header: 'العنوان', key: 'address', width: 40 },
-            { header: 'الرقم القومي', key: 'national_id', width: 20 },
-            { header: 'مكتب التموين', key: 'supply_office', width: 20 },
-            { header: 'إدارة التموين', key: 'dept', width: 20 },
-            { header: 'الشخص المسؤول', key: 'contact_person', width: 20 },
-            { header: 'رقم الهاتف 1', key: 'telephone_1', width: 15 },
-            { header: 'رقم الهاتف 2', key: 'telephone_2', width: 15 },
-            { header: 'ملاحظات', key: 'notes', width: 30 },
-            { header: 'نوع العميل', key: 'clienttype', width: 20 }
-        ];
-
-        // Sheet 2: Help (Valid Client Types)
-        const helpSheet = workbook.addWorksheet('Valid Values');
-        helpSheet.columns = [
-            { header: 'Client Types', key: 'name', width: 25 },
-            { header: 'Description', key: 'description', width: 40 }
-        ];
-
-        const types = await db.clientType.findMany({ orderBy: { name: 'asc' } });
-        types.forEach(t => {
-            helpSheet.addRow({ name: t.name, description: t.description || '' });
-        });
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=customers_import.xlsx');
-
-        await workbook.xlsx.write(res);
-        res.end();
-
-    } catch (error) {
-        logger.error({ err: error, userId: req.user?.id }, 'Failed to generate template');
-        res.status(500).json({ error: 'Failed to generate template' });
+    
+    // Check if customer has associated records
+    const machineCount = await db.posMachine.count({
+      where: { customerId: id }
+    });
+    
+    if (machineCount > 0) {
+      throw new AppError('Cannot delete customer with active machines', 400, 'CUSTOMER_HAS_MACHINES');
     }
-});
-
-module.exports = router;
+    
+    // Delete
+    await db.customer.delete({
+      where: { bkcode: id }
+    });
+    
+    // Audit logging
+    await logAction({
+      entityType: 'CUSTOMER',
+      entityId: id,
+      action: 'DELETE',
+      details: `Deleted customer: ${customer.client_name}`,
+      userId: req.user.id,
+      performedBy: req.user.displayName,
+      branchId: req.user.branchId
+    });
+    
+    res.json({ message: 
