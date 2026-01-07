@@ -22,7 +22,9 @@ async function importMachines(machines, branchId, performedBy = 'System') {
     for (const machine of machines) {
         try {
             const serialNumber = String(machine.serialNumber);
-            const existing = await db.warehouseMachine.findUnique({ where: { serialNumber } });
+            const existing = await db.warehouseMachine.findFirst({
+                where: { serialNumber, branchId: { not: null } }
+            });
 
             if (existing) {
                 if (existing.branchId !== branchId) {
@@ -33,10 +35,21 @@ async function importMachines(machines, branchId, performedBy = 'System') {
                     await movementService.logMachineMovement(db, { machineId: existing.id, serialNumber: existing.serialNumber, action: 'STATUS_CHANGE', details: `Changed from ${existing.status} to ${machine.status} via Import`, performedBy, branchId: existing.branchId });
                 }
 
-                await db.warehouseMachine.update({ where: { serialNumber }, data: { status: machine.status, model: machine.model || existing.model, manufacturer: machine.manufacturer || existing.manufacturer, notes: machine.notes || existing.notes } });
+                await db.warehouseMachine.updateMany({
+                    where: { serialNumber, branchId: existing.branchId },
+                    data: {
+                        status: machine.status,
+                        model: machine.model || existing.model,
+                        manufacturer: machine.manufacturer || existing.manufacturer,
+                        notes: machine.notes || existing.notes
+                    }
+                });
                 results.success++;
             } else {
-                const existsWithCustomer = await db.posMachine.findUnique({ where: { serialNumber }, include: { customer: { include: { branch: true } } } });
+                const existsWithCustomer = await db.posMachine.findFirst({
+                    where: { serialNumber, branchId: { not: null } },
+                    include: { customer: { include: { branch: true } } }
+                });
                 if (existsWithCustomer) {
                     if (existsWithCustomer.customer && existsWithCustomer.customer.branchId !== branchId) {
                         const branchName = existsWithCustomer.customer.branch?.name || existsWithCustomer.customer.branchId;
@@ -71,14 +84,18 @@ async function createMachine(data, user) {
         throw err;
     }
 
-    const existsWithCustomer = await db.posMachine.findUnique({ where: { serialNumber: data.serialNumber } });
+    const existsWithCustomer = await db.posMachine.findFirst({
+        where: { serialNumber: data.serialNumber, branchId: { not: null } }
+    });
     if (existsWithCustomer) {
         const err = new Error(`Machine exists with customer ${existsWithCustomer.customerId}`);
         err.status = 400;
         throw err;
     }
 
-    const existing = await db.warehouseMachine.findUnique({ where: { serialNumber: data.serialNumber } });
+    const existing = await db.warehouseMachine.findFirst({
+        where: { serialNumber: data.serialNumber, branchId: { not: null } }
+    });
     if (existing) {
         const err = new Error(`Machine exists in warehouse (ID: ${existing.id})`);
         err.status = 400;

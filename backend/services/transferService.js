@@ -154,7 +154,7 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
         if (serialsToTransfer.length > 0) {
             const activeRequests = await tx.maintenanceRequest.findMany({ where: { serialNumber: { in: serialsToTransfer }, status: { notIn: ['Closed', 'Cancelled'] }, branchId: sourceBranchId } });
             for (const r of activeRequests) {
-                await tx.maintenanceRequest.update({ where: { id: r.id }, data: { status: 'PENDING_TRANSFER' } });
+                await tx.maintenanceRequest.updateMany({ where: { id: r.id, branchId: sourceBranchId }, data: { status: 'PENDING_TRANSFER' } });
             }
         }
 
@@ -175,7 +175,7 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
     const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
     let order;
     if (isAdmin) {
-        order = await db.transferOrder.findUnique({ where: { id: orderId }, include: { items: true, fromBranch: true, toBranch: true } });
+        order = await db.transferOrder.findFirst({ where: { id: orderId, branchId: { not: null } }, include: { items: true, fromBranch: true, toBranch: true } });
     } else {
         if (!user.branchId) {
             const err = new Error('Access denied'); err.status = 403; throw err;
@@ -211,8 +211,8 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
             await tx.transferOrderItem.update({ where: { id: itemId }, data: { isReceived: true, receivedAt: new Date() } });
         }
 
-        // Update order status
-        await tx.transferOrder.update({
+        // Update order status - RULE 1
+        await tx.transferOrder.updateMany({
             where: {
                 id: orderId,
                 branchId: order.branchId || { not: null }
@@ -237,7 +237,8 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
                 if (!existing) {
                     simObj = await tx.warehouseSim.create({ data: { branchId: order.branchId, serialNumber: item.serialNumber, type: item.type || 'ط£ط®ط±ظ‰', status: 'ACTIVE', notes: `طھظ… ط§ظ„ط¥ط¶ط§ظپط© ظ…ظ† ط¥ط°ظ† ${order.orderNumber}` } });
                 } else {
-                    simObj = await tx.warehouseSim.update({ where: { id: existing.id }, data: { branchId: order.branchId, status: existing.status === 'IN_TRANSIT' ? 'ACTIVE' : existing.status } });
+                    await tx.warehouseSim.updateMany({ where: { id: existing.id, branchId: { not: null } }, data: { branchId: order.branchId, status: existing.status === 'IN_TRANSIT' ? 'ACTIVE' : existing.status } });
+                    simObj = await tx.warehouseSim.findFirst({ where: { id: existing.id, branchId: { not: null } } });
                 }
 
                 await movementService.logSimMovement(tx, { simId: simObj.id, serialNumber: item.serialNumber, action: 'TRANSFER_IN', details: { reason: 'Transfer Order Received', orderNumber: order.orderNumber, fromBranchId: order.fromBranchId }, performedBy: receivedByName || 'System', branchId: order.branchId, fromBranchId: order.fromBranchId });
@@ -252,7 +253,7 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
                         newStatus = 'RECEIVED_AT_CENTER';
                         const activeRequest = await tx.maintenanceRequest.findFirst({ where: { serialNumber: item.serialNumber, status: { in: ['PENDING_TRANSFER', 'Open', 'In Progress'] }, branchId: order.fromBranchId } });
                         if (activeRequest) {
-                            await tx.maintenanceRequest.update({ where: { id: activeRequest.id }, data: { status: 'Open', servicedByBranchId: order.toBranchId } });
+                            await tx.maintenanceRequest.updateMany({ where: { id: activeRequest.id, branchId: order.fromBranchId }, data: { status: 'Open', servicedByBranchId: order.toBranchId } });
                         }
                     } else {
                         newStatus = 'REPAIRED';
@@ -279,7 +280,7 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
 
     let updatedOrder;
     if (isAdmin) {
-        updatedOrder = await db.transferOrder.findUnique({ where: { id: orderId }, include: { items: true, fromBranch: true, toBranch: true } });
+        updatedOrder = await db.transferOrder.findFirst({ where: { id: orderId, branchId: { not: null } }, include: { items: true, fromBranch: true, toBranch: true } });
     } else {
         updatedOrder = await db.transferOrder.findFirst({
             where: {
@@ -360,19 +361,19 @@ async function createBulkTransfer({ serialNumbers, toBranchId, waybillNumber, no
         const requestMap = new Map(activeRequests.map(r => [r.serialNumber, r.id]));
 
         for (const req of activeRequests) {
-            await tx.maintenanceRequest.update({
-                where: { id: req.id },
+            await tx.maintenanceRequest.updateMany({
+                where: { id: req.id, branchId: fromBranchId },
                 data: { status: 'PENDING_TRANSFER' }
             });
         }
 
-        // Update machine status to IN_TRANSIT and link to request
+        // Update machine status to IN_TRANSIT and link to request - RULE 1
         for (const serial of serialNumbers) {
             const machineInfo = machineMap.get(serial);
             const requestId = requestMap.get(serial);
 
-            await tx.warehouseMachine.update({
-                where: { serialNumber: serial },
+            await tx.warehouseMachine.updateMany({
+                where: { serialNumber: serial, branchId: fromBranchId },
                 data: {
                     notes: `In Bulk Transfer ${orderNumber} (Waybill: ${waybillNumber})`,
                     status: 'IN_TRANSIT',
@@ -541,13 +542,84 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
                 branchId: user.branchId,
                 OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
             }
-    if(!order) { const err = new Error('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯'); err.status = 404; throw err; }
-    if(order.status !== 'PENDING') { const err = new Error('ط§ظ„ط¥ط°ظ† ظ„ظٹط³ ظپظٹ ط­ط§ظ„ط© ط§ظ†طھط¸ط§ط±'); err.status = 400; throw err; }
+        });
+    }
+    if (!order) { const err = new Error('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯'); err.status = 404; throw err; }
+    if (order.status !== 'PENDING') { const err = new Error('ط§ظ„ط¥ط°ظ† ظ„ظٹط³ ظپظٹ ط­ط§ظ„ط© ط§ظ†طھط¸ط§ط±'); err.status = 400; throw err; }
 
-        const orderWithItems = isAdmin ? await db.transferOrder.findFirst({
+    const orderWithItems = isAdmin ? await db.transferOrder.findFirst({
+        where: { id, branchId: { not: null } },
+        include: { items: true }
+    }) : await db.transferOrder.findFirst({
+        where: {
+            id,
+            branchId: user.branchId,
+            OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+        },
+        include: { items: true }
+    });
+    const serialNumbers = orderWithItems.items.map(i => i.serialNumber).filter(s => s);
+
+    await db.$transaction(async (tx) => {
+        if (orderWithItems.type === 'MACHINE' || orderWithItems.type === 'MAINTENANCE') {
+            for (const serial of serialNumbers) {
+                const machine = await tx.warehouseMachine.findFirst({
+                    where: { serialNumber: serial, branchId: { not: null } }
+                });
+                const st = machine?.status;
+                const isAnyMaintenanceState = st === 'IN_TRANSIT' || st === 'AT_CENTER' || st === 'RECEIVED_AT_CENTER' || st === 'UNDER_MAINTENANCE' || st === 'ASSIGNED';
+                if (machine && machine.branchId === orderWithItems.fromBranchId && isAnyMaintenanceState) {
+                    let restoredStatus = 'NEW';
+                    if (orderWithItems.type === 'MAINTENANCE') restoredStatus = machine.customerId ? 'CLIENT_REPAIR' : 'DEFECTIVE';
+                    await tx.warehouseMachine.updateMany({
+                        where: { id: machine.id, branchId: { not: null } },
+                        data: { status: restoredStatus }
+                    });
+                    await tx.maintenanceRequest.updateMany({
+                        where: { serialNumber: serial, status: 'PENDING_TRANSFER', branchId: orderWithItems.fromBranchId },
+                        data: { status: 'Open' }
+                    });
+                }
+            }
+        } else if (orderWithItems.type === 'SIM') {
+            await tx.warehouseSim.updateMany({ where: { serialNumber: { in: serialNumbers }, branchId: orderWithItems.fromBranchId, status: 'IN_TRANSIT' }, data: { status: 'ACTIVE' } });
+        }
+    });
+
+    const updated = await db.$transaction(async (tx) => {
+        await tx.transferOrder.updateMany({
+            where: {
+                id,
+                branchId: orderWithItems.branchId
+            },
+            data: {
+                status: 'REJECTED',
+                rejectionReason,
+                receivedBy,
+                receivedByName,
+                receivedAt: new Date()
+            }
+        });
+        return await tx.transferOrder.findFirst({
+            where: { id, branchId: orderWithItems.branchId },
+            include: { items: true, fromBranch: true, toBranch: true }
+        });
+    });
+    await createNotification({ branchId: orderWithItems.fromBranchId, type: 'TRANSFER_REJECTED', title: 'طھظ… ط±ظپط¶ ط¥ط°ظ† ط§ظ„طµط±ظپ', message: `طھظ… ط±ظپط¶ ط¥ط°ظ† ط§ظ„طµط±ظپ ط±ظ‚ظ… ${order.orderNumber}${rejectionReason ? `: ${rejectionReason}` : ''}`, data: { orderId: order.id, orderNumber: order.orderNumber }, link: `/transfer-orders?orderId=${order.id}` });
+    return updated;
+}
+
+async function cancelOrder(id, user) {
+    const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS'].includes(user.role);
+    let order;
+    if (isAdmin) {
+        order = await db.transferOrder.findFirst({
             where: { id, branchId: { not: null } },
             include: { items: true }
-        }) : await db.transferOrder.findFirst({
+        });
+    } else {
+        if (!user.branchId) { const err = new Error('Access denied'); err.status = 403; throw err; }
+        order = await db.transferOrder.findFirst({
             where: {
                 id,
                 branchId: user.branchId,
@@ -555,127 +627,60 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
             },
             include: { items: true }
         });
-        const serialNumbers = orderWithItems.items.map(i => i.serialNumber).filter(s => s);
-
-        await db.$transaction(async (tx) => {
-            if (orderWithItems.type === 'MACHINE' || orderWithItems.type === 'MAINTENANCE') {
-                for (const serial of serialNumbers) {
-                    const machine = await tx.warehouseMachine.findFirst({
-                        where: { serialNumber: serial, branchId: { not: null } }
-                    });
-                    const st = machine?.status;
-                    const isAnyMaintenanceState = st === 'IN_TRANSIT' || st === 'AT_CENTER' || st === 'RECEIVED_AT_CENTER' || st === 'UNDER_MAINTENANCE' || st === 'ASSIGNED';
-                    if (machine && machine.branchId === orderWithItems.fromBranchId && isAnyMaintenanceState) {
-                        let restoredStatus = 'NEW';
-                        if (orderWithItems.type === 'MAINTENANCE') restoredStatus = machine.customerId ? 'CLIENT_REPAIR' : 'DEFECTIVE';
-                        await tx.warehouseMachine.updateMany({
-                            where: { id: machine.id, branchId: { not: null } },
-                            data: { status: restoredStatus }
-                        });
-                        await tx.maintenanceRequest.updateMany({
-                            where: { serialNumber: serial, status: 'PENDING_TRANSFER', branchId: orderWithItems.fromBranchId },
-                            data: { status: 'Open' }
-                        });
-                    }
-                }
-            } else if (orderWithItems.type === 'SIM') {
-                await tx.warehouseSim.updateMany({ where: { serialNumber: { in: serialNumbers }, branchId: orderWithItems.fromBranchId, status: 'IN_TRANSIT' }, data: { status: 'ACTIVE' } });
-            }
-        });
-
-        const updated = await db.$transaction(async (tx) => {
-            const u = await tx.transferOrder.update({
-                where: {
-                    id,
-                    branchId: orderWithItems.branchId
-                },
-                data: {
-                    status: 'REJECTED',
-                    rejectionReason,
-                    receivedBy,
-                    receivedByName,
-                    receivedAt: new Date()
-                },
-                include: { items: true, fromBranch: true, toBranch: true }
-            });
-            return u;
-        });
-        await createNotification({ branchId: orderWithItems.fromBranchId, type: 'TRANSFER_REJECTED', title: 'طھظ… ط±ظپط¶ ط¥ط°ظ† ط§ظ„طµط±ظپ', message: `طھظ… ط±ظپط¶ ط¥ط°ظ† ط§ظ„طµط±ظپ ط±ظ‚ظ… ${order.orderNumber}${rejectionReason ? `: ${rejectionReason}` : ''}`, data: { orderId: order.id, orderNumber: order.orderNumber }, link: `/transfer-orders?orderId=${order.id}` });
-        return updated;
     }
+    if (!order) { const err = new Error('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯'); err.status = 404; throw err; }
+    const isCreator = user.id === order.createdByUserId;
 
-    async function cancelOrder(id, user) {
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS'].includes(user.role);
-        let order;
-        if (isAdmin) {
-            order = await db.transferOrder.findFirst({
-                where: { id, branchId: { not: null } },
-                include: { items: true }
-            });
-        } else {
-            if (!user.branchId) { const err = new Error('Access denied'); err.status = 403; throw err; }
-            order = await db.transferOrder.findFirst({
-                where: {
-                    id,
-                    branchId: user.branchId,
-                    OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
-                },
-                include: { items: true }
-            });
+    const isAdminOrAffairs = isAdmin;
+    if (!isCreator && !isAdmin) { const err = new Error('ط؛ظٹط± ظ…طµط±ط­ ظ„ظƒ ط¨ط¥ظ„ط؛ط§ط، ظ‡ط°ط§ ط§ظ„ط¥ط°ظ†'); err.status = 403; throw err; }
+    if (order.status !== 'PENDING') { const err = new Error('ظ„ط§ ظٹظ…ظƒظ† ط¥ظ„ط؛ط§ط، ط¥ط°ظ† ط؛ظٹط± ظ…ط¹ظ„ظ‚'); err.status = 400; throw err; }
+
+    const serialNumbers = order.items.map(item => item.serialNumber).filter(s => s);
+    await db.$transaction(async (tx) => {
+        if (order.type === 'MACHINE' || order.type === 'MAINTENANCE') {
+            const restoredStatus = order.type === 'MAINTENANCE' ? 'DEFECTIVE' : 'NEW';
+            await tx.warehouseMachine.updateMany({ where: { serialNumber: { in: serialNumbers }, branchId: order.fromBranchId, status: 'IN_TRANSIT' }, data: { status: restoredStatus } });
+        } else if (order.type === 'SIM') {
+            await tx.warehouseSim.updateMany({ where: { serialNumber: { in: serialNumbers }, branchId: order.fromBranchId, status: 'IN_TRANSIT' }, data: { status: 'ACTIVE' } });
         }
-        if (!order) { const err = new Error('ط§ظ„ط¥ط°ظ† ط؛ظٹط± ظ…ظˆط¬ظˆط¯'); err.status = 404; throw err; }
-        const isCreator = user.id === order.createdByUserId;
 
-        const isAdminOrAffairs = isAdmin;
-        if (!isCreator && !isAdmin) { const err = new Error('ط؛ظٹط± ظ…طµط±ط­ ظ„ظƒ ط¨ط¥ظ„ط؛ط§ط، ظ‡ط°ط§ ط§ظ„ط¥ط°ظ†'); err.status = 403; throw err; }
-        if (order.status !== 'PENDING') { const err = new Error('ظ„ط§ ظٹظ…ظƒظ† ط¥ظ„ط؛ط§ط، ط¥ط°ظ† ط؛ظٹط± ظ…ط¹ظ„ظ‚'); err.status = 400; throw err; }
-
-        const serialNumbers = order.items.map(item => item.serialNumber).filter(s => s);
-        await db.$transaction(async (tx) => {
-            if (order.type === 'MACHINE' || order.type === 'MAINTENANCE') {
-                const restoredStatus = order.type === 'MAINTENANCE' ? 'DEFECTIVE' : 'NEW';
-                await tx.warehouseMachine.updateMany({ where: { serialNumber: { in: serialNumbers }, branchId: order.fromBranchId, status: 'IN_TRANSIT' }, data: { status: restoredStatus } });
-            } else if (order.type === 'SIM') {
-                await tx.warehouseSim.updateMany({ where: { serialNumber: { in: serialNumbers }, branchId: order.fromBranchId, status: 'IN_TRANSIT' }, data: { status: 'ACTIVE' } });
-            }
-
-            await tx.transferOrder.update({
-                where: {
-                    id,
-                    branchId: order.branchId
-                },
-                data: {
-                    status: 'CANCELLED',
-                    receivedBy: user.id,
-                    receivedByName: user.displayName || user.name,
-                    rejectionReason: 'طھظ… ط§ظ„ط¥ظ„ط؛ط§ط، ظ…ظ† ظ‚ط¨ظ„ ط§ظ„ظ…ط±ط³ظ„'
-                }
-            });
-
-            if (order.type === 'MAINTENANCE') {
-                await tx.maintenanceRequest.updateMany({ where: { serialNumber: { in: serialNumbers }, status: 'PENDING_TRANSFER', branchId: order.fromBranchId }, data: { status: 'Open' } });
+        await tx.transferOrder.updateMany({
+            where: {
+                id,
+                branchId: order.branchId
+            },
+            data: {
+                status: 'CANCELLED',
+                receivedBy: user.id,
+                receivedByName: user.displayName || user.name,
+                rejectionReason: 'طھظ… ط§ظ„ط¥ظ„ط؛ط§ط، ظ…ظ† ظ‚ط¨ظ„ ط§ظ„ظ…ط±ط³ظ„'
             }
         });
 
-        return { message: 'طھظ… ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط°ظ† ط¨ظ†ط¬ط§ط­' };
-    }
+        if (order.type === 'MAINTENANCE') {
+            await tx.maintenanceRequest.updateMany({ where: { serialNumber: { in: serialNumbers }, status: 'PENDING_TRANSFER', branchId: order.fromBranchId }, data: { status: 'Open' } });
+        }
+    });
 
-    async function getStatsSummary({ branchId, fromDate, toDate }, user) {
-        let where = {};
-        where = applyTransferBranchFilter(where, user, branchId);
-        if (fromDate || toDate) { where.createdAt = {}; if (fromDate) where.createdAt.gte = new Date(fromDate); if (toDate) where.createdAt.lte = new Date(toDate); }
-        const [total, pending, received, partial, rejected] = await Promise.all([
-            db.transferOrder.count({ where: { ...where, branchId: where.branchId || { not: null } } }),
-            db.transferOrder.count({ where: { ...where, status: 'PENDING' } }),
-            db.transferOrder.count({ where: { ...where, status: 'RECEIVED' } }),
-            db.transferOrder.count({ where: { ...where, status: 'PARTIAL' } }),
-            db.transferOrder.count({ where: { ...where, status: 'REJECTED' } })
-        ]);
+    return { message: 'طھظ… ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط°ظ† ط¨ظ†ط¬ط§ط­' };
+}
 
-        const itemStats = await db.transferOrderItem.groupBy({ by: ['isReceived'], where: { transferOrder: where }, _count: true });
+async function getStatsSummary({ branchId, fromDate, toDate }, user) {
+    let where = {};
+    where = applyTransferBranchFilter(where, user, branchId);
+    if (fromDate || toDate) { where.createdAt = {}; if (fromDate) where.createdAt.gte = new Date(fromDate); if (toDate) where.createdAt.lte = new Date(toDate); }
+    const [total, pending, received, partial, rejected] = await Promise.all([
+        db.transferOrder.count({ where: { ...where, branchId: where.branchId || { not: null } } }),
+        db.transferOrder.count({ where: { ...where, status: 'PENDING' } }),
+        db.transferOrder.count({ where: { ...where, status: 'RECEIVED' } }),
+        db.transferOrder.count({ where: { ...where, status: 'PARTIAL' } }),
+        db.transferOrder.count({ where: { ...where, status: 'REJECTED' } })
+    ]);
 
-        return { orders: { total, pending, received, partial, rejected }, items: { total: itemStats.reduce((acc, s) => acc + s._count, 0), received: itemStats.find(s => s.isReceived)?._count || 0, pending: itemStats.find(s => !s.isReceived)?._count || 0 } };
-    }
+    const itemStats = await db.transferOrderItem.groupBy({ by: ['isReceived'], where: { transferOrder: where }, _count: true });
 
-    module.exports = { createTransferOrder, receiveTransferOrder, createBulkTransfer, listTransferOrders, getPendingOrders, getPendingSerials, getTransferOrderById, importTransferFromExcel, rejectOrder, cancelOrder, getStatsSummary };
+    return { orders: { total, pending, received, partial, rejected }, items: { total: itemStats.reduce((acc, s) => acc + s._count, 0), received: itemStats.find(s => s.isReceived)?._count || 0, pending: itemStats.find(s => !s.isReceived)?._count || 0 } };
+}
+
+module.exports = { createTransferOrder, receiveTransferOrder, createBulkTransfer, listTransferOrders, getPendingOrders, getPendingSerials, getTransferOrderById, importTransferFromExcel, rejectOrder, cancelOrder, getStatsSummary };
 

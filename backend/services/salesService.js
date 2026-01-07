@@ -150,9 +150,9 @@ const salesService = {
                 }
             }
 
-            // C. Update Warehouse Machine
-            await tx.warehouseMachine.update({
-                where: { id: machine.id },
+            // C. Update Warehouse Machine - RULE 1
+            await tx.warehouseMachine.updateMany({
+                where: { id: machine.id, branchId: machine.branchId },
                 data: { status: 'SOLD' }
             });
 
@@ -313,7 +313,7 @@ const salesService = {
 
         const installments = await db.$transaction(async (tx) => {
             await tx.installment.deleteMany({
-                where: { saleId, isPaid: false }
+                where: { saleId, isPaid: false, branchId: user.branchId || sale.branchId }
             });
 
             const installmentAmount = roundMoney(totalRemaining / newCount);

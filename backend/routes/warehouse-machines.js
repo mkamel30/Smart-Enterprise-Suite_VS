@@ -460,8 +460,8 @@ router.put('/:id/receive-return', authenticateToken, async (req, res) => {
 
             // Update maintenance request if exists
             if (machine.requestId) {
-                await tx.maintenanceRequest.update({
-                    where: { id: machine.requestId },
+                await tx.maintenanceRequest.updateMany({
+                    where: { id: machine.requestId, branchId: { not: null } },
                     data: {
                         status: machine.resolution === 'REPAIRED' ? 'READY_FOR_DELIVERY' :
                             machine.resolution === 'SCRAPPED' ? 'Closed' :

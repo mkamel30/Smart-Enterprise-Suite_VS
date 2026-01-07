@@ -12,31 +12,8 @@ const transferService = require('../services/transferService');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-
-// Generate order number
-async function generateOrderNumber() {
-    const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-
-    // For global uniqueness, we query across all but the enforcer requires branchId.
-    // If we're initializing, we might not have a branch context.
-    const lastOrder = await db.transferOrder.findFirst({
-        where: {
-            orderNumber: { startsWith: `TO-${dateStr}` }
-        },
-        orderBy: { orderNumber: 'desc' }
-    });
-    // NOTE: This might throw if the enforcer is strict and no branchId is provided via req.
-    // However, the USER asked to remove __allow_unscoped.
-
-    let seq = 1;
-    if (lastOrder) {
-        const parts = lastOrder.orderNumber.split('-');
-        seq = parseInt(parts[2] || '0') + 1;
-    }
-
-    return `TO-${dateStr}-${seq.toString().padStart(3, '0')}`;
-}
+// Routes for transfer orders are largely handled by the transferService.
+// This file serves as the main entry point for transfer-related API endpoints.
 
 // Get all transfer orders
 router.get('/', authenticateToken, async (req, res) => {

@@ -61,23 +61,31 @@ async function calculateAllMetrics() {
 
         const [currentRevenue, previousRevenue, pendingDebts, overdueDebts] = await Promise.all([
             db.payment.aggregate({
-                where: { createdAt: { gte: currentMonthStart, lte: currentMonthEnd } },
-                _sum: { amount: true },
-                __allow_unscoped: true
+                where: {
+                    createdAt: { gte: currentMonthStart, lte: currentMonthEnd },
+                    branchId: { not: null }
+                },
+                _sum: { amount: true }
             }),
             db.payment.aggregate({
-                where: { createdAt: { gte: lastMonthStart, lte: lastMonthEnd } },
-                _sum: { amount: true },
-                __allow_unscoped: true
-            }),
-            db.branchDebt.aggregate({
-                where: { status: 'PENDING_PAYMENT' },
+                where: {
+                    createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+                    branchId: { not: null }
+                },
                 _sum: { amount: true }
             }),
             db.branchDebt.aggregate({
                 where: {
                     status: 'PENDING_PAYMENT',
-                    createdAt: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+                    debtorBranchId: { not: '' }
+                },
+                _sum: { amount: true }
+            }),
+            db.branchDebt.aggregate({
+                where: {
+                    status: 'PENDING_PAYMENT',
+                    createdAt: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+                    debtorBranchId: { not: '' }
                 },
                 _sum: { amount: true }
             })
@@ -87,30 +95,32 @@ async function calculateAllMetrics() {
 
         const [totalRequests, closedRequests, overdueRequests] = await Promise.all([
             db.maintenanceRequest.count({
-                where: { createdAt: { gte: currentMonthStart, lte: currentMonthEnd } },
-                __allow_unscoped: true
+                where: {
+                    createdAt: { gte: currentMonthStart, lte: currentMonthEnd },
+                    branchId: { not: null }
+                }
             }),
             db.maintenanceRequest.count({
                 where: {
                     status: 'Closed',
-                    closingTimestamp: { gte: currentMonthStart, lte: currentMonthEnd }
-                },
-                __allow_unscoped: true
+                    closingTimestamp: { gte: currentMonthStart, lte: currentMonthEnd },
+                    branchId: { not: null }
+                }
             }),
             db.maintenanceRequest.count({
                 where: {
                     status: { in: ['Open', 'In Progress'] },
-                    createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
-                },
-                __allow_unscoped: true
+                    createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+                    branchId: { not: null }
+                }
             })
         ]);
 
         // ===================== INVENTORY HEALTH =====================
 
         const inventoryItems = await db.inventoryItem.findMany({
-            select: { quantity: true, minLevel: true },
-            __allow_unscoped: true
+            where: { branchId: { not: null } },
+            select: { quantity: true, minLevel: true }
         });
 
         let inStock = 0, lowStock = 0, critical = 0, outOfStock = 0;
@@ -151,10 +161,20 @@ async function calculateAllMetrics() {
         // ===================== QUICK COUNTS =====================
 
         const [totalMachines, totalCustomers, pendingApprovals, pendingTransfers] = await Promise.all([
-            db.warehouseMachine.count({ __allow_unscoped: true }),
-            db.customer.count({ __allow_unscoped: true }),
-            db.maintenanceApprovalRequest.count({ where: { status: 'PENDING' } }),
-            db.transferOrder.count({ where: { status: 'PENDING' }, __allow_unscoped: true })
+            db.warehouseMachine.count({ where: { branchId: { not: null } } }),
+            db.customer.count({ where: { branchId: { not: null } } }),
+            db.maintenanceApprovalRequest.count({
+                where: {
+                    status: 'PENDING',
+                    centerBranchId: { not: '' }
+                }
+            }),
+            db.transferOrder.count({
+                where: {
+                    status: 'PENDING',
+                    branchId: { not: null }
+                }
+            })
         ]);
 
         // ===================== COMPILE RESULTS =====================

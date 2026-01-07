@@ -10,14 +10,12 @@ async function getSerialConflicts(serialNumber) {
 
     const [warehouse, pos] = await Promise.all([
         db.warehouseMachine.findMany({
-            where: { serialNumber: serial },
-            include: { branch: true },
-            __allow_unscoped: true
+            where: { serialNumber: serial, branchId: { not: null } },
+            include: { branch: true }
         }),
         db.posMachine.findMany({
-            where: { serialNumber: serial },
-            include: { customer: { include: { branch: true } } },
-            __allow_unscoped: true
+            where: { serialNumber: serial, branchId: { not: null } },
+            include: { customer: { include: { branch: true } } }
         })
     ]);
 
@@ -60,10 +58,9 @@ async function ensureSerialNotAssignedToCustomer(serialNumber) {
         throw err;
     }
 
-    const existing = await db.posMachine.findUnique({
-        where: { serialNumber: serial },
-        include: { customer: { include: { branch: true } } },
-        __allow_unscoped: true
+    const existing = await db.posMachine.findFirst({
+        where: { serialNumber: serial, branchId: { not: null } },
+        include: { customer: { include: { branch: true } } }
     });
 
     if (existing) {

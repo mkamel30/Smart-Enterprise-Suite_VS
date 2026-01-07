@@ -307,7 +307,7 @@ if (config.backup.enabled) {
   cron.schedule(config.backup.schedule, async () => {
     logger.info('Running scheduled backup...');
     try {
-      const backupService = require('./services/backupService');
+      const backupService = require('./utils/backup');
       await backupService.createBackup();
       logger.info('Scheduled backup completed');
     } catch (error) {

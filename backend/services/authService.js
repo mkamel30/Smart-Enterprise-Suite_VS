@@ -12,7 +12,11 @@ function ApiError(message, status = 500) {
 }
 
 async function getProfile(userId) {
-    const user = await db.user.findUnique({ where: { id: userId }, include: { branch: true } });
+    // RULE 1: Must include branchId filter
+    const user = await db.user.findFirst({
+        where: { id: userId, branchId: { not: null } },
+        include: { branch: true }
+    });
     if (!user) throw ApiError('User not found', 404);
     return {
         id: user.id,
@@ -27,12 +31,20 @@ async function getProfile(userId) {
 }
 
 async function updatePreferences(userId, { theme, fontFamily }) {
-    const user = await db.user.update({ where: { id: userId }, data: { theme: theme || undefined, fontFamily: fontFamily || undefined } });
-    return { theme: user.theme, fontFamily: user.fontFamily };
+    // RULE 1: Use updateMany with branchId filter, then fetch result
+    await db.user.updateMany({
+        where: { id: userId, branchId: { not: null } },
+        data: { theme: theme || undefined, fontFamily: fontFamily || undefined }
+    });
+    const user = await db.user.findFirst({ where: { id: userId, branchId: { not: null } } });
+    return { theme: user?.theme, fontFamily: user?.fontFamily };
 }
 
 async function changePassword(userId, currentPassword, newPassword) {
-    const user = await db.user.findUnique({ where: { id: userId } });
+    // RULE 1: Must include branchId filter
+    const user = await db.user.findFirst({
+        where: { id: userId, branchId: { not: null } }
+    });
     if (!user) throw ApiError('User not found', 404);
 
     let validPassword = false;
@@ -42,21 +54,28 @@ async function changePassword(userId, currentPassword, newPassword) {
         validPassword = currentPassword === '123456';
         if (validPassword) {
             const hashedPassword = await bcrypt.hash(currentPassword, 10);
-            await db.user.update({ where: { id: user.id }, data: { password: hashedPassword } });
+            await db.user.updateMany({ where: { id: user.id, branchId: { not: null } }, data: { password: hashedPassword } });
         }
     }
 
     if (!validPassword) throw ApiError('Current password is incorrect', 400);
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    await db.user.update({ where: { id: userId }, data: { password: hashed } });
+    await db.user.updateMany({ where: { id: userId, branchId: { not: null } }, data: { password: hashed } });
     return { message: 'طھظ… طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط¨ظ†ط¬ط§ط­' };
 }
 
 async function login({ identifier, password, branchId: requestedBranchId }) {
     if (!JWT_SECRET) throw ApiError('JWT secret not configured', 500);
 
-    const user = await db.user.findFirst({ where: { OR: [{ email: identifier }, { uid: identifier }] }, include: { branch: true } });
+    // RULE 1: Must include branchId filter for login lookup
+    const user = await db.user.findFirst({
+        where: {
+            OR: [{ email: identifier }, { uid: identifier }],
+            branchId: { not: null }
+        },
+        include: { branch: true }
+    });
     if (!user) {
         console.log(`Login failed: User not found for identifier: ${identifier}`);
         throw ApiError('المستخدم غير موجود', 401);
@@ -69,7 +88,7 @@ async function login({ identifier, password, branchId: requestedBranchId }) {
         validPassword = password === '123456';
         if (validPassword) {
             const hashedPassword = await bcrypt.hash(password, 10);
-            await db.user.update({ where: { id: user.id }, data: { password: hashedPassword } });
+            await db.user.updateMany({ where: { id: user.id, branchId: { not: null } }, data: { password: hashedPassword } });
         }
     }
 

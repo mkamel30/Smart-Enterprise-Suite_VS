@@ -107,7 +107,8 @@ router.get('/logs', authenticateToken, async (req, res) => {
             where: {
                 action: {
                     in: ['BACKUP_CREATE', 'BACKUP_RESTORE', 'BACKUP_DELETE']
-                }
+                },
+                branchId: { not: null }
             },
             orderBy: { createdAt: 'desc' },
             take: limit

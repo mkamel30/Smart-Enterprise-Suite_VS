@@ -114,9 +114,9 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
         const totalCost = partsWithCosts
             .reduce((sum, p) => sum + p.totalCost, 0);
 
-        // 3. Update request
-        const updatedRequest = await tx.maintenanceRequest.update({
-            where: { id: requestId },
+        // 3. Update request - RULE 1
+        await tx.maintenanceRequest.updateMany({
+            where: { id: requestId, branchId: request.branchId },
             data: {
                 status: 'Closed',
                 actionTaken: actionTaken,
@@ -130,6 +130,8 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
                 closingUserName: user.name
             }
         });
+
+        const updatedRequest = await tx.maintenanceRequest.findFirst({ where: { id: requestId, branchId: request.branchId } });
 
         // 4. Deduct inventory (VALIDATES inside)
         // If fails â†’ ROLLBACK entire transaction
@@ -225,10 +227,12 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
  */
 async function updateStatus(requestId, status, user) {
     return await db.$transaction(async (tx) => {
-        const request = await tx.maintenanceRequest.update({
+        await tx.maintenanceRequest.updateMany({
             where: { id: requestId, branchId: user.branchId },
             data: { status }
         });
+
+        const request = await tx.maintenanceRequest.findFirst({ where: { id: requestId, branchId: user.branchId } });
 
         await tx.systemLog.create({
             data: {
@@ -263,8 +267,8 @@ async function receiveMachineToWarehouse(tx, { serialNumber, customerId, custome
     });
 
     if (existingWarehouse) {
-        await tx.warehouseMachine.update({
-            where: { id: existingWarehouse.id },
+        await tx.warehouseMachine.updateMany({
+            where: { id: existingWarehouse.id, branchId: branchId },
             data: {
                 status: 'EXTERNAL_REPAIR',
                 customerId,
