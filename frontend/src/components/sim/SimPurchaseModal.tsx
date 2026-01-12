@@ -87,7 +87,7 @@ export function SimPurchaseModal({ isOpen, onClose, customer, onSuccess }: SimPu
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-lg" dir="rtl">
+            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] h-auto overflow-hidden sm:max-w-lg" dir="rtl">
                 <DialogHeader className="bg-purple-50 p-6 pb-4 border-b shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <Plus className="text-purple-600" />
@@ -139,7 +139,7 @@ export function SimPurchaseModal({ isOpen, onClose, customer, onSuccess }: SimPu
                         </div>
 
                         {/* Cost & Payment */}
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="col-span-1">
                                 <label className="block text-sm font-medium mb-1.5">السعر</label>
                                 <input

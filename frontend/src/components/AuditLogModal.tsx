@@ -34,16 +34,7 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            // Depending on how api client is structured, we might need a raw call or add a method
-            // Assuming we can use a direct fetch or existing client method if applicable
-            // Since client.ts isn't updated yet, we'll try a fetch here or assume client update
-
-            let url = `http://localhost:5000/api/audit-logs?entityType=${entityType}`;
-            if (entityId) url += `&entityId=${entityId}`;
-
-            const response = await fetch(url); // TODO: Use api client in production
-            const data = await response.json();
-
+            const data = await api.getAuditLogs({ entityType, entityId });
             if (Array.isArray(data)) {
                 setLogs(data);
             }
@@ -94,6 +85,32 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                                 <p className="font-medium text-gray-800">{obj.customer?.client_name} ({obj.customer?.bkcode})</p>
                             </div>
                             {obj.notes && <p className="text-xs text-gray-600 pt-1">📝 {obj.notes}</p>}
+                        </div>
+                    );
+                }
+
+                // Handle Part Usage (Stock Movement in Request)
+                const isPartUsage = obj.partName && obj.quantity && obj.type === 'OUT';
+                if (isPartUsage && depth === 0) {
+                    return (
+                        <div className="text-sm space-y-2 bg-blue-50 p-3 rounded border border-blue-200">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-blue-700">🔧 استخدام قطعة غيار</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold text-gray-800">{obj.partName}</p>
+                                    <p className="text-xs text-gray-500 font-mono">{obj.partNumber}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="bg-indigo-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                        الكمية: {obj.quantity}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="pt-2 border-t border-blue-200">
+                                <span className="text-gray-600 text-xs text-right block">السبب: {obj.reason || 'صيانة'}</span>
+                            </div>
                         </div>
                     );
                 }
@@ -248,7 +265,8 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
             'STATUS_CHANGE': 'تغيير حالة',
             'DUPLICATE_CLEANUP': 'تنظيف مكررات',
             'ASSIGN': 'تخصيص شريحة',
-            'RETURN': 'إرجاع شريحة'
+            'RETURN': 'إرجاع شريحة',
+            'PART_USAGE': 'استخدام قطعة غيار'
         };
         return translations[action] || action;
     };

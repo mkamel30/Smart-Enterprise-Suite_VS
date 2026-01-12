@@ -70,16 +70,21 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
             return { model: null, manufacturer: null };
         };
 
-        // WRAP ALL OPERATIONS IN TRANSACTION
-        const result = await db.$transaction(async (tx) => {
-            let successCount = 0;
-            let updatedCount = 0;
-            let errors = [];
+        let successCount = 0;
+        let updatedCount = 0;
+        let errors = [];
 
-            for (const row of rows) {
-                const serialNumber = row.serialNumber || row['serialNumber'];
-                const customerId = row.customerId || row['customerId'] || null;
-                const posId = row.posId || row['posId'] || null;
+        for (const row of rows) {
+            try {
+                // Normalize inputs - handle potential property name casing/spaces from Excel
+                const rawSerial = row.serialNumber || row['serialNumber'] || row['SerialNumber'] || row['Serial Number'];
+                const serialNumber = rawSerial ? String(rawSerial).trim() : null;
+
+                const rawCustomerId = row.customerId || row['customerId'] || row['CustomerId'] || row['Customer ID'];
+                const customerId = rawCustomerId ? String(rawCustomerId).trim() : null;
+
+                const rawPosId = row.posId || row['posId'] || row['PosId'] || row['POS ID'];
+                const posId = rawPosId ? String(rawPosId).trim() : null;
 
                 // Validate
                 if (!serialNumber) {
@@ -87,66 +92,90 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
                     continue;
                 }
 
-                // Validate customer if provided (branch-scoped)
+                // Validate customer if provided (branch-scoped) and get their actual ID
+                let actualCustomerId = null;
                 if (customerId) {
-                    const customer = await tx.customer.findFirst({
+                    const customer = await db.customer.findFirst({
                         where: {
-                            bkcode: customerId.toString(),
+                            bkcode: customerId,
                             branchId
                         }
                     });
 
                     if (!customer) {
-                        errors.push({ row, error: `العميل ${customerId} غير موجود في هذا الفرع` });
+                        errors.push({ row: { ...row, serialNumber }, error: `العميل ${customerId} غير موجود في هذا الفرع` });
                         continue;
                     }
+                    // Use the actual customer ID (cuid), not the bkcode
+                    actualCustomerId = customer.id;
                 }
 
                 // Auto-detect model and manufacturer from parameters
                 const { model, manufacturer } = detectMachineInfo(serialNumber);
 
-                try {
-                    // Check if machine already exists (branch-scoped)
-                    const existing = await tx.posMachine.findFirst({
+                // Check if machine already exists (Globally or in Branch?)
+                // Schema has @unique on serialNumber, so it's global
+                const existing = await db.posMachine.findFirst({
+                    where: {
+                        serialNumber: serialNumber,
+                        // Satisfy branchEnforcer while still checking all branches
+                        OR: [
+                            { branchId: branchId },
+                            { branchId: { not: branchId } },
+                            { branchId: null }
+                        ]
+                    }
+                });
+
+                if (existing) {
+                    // Check if it belongs to another branch
+                    if (existing.branchId && existing.branchId !== branchId) {
+                        errors.push({
+                            row: { ...row, serialNumber },
+                            error: `الماكينة مسجلة بالفعل في فرع آخر`
+                        });
+                        continue;
+                    }
+
+                    // Update existing machine
+                    await db.posMachine.update({
                         where: {
-                            serialNumber: serialNumber.toString(),
-                            branchId
+                            id: existing.id,
+                            branchId: existing.branchId
+                        },
+                        data: {
+                            customerId: actualCustomerId,
+                            branchId: branchId, // Ensure it's set to current branch if it was null
+                            model: model || existing.model,
+                            manufacturer: manufacturer || existing.manufacturer,
+                            posId: posId || existing.posId
                         }
                     });
-
-                    if (existing) {
-                        // Update the customer link AND apply parameters
-                        await tx.posMachine.update({
-                            where: { id: existing.id },
-                            data: {
-                                customerId: customerId ? customerId.toString() : null,
-                                model: model || existing.model,
-                                manufacturer: manufacturer || existing.manufacturer,
-                                posId: posId || existing.posId
-                            }
-                        });
-                        updatedCount++;
-                    } else {
-                        // Create new machine
-                        await tx.posMachine.create({
-                            data: {
-                                serialNumber: serialNumber.toString(),
-                                branchId,
-                                customerId: customerId ? customerId.toString() : null,
-                                model: model,
-                                manufacturer: manufacturer,
-                                posId: posId
-                            }
-                        });
-                        successCount++;
-                    }
-                } catch (err) {
-                    errors.push({ row, error: err.message });
+                    updatedCount++;
+                } else {
+                    // Create new machine
+                    await db.posMachine.create({
+                        data: {
+                            serialNumber: serialNumber,
+                            branchId,
+                            customerId: actualCustomerId,
+                            model: model,
+                            manufacturer: manufacturer,
+                            posId: posId
+                        }
+                    });
+                    successCount++;
                 }
+            } catch (err) {
+                console.error('Row import error:', err);
+                errors.push({
+                    row,
+                    error: err.message || 'خطأ غير معروف في هذا السجل'
+                });
             }
+        }
 
-            return { successCount, updatedCount, errors };
-        });
+        const result = { successCount, updatedCount, errors };
 
         // Log successful import (AFTER transaction)
         await logAction({
@@ -267,8 +296,8 @@ router.post('/machines/apply-parameters', authenticateToken, validateRequest(app
                 );
 
                 if (matchingParam) {
-                    await tx.posMachine.update({
-                        where: { id: machine.id },
+                    await tx.posMachine.updateMany({
+                        where: { id: machine.id, branchId: machine.branchId },
                         data: {
                             model: matchingParam.model,
                             manufacturer: matchingParam.manufacturer

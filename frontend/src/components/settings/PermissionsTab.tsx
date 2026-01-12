@@ -59,6 +59,9 @@ const ACTION_LABELS: Record<string, string> = {
     MANAGE_USERS: 'إدارة المستخدمين',
     MANAGE_BRANCHES: 'إدارة الفروع',
     VIEW_ALL_BRANCHES: 'عرض كل الفروع',
+    VIEW_EXECUTIVE_SUMMARY: 'عرض ملخص التحليلات العليا',
+    VIEW_BRANCH_RANKINGS: 'عرض ترتيب وأداء الفروع',
+    VIEW_INVENTORY_VALUATION: 'عرض قيمة وحركة المخزون',
 };
 
 export function PermissionsTab() {

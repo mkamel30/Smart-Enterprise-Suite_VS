@@ -120,14 +120,14 @@ export const AddMachineModal: React.FC<AddMachineModalProps> = ({
                                     value={formData.status}
                                     onValueChange={(val: string) => setFormData(prev => ({ ...prev, status: val }))}
                                 >
-                                    <SelectTrigger className="rounded-xl border-slate-200">
+                                    <SelectTrigger className="rounded-xl border-slate-200 bg-white">
                                         <SelectValue placeholder="اختر الحالة" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl z-[99999]">
-                                        <SelectItem value="NEW">جديدة (NEW)</SelectItem>
-                                        {!isAffairs && <SelectItem value="STANDBY">استبدال (STANDBY)</SelectItem>}
-                                        <SelectItem value="DEFECTIVE">تالفة (DEFECTIVE)</SelectItem>
-                                        {!isAffairs && <SelectItem value="CLIENT_REPAIR">صيانة عملاء (CLIENT_REPAIR)</SelectItem>}
+                                    <SelectContent className="rounded-xl z-[99999] bg-white border-2 border-slate-200 shadow-xl">
+                                        <SelectItem value="NEW" className="hover:bg-slate-100 cursor-pointer">جديدة (NEW)</SelectItem>
+                                        {!isAffairs && <SelectItem value="STANDBY" className="hover:bg-slate-100 cursor-pointer">استبدال (STANDBY)</SelectItem>}
+                                        <SelectItem value="DEFECTIVE" className="hover:bg-slate-100 cursor-pointer">تالفة (DEFECTIVE)</SelectItem>
+                                        {!isAffairs && <SelectItem value="CLIENT_REPAIR" className="hover:bg-slate-100 cursor-pointer">صيانة عملاء (CLIENT_REPAIR)</SelectItem>}
                                     </SelectContent>
                                 </Select>
                             </div>

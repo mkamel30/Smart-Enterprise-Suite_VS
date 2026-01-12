@@ -1,5 +1,6 @@
 ﻿require('dotenv').config();
 require('express-async-errors');
+// Force restart timestamp: 2026-01-08-T08:30:00
 
 const express = require('express');
 const cors = require('cors');
@@ -182,6 +183,7 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/pending-payments', require('./routes/pending-payments'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/audit-logs', require('./routes/audit-logs'));
 
 // Settings & Configuration
 app.use('/api/branches-lookup', require('./routes/branches'));
@@ -216,6 +218,7 @@ app.use('/api/transfer-orders', require('./routes/transfer-orders'));
 // Maintenance workflows
 app.use('/api/maintenance', require('./routes/maintenance'));
 app.use('/api/maintenance-approvals', require('./routes/maintenance-approvals'));
+app.use('/api/maintenance', require('./routes/maintenance-reports'));
 app.use('/api/service-assignments', require('./routes/service-assignments'));
 app.use('/api/approvals', require('./routes/approvals'));
 app.use('/api/track-machines', require('./routes/track-machines'));
@@ -272,9 +275,9 @@ let server;
 
 if (require.main === module) {
   server = app.listen(PORT, () => {
-    logger.info(`ًںڑ€ Server running on port ${PORT}`);
-    logger.info(`ًں“ڑ API Docs: http://localhost:${PORT}/api-docs`);
-    logger.info(`ًں”’ Environment: ${config.nodeEnv}`);
+    logger.info(`[SERVER] Server running on port ${PORT}`);
+    logger.info(`[DOCS] API Docs: http://localhost:${PORT}/api-docs`);
+    logger.info(`[ENV] Environment: ${config.nodeEnv}`);
   });
 } else {
   const http = require('http');

@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShoppingCart, Search, DollarSign, Wallet, Calendar } from 'lucide-react';
+import { X, ShoppingCart, Search, DollarSign, Wallet, Calendar, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { useQuery } from '@tanstack/react-query';
 
 import { PaymentFields, usePaymentForm } from '../PaymentFields';
 import { cn } from '../../lib/utils';
 import { api } from '../../api/client';
 import toast from 'react-hot-toast';
 
+
 interface MachineSaleModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: any) => void;
     selectedMachine: any;
-    clients: any[];
     isLoading: boolean;
     performedBy: string;
     userBranchId?: string;
@@ -26,7 +27,6 @@ export const MachineSaleModal: React.FC<MachineSaleModalProps> = ({
     onClose,
     onSubmit,
     selectedMachine,
-    clients,
     isLoading,
     performedBy,
     userBranchId
@@ -53,10 +53,31 @@ export const MachineSaleModal: React.FC<MachineSaleModalProps> = ({
         }
     };
 
-    const filteredClients = clients?.filter(c =>
-        c.client_name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-        c.bkcode.includes(clientSearch)
-    ) || [];
+    // Live search for customers using server-side filtering
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            console.log('🔍 LIVE SEARCH ACTIVE - Searching for:', clientSearch);
+            setDebouncedSearch(clientSearch);
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timer);
+    }, [clientSearch]);
+
+    const { data: searchResults, isLoading: isSearching } = useQuery({
+        queryKey: ['customer-search', debouncedSearch],
+        queryFn: () => {
+            console.log('🌐 API Call - Searching for:', debouncedSearch);
+            return api.getCustomersLite(debouncedSearch);
+        },
+        enabled: debouncedSearch.length > 0 && !selectedClient,
+        staleTime: 30000 // Cache for 30 seconds
+    });
+
+    console.log('📊 Search Results:', searchResults ? searchResults.length : 0, 'results for:', debouncedSearch);
+
+    const filteredClients = searchResults || [];
 
     const handleSelectClient = (client: any) => {
         setSelectedClient(client);
@@ -77,13 +98,13 @@ export const MachineSaleModal: React.FC<MachineSaleModalProps> = ({
 
         onSubmit({
             type: saleForm.type,
-            totalPrice: Math.round(saleForm.totalPrice * 100) / 100,
+            totalPrice: Math.round((parseFloat(String(saleForm.totalPrice)) + Number.EPSILON) * 100) / 100,
             installmentCount: saleForm.installmentCount,
             notes: saleForm.notes,
             customerId: selectedClient.bkcode,
             serialNumber: selectedMachine.serialNumber,
             branchId,
-            paidAmount: Math.round(paymentForm.data.amount * 100) / 100,
+            paidAmount: Math.round((parseFloat(String(paymentForm.data.amount)) + Number.EPSILON) * 100) / 100,
             receiptNumber: paymentForm.data.receiptNumber,
             paymentMethod: paymentForm.data.paymentPlace,
             paymentPlace: paymentForm.data.paymentPlace,
@@ -191,32 +212,66 @@ export const MachineSaleModal: React.FC<MachineSaleModalProps> = ({
                                                 placeholder="البحث باسم العميل أو الكود..."
                                                 value={clientSearch}
                                                 onChange={(e) => {
-                                                    setClientSearch(e.target.value);
+                                                    const newValue = e.target.value;
+                                                    setClientSearch(newValue);
+                                                    // Only clear selection if user is actually editing
+                                                    if (selectedClient && newValue !== `${selectedClient.client_name} (${selectedClient.bkcode})`) {
+                                                        setSelectedClient(null);
+                                                    }
                                                     setShowClientList(true);
                                                 }}
-                                                onFocus={() => setShowClientList(true)}
+                                                onFocus={() => {
+                                                    // Only show list if no client is selected
+                                                    if (!selectedClient) {
+                                                        setShowClientList(true);
+                                                    }
+                                                }}
                                                 className="pl-10 rounded-xl"
                                             />
+                                            {selectedClient && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedClient(null);
+                                                        setClientSearch('');
+                                                        setShowClientList(true);
+                                                    }}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                         <AnimatePresence>
-                                            {showClientList && clientSearch.length > 1 && (
+                                            {showClientList && clientSearch.length > 0 && (
                                                 <motion.div
                                                     initial={{ opacity: 0, y: -10 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, y: -10 }}
                                                     className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto"
                                                 >
-                                                    {filteredClients.map(c => (
-                                                        <button
-                                                            key={c.bkcode}
-                                                            type="button"
-                                                            onClick={() => handleSelectClient(c)}
-                                                            className="w-full text-right p-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
-                                                        >
-                                                            <div className="font-bold text-slate-800">{c.client_name}</div>
-                                                            <div className="text-xs text-slate-500">{c.bkcode}</div>
-                                                        </button>
-                                                    ))}
+                                                    {isSearching ? (
+                                                        <div className="p-4 text-center text-slate-500 flex items-center justify-center gap-2">
+                                                            <Loader2 size={16} className="animate-spin" />
+                                                            جاري البحث...
+                                                        </div>
+                                                    ) : filteredClients.length === 0 ? (
+                                                        <div className="p-4 text-center text-slate-500">
+                                                            لا توجد نتائج
+                                                        </div>
+                                                    ) : (
+                                                        filteredClients.map(c => (
+                                                            <button
+                                                                key={c.bkcode}
+                                                                type="button"
+                                                                onClick={() => handleSelectClient(c)}
+                                                                className="w-full text-right p-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
+                                                            >
+                                                                <div className="font-bold text-slate-800">{c.client_name}</div>
+                                                                <div className="text-xs text-slate-500">{c.bkcode}</div>
+                                                            </button>
+                                                        ))
+                                                    )}
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>

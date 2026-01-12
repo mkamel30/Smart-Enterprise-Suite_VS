@@ -36,6 +36,18 @@ router.post('/', async (req, res) => {
                 allowsMultiple: req.body.allowsMultiple === 'true' || req.body.allowsMultiple === true
             }
         });
+
+        // Log action
+        await logAction({
+            entityType: 'SPARE_PART',
+            entityId: part.id,
+            action: 'CREATE',
+            details: { name: part.name, cost: part.defaultCost },
+            userId: req.body.userId,
+            performedBy: req.body.userName, // Expect frontend to send this
+            branchId: req.body.branchId
+        });
+
         res.status(201).json(part);
     } catch (error) {
         console.error('Failed to create spare part:', error);
@@ -81,6 +93,18 @@ router.put('/:id', async (req, res) => {
                 allowsMultiple: req.body.allowsMultiple
             }
         });
+
+        // Log action
+        await logAction({
+            entityType: 'SPARE_PART',
+            entityId: part.id,
+            action: 'UPDATE',
+            details: { name: part.name, changes: req.body },
+            userId: req.body.userId,
+            performedBy: req.body.userName,
+            branchId: req.body.branchId
+        });
+
         res.json(part);
     } catch (error) {
         console.error('Failed to update spare part:', error);
@@ -102,48 +126,168 @@ router.get('/:id/price-logs', async (req, res) => {
     }
 });
 
-// POST bulk import spare parts
+const { logAction } = require('../utils/logger');
+
+// POST bulk delete spare parts
+router.post('/bulk-delete', async (req, res) => {
+    try {
+        const { ids, userId, userName, branchId } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'ids array required' });
+        }
+
+        // 1. Delete price logs
+        await db.priceChangeLog.deleteMany({
+            where: { partId: { in: ids } }
+        });
+
+        // 2. Delete stock movements (bypass branch enforcer)
+        await db.stockMovement.deleteMany({
+            where: {
+                partId: { in: ids },
+                branchId: { not: 'GLOBAL_DELETE' }
+            }
+        });
+
+        // 3. Delete inventory items (bypass branch enforcer)
+        await db.inventoryItem.deleteMany({
+            where: {
+                partId: { in: ids },
+                branchId: { not: 'GLOBAL_DELETE' }
+            }
+        });
+
+        // 4. Delete parts
+        const result = await db.sparePart.deleteMany({
+            where: { id: { in: ids } }
+        });
+
+        // Log action
+        await logAction({
+            entityType: 'SPARE_PART',
+            entityId: 'BULK',
+            action: 'BULK_DELETE',
+            details: { count: result.count, ids },
+            userId,
+            performedBy: userName,
+            branchId
+        });
+
+        res.json({ success: true, count: result.count });
+    } catch (error) {
+        console.error('Failed to bulk delete parts:', error);
+        res.status(500).json({ error: 'Failed to delete parts' });
+    }
+});
+
+// POST import spare parts (with duplicate check)
 router.post('/import', async (req, res) => {
     try {
-        const parts = req.body.parts;
+        const { parts, userId, userName, branchId } = req.body;
         if (!Array.isArray(parts)) return res.status(400).json({ error: 'parts array required' });
-        const created = [];
+
+        const results = {
+            created: 0,
+            skipped: 0,
+            errors: 0
+        };
+
         for (const part of parts) {
-            const newPart = await db.sparePart.create({
-                data: {
-                    partNumber: part.partNumber,
-                    name: part.name,
-                    description: part.description || '',
-                    compatibleModels: part.compatibleModels || '',
-                    defaultCost: parseFloat(part.defaultCost) || 0,
-                    isConsumable: part.isConsumable === 'true' || part.isConsumable === true,
-                    allowsMultiple: part.allowsMultiple === 'true' || part.allowsMultiple === true
+            try {
+                // Check if part exists by name (case insensitive)
+                const existing = await db.sparePart.findFirst({
+                    where: {
+                        name: {
+                            equals: String(part.name).trim(),
+                        }
+                    }
+                });
+
+                if (existing) {
+                    results.skipped++;
+                    continue;
                 }
-            });
-            created.push(newPart);
+
+                const count = await db.sparePart.count();
+                const partNumber = `SP${String(count + 1 + results.created).padStart(4, '0')}`;
+
+                await db.sparePart.create({
+                    data: {
+                        partNumber: partNumber,
+                        name: String(part.name),
+                        description: part.description || '',
+                        compatibleModels: part.compatibleModels || '',
+                        defaultCost: parseFloat(part.defaultCost) || 0,
+                        isConsumable: part.isConsumable === 'true' || part.isConsumable === true,
+                        allowsMultiple: part.allowsMultiple === 'true' || part.allowsMultiple === true
+                    }
+                });
+                results.created++;
+            } catch (err) {
+                console.error('Error importing part:', part.name, err);
+                results.errors++;
+            }
         }
-        res.status(201).json({ created: created.length, parts: created });
+
+        // Log action
+        if (results.created > 0) {
+            await logAction({
+                entityType: 'SPARE_PART',
+                entityId: 'IMPORT',
+                action: 'IMPORT',
+                details: results,
+                userId,
+                performedBy: userName,
+                branchId
+            });
+        }
+
+        res.status(201).json(results);
     } catch (error) {
         console.error('Failed to import spare parts:', error);
         res.status(500).json({ error: 'Failed to import spare parts' });
     }
 });
 
-// DELETE spare part
-router.delete('/:id', async (req, res) => {
+/**
+ * GET Export Spare Parts to Excel
+ */
+const { exportToExcel } = require('../utils/excel');
+router.get('/export', async (req, res) => {
     try {
-        // First, delete all related inventory items
-        await db.inventoryItem.deleteMany({
-            where: { partId: req.params.id }
+        const parts = await db.sparePart.findMany({
+            include: { inventoryItems: true }
         });
 
-        // Then delete the spare part
-        await db.sparePart.delete({ where: { id: req.params.id } });
-        res.json({ success: true });
+        const data = parts.map(p => ({
+            'رقم القطعة': p.partNumber || '-',
+            'الاسم': p.name || '-',
+            'الوصف': p.description || '-',
+            'الموديلات المتوافقة': p.compatibleModels || '-',
+            'السعر الافتراضي': p.defaultCost || 0,
+            'استهلاكي': p.isConsumable ? 'نعم' : 'لا',
+            'يسمح بالتكرار': p.allowsMultiple ? 'نعم' : 'لا',
+            'إجمالي المخزون': p.inventoryItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+        }));
+
+        const columns = [
+            { header: 'رقم القطعة', key: 'رقم القطعة', width: 15 },
+            { header: 'الاسم', key: 'الاسم', width: 30 },
+            { header: 'الوصف', key: 'الوصف', width: 30 },
+            { header: 'الموديلات المتوافقة', key: 'الموديلات المتوافقة', width: 25 },
+            { header: 'السعر الافتراضي', key: 'السعر الافتراضي', width: 15 },
+            { header: 'استهلاكي', key: 'استهلاكي', width: 10 },
+            { header: 'يسمح بالتكرار', key: 'يسمح بالتكرار', width: 12 },
+            { header: 'إجمالي المخزون', key: 'إجمالي المخزون', width: 15 }
+        ];
+
+        const buffer = await exportToExcel(data, columns, 'spare_parts_export');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=spare_parts_export.xlsx');
+        res.send(buffer);
     } catch (error) {
-        console.error('Failed to delete spare part:', error);
-        if (error?.code === 'P2025') return res.status(404).json({ error: 'SparePart not found' });
-        res.status(500).json({ error: 'Failed to delete spare part' });
+        console.error('Failed to export spare parts:', error);
+        res.status(500).json({ error: 'فشل في تصدير قطع الغيار' });
     }
 });
 

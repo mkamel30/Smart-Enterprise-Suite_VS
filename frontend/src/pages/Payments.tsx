@@ -2,9 +2,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useState, useMemo } from 'react';
 import type { Payment, PaymentStats } from '../lib/types';
-import { Plus, Trash2, Search, X } from 'lucide-react';
+import { Plus, Trash2, Search, X, Download } from 'lucide-react';
 import { useApiMutation } from '../hooks/useApiMutation';
 import { PaymentFields, usePaymentForm } from '../components/PaymentFields';
+import { exportPayments } from '../utils/exportUtils';
 
 export default function Payments() {
     const [showAddForm, setShowAddForm] = useState(false);
@@ -102,14 +103,23 @@ export default function Payments() {
         <div className="px-8 pt-4 pb-8" dir="rtl">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h1 className="text-3xl font-bold">المدفوعات</h1>
-                <button
-                    onClick={() => setShowAddForm(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg"
-                    title="تسجيل دفعة جديدة"
-                >
-                    <Plus size={20} />
-                    تسجيل دفعة
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={exportPayments}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                    >
+                        <Download size={18} />
+                        تصدير Excel
+                    </button>
+                    <button
+                        onClick={() => setShowAddForm(true)}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg"
+                        title="تسجيل دفعة جديدة"
+                    >
+                        <Plus size={20} />
+                        تسجيل دفعة
+                    </button>
+                </div>
             </div>
 
             {/* Stats Cards */}
@@ -185,9 +195,7 @@ export default function Payments() {
                                     <td className="p-2 text-xs">{formatDate(payment.createdAt)}</td>
                                     <td className="p-2 text-sm">
                                         <div>{payment.customerName || payment.customer?.client_name || '-'}</div>
-                                        {payment.customerId && (
-                                            <div className="text-xs text-slate-400 font-mono">{payment.customerId}</div>
-                                        )}
+                                        <div className="text-xs text-slate-400 font-mono">{payment.customer?.bkcode}</div>
                                     </td>
                                     <td className="p-2 text-sm">{payment.reason}</td>
                                     <td className="p-2 font-bold text-green-600 text-sm">{payment.amount?.toLocaleString()} ج.م</td>

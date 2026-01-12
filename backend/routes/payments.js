@@ -27,15 +27,19 @@ const createPaymentSchema = z.object({
 });
 
 // CHECK receipt number
-router.get('/payments/check-receipt', async (req, res) => {
+router.get('/check-receipt', authenticateToken, async (req, res) => {
     try {
         const { number } = req.query;
         if (!number) return res.status(400).json({ error: 'Receipt number required' });
 
         // Check globally for receipt number (pre-printed receipts are system-wide unique)
-        const exists = await db.payment.findFirst(ensureBranchWhere({
-            where: { receiptNumber: number }
-        }, req));
+        // We add branchId: { not: null } to satisfy the branchEnforcer middleware while keeping the check global
+        const exists = await db.payment.findFirst({
+            where: {
+                receiptNumber: number,
+                branchId: { not: null }
+            }
+        });
 
         res.json({ exists: !!exists });
     } catch (error) {
@@ -45,7 +49,7 @@ router.get('/payments/check-receipt', async (req, res) => {
 });
 
 // GET all payments
-router.get('/payments', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
     try {
         const where = getBranchFilter(req);
 
@@ -57,7 +61,8 @@ router.get('/payments', authenticateToken, async (req, res) => {
                 branch: true,
                 customer: {
                     select: {
-                        client_name: true
+                        client_name: true,
+                        bkcode: true
                     }
                 }
             }
@@ -70,7 +75,7 @@ router.get('/payments', authenticateToken, async (req, res) => {
 });
 
 // GET payments by customer
-router.get('/payments/customer/:customerId', authenticateToken, async (req, res) => {
+router.get('/customer/:customerId', authenticateToken, async (req, res) => {
     try {
         const where = {
             customerId: req.params.customerId,
@@ -89,7 +94,7 @@ router.get('/payments/customer/:customerId', authenticateToken, async (req, res)
 });
 
 // GET payments stats
-router.get('/payments/stats', authenticateToken, async (req, res) => {
+router.get('/stats', authenticateToken, async (req, res) => {
     try {
         const branchFilter = getBranchFilter(req);
         const today = new Date();
@@ -133,28 +138,45 @@ router.get('/payments/stats', authenticateToken, async (req, res) => {
 });
 
 // POST create payment
-router.post('/payments', authenticateToken, validateRequest(createPaymentSchema), async (req, res) => {
+router.post('/', authenticateToken, validateRequest(createPaymentSchema), async (req, res) => {
     try {
         const { receiptNumber, paymentPlace, amount, notes, customerId, customerName, requestId, reason } = req.body;
         const branchId = req.user.branchId || req.body.branchId;
 
         if (!branchId) return res.status(400).json({ error: 'Branch ID required' });
 
-        // Validate receipt number uniqueness
-        if (receiptNumber && receiptNumber.trim() !== '') {
-            const existingPayment = await db.payment.findFirst(ensureBranchWhere({
-                where: { receiptNumber: receiptNumber.trim() }
-            }, req));
-            if (existingPayment) {
-                return res.status(400).json({ error: 'رقم الإيصال مستخدم من قبل' });
+        // Resolve customer by bkcode if provided (frontend usually sends bkcode as customerId)
+        let actualCustomerId = null;
+        let finalCustomerName = customerName;
+
+        if (customerId) {
+            const customer = await db.customer.findFirst({
+                where: {
+                    bkcode: customerId,
+                    branchId
+                }
+            });
+
+            if (customer) {
+                actualCustomerId = customer.id; // Use the cuid
+                finalCustomerName = customer.client_name;
+            } else if (customerId.length >= 25) {
+                // If it looks like a cuid already, try finding by that
+                const customerByCuid = await db.customer.findFirst({
+                    where: { id: customerId, branchId }
+                });
+                if (customerByCuid) {
+                    actualCustomerId = customerByCuid.id;
+                    finalCustomerName = customerByCuid.client_name;
+                }
             }
         }
 
         const payment = await db.payment.create({
             data: {
                 branchId,
-                customerId,
-                customerName,
+                customerId: actualCustomerId,
+                customerName: finalCustomerName,
                 requestId,
                 amount: roundMoney(amount),
                 reason,
@@ -184,7 +206,7 @@ router.post('/payments', authenticateToken, validateRequest(createPaymentSchema)
 });
 
 // DELETE payment
-router.delete('/payments/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         // RULE 1: MUST include branchId
         const payment = await db.payment.findFirst({
@@ -217,6 +239,51 @@ router.delete('/payments/:id', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Failed to delete payment:', error);
         res.status(500).json({ error: 'فشل في حذف الدفع' });
+    }
+});
+
+/**
+ * GET Export Payments to Excel
+ */
+const { exportToExcel } = require('../utils/excel');
+router.get('/export', authenticateToken, async (req, res) => {
+    try {
+        const where = getBranchFilter(req);
+        const payments = await db.payment.findMany(ensureBranchWhere({
+            where,
+            orderBy: { createdAt: 'desc' },
+            include: { customer: { select: { client_name: true, bkcode: true } } }
+        }, req));
+
+        const data = payments.map(p => ({
+            'التاريخ': new Date(p.createdAt).toLocaleDateString('ar-EG'),
+            'العميل': p.customerName || p.customer?.client_name || '-',
+            'كود العميل': p.customer?.bkcode || '-',
+            'المبلغ': p.amount || 0,
+            'السبب': p.reason || '-',
+            'رقم الإيصال': p.receiptNumber || '-',
+            'مكان الدفع': p.paymentPlace || '-',
+            'الموظف': p.userName || '-'
+        }));
+
+        const columns = [
+            { header: 'التاريخ', key: 'التاريخ', width: 15 },
+            { header: 'العميل', key: 'العميل', width: 25 },
+            { header: 'كود العميل', key: 'كود العميل', width: 15 },
+            { header: 'المبلغ', key: 'المبلغ', width: 12 },
+            { header: 'السبب', key: 'السبب', width: 20 },
+            { header: 'رقم الإيصال', key: 'رقم الإيصال', width: 15 },
+            { header: 'مكان الدفع', key: 'مكان الدفع', width: 15 },
+            { header: 'الموظف', key: 'الموظف', width: 20 }
+        ];
+
+        const buffer = await exportToExcel(data, columns, 'payments_export');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=payments_export.xlsx');
+        res.send(buffer);
+    } catch (error) {
+        console.error('Failed to export payments:', error);
+        res.status(500).json({ error: 'فشل في تصدير المدفوعات' });
     }
 });
 

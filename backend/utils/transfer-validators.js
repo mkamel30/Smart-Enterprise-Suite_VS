@@ -58,7 +58,8 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
         // Validate machines
         const machines = await db.warehouseMachine.findMany({
             where: {
-                serialNumber: { in: serialNumbers }
+                serialNumber: { in: serialNumbers },
+                branchId: fromBranchId
             },
             include: {
                 branch: true
@@ -115,7 +116,8 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
         // Validate SIMs
         const sims = await db.warehouseSim.findMany({
             where: {
-                serialNumber: { in: serialNumbers }
+                serialNumber: { in: serialNumbers },
+                branchId: fromBranchId
             },
             include: {
                 branch: true

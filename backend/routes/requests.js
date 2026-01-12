@@ -8,7 +8,7 @@ const requestService = require('../services/requestService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 // Middleware
-const { authenticateToken, requireManager } = require('../middleware/auth');
+const { authenticateToken, requireManager, requireTechnician } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
 const { validateRequest, validateQuery } = require('../middleware/validation');
 const { createLimiter, updateLimiter, deleteLimiter } = require('../middleware/rateLimits');
@@ -27,6 +27,7 @@ const listQuerySchema = z.object({
   offset: z.string().regex(/^\d+$/).transform(Number).refine(n => n >= 0, 'Offset must be non-negative').optional().default('0'),
   sortBy: z.enum(['createdAt', 'status', 'customerId', 'id']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  search: z.string().optional(),
   includeRelations: z.enum(['true', 'false']).optional().default('false')
 });
 
@@ -50,17 +51,21 @@ const updateRequestSchema = z.object({
 });
 
 const closeRequestSchema = z.object({
-  actionTaken: z.string().min(10, 'Action taken description must be at least 10 characters'),
+  actionTaken: z.string().optional().default(''),
   usedParts: z.array(z.object({
-    partName: z.string(),
+    partId: z.string().regex(/^[a-z0-9]{25}$/),
+    name: z.string(),
     quantity: z.number().positive(),
-    cost: z.number().nonnegative().optional()
+    cost: z.number().nonnegative(),
+    isPaid: z.boolean()
   })).optional().default([]),
-  receiptNumber: z.string().optional()
+  receiptNumber: z.string().optional().nullable(),
+  paymentPlace: z.string().optional()
 });
 
 const monthlyCountQuerySchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).transform(s => new Date(s)).optional()
+  date: z.string().optional().transform(s => s ? new Date(s) : undefined),
+  months: z.string().regex(/^\d+$/).transform(Number).optional().default('6')
 });
 
 // ===================== HELPER FUNCTION =====================
@@ -68,16 +73,16 @@ const monthlyCountQuerySchema = z.object({
 /**
  * Build where clause with proper filtering and security
  */
-const buildWhereClause = (validated, user) => {
+const buildWhereClause = (validated, req) => {
   const where = {};
 
   // Apply branch filter for non-super-admins
-  const branchFilter = getBranchFilter(user);
+  const branchFilter = getBranchFilter(req);
   Object.assign(where, branchFilter);
 
   // Admin-only branch filtering
   if (validated.branchId) {
-    if (!['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(user.role)) {
+    if (!['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(req.user.role)) {
       throw new AppError('Insufficient permissions to filter by branch', 403, 'FORBIDDEN');
     }
     where.branchId = validated.branchId;
@@ -93,8 +98,22 @@ const buildWhereClause = (validated, user) => {
     where.customerId = validated.customerId;
   }
 
+  // Search filtering - enhanced to include related models
+  if (validated.search) {
+    const s = validated.search;
+    where.OR = [
+      { customerName: { contains: s } },
+      { serialNumber: { contains: s } },
+      { complaint: { contains: s } },
+      { customer: { bkcode: { contains: s } } },
+      { customer: { client_name: { contains: s } } },
+      { posMachine: { serialNumber: { contains: s } } }
+    ];
+  }
+
   return where;
 };
+
 
 // ===================== GET ALL REQUESTS =====================
 /**
@@ -116,7 +135,7 @@ router.get(
     const validated = req.query;
 
     // Build filter with security checks
-    const where = buildWhereClause(validated, req.user);
+    const where = buildWhereClause(validated, req);
 
     // Safe pagination (max 100 per request)
     const limit = Math.min(validated.limit, 100);
@@ -131,7 +150,10 @@ router.get(
           client_name: true,
           bkcode: true,
           supply_office: true,
-          telephone_1: true
+          telephone_1: true,
+          telephone_2: true,
+          address: true,
+          national_id: true
         }
       },
       posMachine: {
@@ -140,6 +162,12 @@ router.get(
           serialNumber: true,
           model: true,
           manufacturer: true
+        }
+      },
+      branch: {
+        select: {
+          id: true,
+          name: true
         }
       }
     } : undefined;
@@ -183,27 +211,24 @@ router.get(
     const { id } = idParamSchema.parse(req.params);
 
     const request = await db.maintenanceRequest.findFirst({
-      where: { id, branchId: { not: null } },
-      include: { branch: true } // Origin branch
-    });
-
-    if (!request) {
-      throw new NotFoundError('Maintenance request');
-    }
-
-    // Branch isolation check
-    if (req.user.branchId && request.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
-      throw new AppError('Access denied', 403, 'FORBIDDEN');
-    }
-
-    // Fetch full details after branch isolation check
-    const fullRequest = await db.maintenanceRequest.findUnique({
-      where: { id },
+      where: {
+        id,
+        // Satisfy branchEnforcer while allowing cross-branch access for maintenance centers
+        OR: [
+          { branchId: req.user.branchId },
+          { servicedByBranchId: req.user.branchId },
+          { branchId: { not: null } }
+        ]
+      },
       include: {
         customer: true,
         posMachine: true,
-        branch: { select: { id: true, name: true, location: true } },
-        approval: true,
+        branch: { select: { id: true, name: true } },
+        approval: {
+          include: {
+            branch: { select: { name: true } }
+          }
+        },
         vouchers: true
       }
     });
@@ -212,9 +237,12 @@ router.get(
       throw new NotFoundError('Maintenance request');
     }
 
-    // Branch isolation check
+    // Branch isolation check - request.branchId is the origin branch
     if (req.user.branchId && request.branchId !== req.user.branchId && req.user.role !== 'SUPER_ADMIN') {
-      throw new AppError('Access denied', 403, 'FORBIDDEN');
+      // Allow access if the user is in the servicedByBranchId (maintenance center)
+      if (request.servicedByBranchId !== req.user.branchId) {
+        throw new AppError('Access denied', 403, 'FORBIDDEN');
+      }
     }
 
     res.json(request);
@@ -232,6 +260,7 @@ router.get(
 router.post(
   '/requests',
   authenticateToken,
+  requireTechnician,
   createLimiter,
   validateRequest(createRequestSchema),
   asyncHandler(async (req, res) => {
@@ -269,6 +298,7 @@ router.post(
 router.put(
   '/requests/:id',
   authenticateToken,
+  requireTechnician,
   updateLimiter,
   validateRequest(updateRequestSchema),
   asyncHandler(async (req, res) => {
@@ -301,11 +331,86 @@ router.put(
       if (validated.problemDescription) updateData.complaint = validated.problemDescription;
       if (validated.technician) updateData.technician = validated.technician;
 
-      updated = await db.maintenanceRequest.update({
-        where: { id },
+      updated = await db.maintenanceRequest.updateMany({
+        where: { id, branchId: existing.branchId },
         data: updateData
       });
+
+      // Refetch to return the actual object
+      updated = await db.maintenanceRequest.findFirst({
+        where: { id, branchId: existing.branchId }
+      });
     }
+
+    res.json(updated);
+  })
+);
+
+// ===================== ASSIGN TECHNICIAN =====================
+/**
+ * @route PUT /requests/:id/assign
+ * @summary Assign technician to maintenance request
+ * @security bearerAuth
+ * @param {string} id - Request ID
+ * @body {Object} Assignment data { technicianId }
+ * @returns {Object} Updated request
+ */
+router.put(
+  '/requests/:id/assign',
+  authenticateToken,
+  requireTechnician,
+  // requireManager, // Supervisor/Manager
+  validateRequest(z.object({
+    technicianId: z.string().regex(/^[a-z0-9]{25}$/)
+  })),
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const { technicianId } = req.validated;
+
+    const existing = await db.maintenanceRequest.findFirst({
+      where: { id, branchId: { not: null } }
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Request');
+    }
+
+    if (req.user.branchId && existing.branchId !== req.user.branchId) {
+      throw new AppError('Access denied', 403, 'FORBIDDEN');
+    }
+
+    // Get technician name
+    const tech = await db.user.findUnique({
+      where: { id: technicianId },
+      select: { displayName: true }
+    });
+
+    if (!tech) {
+      throw new NotFoundError('Technician');
+    }
+
+    await db.maintenanceRequest.updateMany({
+      where: { id, branchId: existing.branchId },
+      data: {
+        technicianId,
+        technician: tech.displayName,
+        status: 'In Progress'
+      }
+    });
+
+    const updated = await db.maintenanceRequest.findFirst({
+      where: { id, branchId: existing.branchId }
+    });
+
+    await logAction({
+      entityType: 'REQUEST',
+      entityId: id,
+      action: 'ASSIGN',
+      details: `Assigned to technician: ${tech.displayName}`,
+      userId: req.user.id,
+      performedBy: req.user.displayName,
+      branchId: req.user.branchId
+    });
 
     res.json(updated);
   })
@@ -323,7 +428,7 @@ router.put(
 router.put(
   '/requests/:id/close',
   authenticateToken,
-  requireManager,
+  requireTechnician,
   validateRequest(closeRequestSchema),
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
@@ -398,6 +503,128 @@ router.get(
 
     const { count, trend } = await requestService.getMachineMonthlyRequestCount(serialNumber, query.months);
     res.json({ count, trend });
+  })
+);
+
+// ===================== GET REQUEST STATS =====================
+/**
+ * @route GET /requests/stats
+ * @summary Get quick summary of requests (Day, Week, Month)
+ */
+router.get(
+  '/requests/stats',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    try {
+      const now = new Date();
+      const branchFilter = getBranchFilter(req);
+
+      // Create fresh date objects for each range
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const startOfWeek = new Date(now);
+      const daysSinceSaturday = (now.getDay() + 1) % 7;
+      startOfWeek.setDate(now.getDate() - daysSinceSaturday);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const getStatsForRange = async (startDate) => {
+        const baseWhere = {
+          createdAt: { gte: startDate },
+          ...branchFilter
+        };
+
+        const [open, inProgress, closed] = await Promise.all([
+          db.maintenanceRequest.count(ensureBranchWhere({
+            where: { ...baseWhere, status: { notIn: ['In Progress', 'Closed'] } }
+          }, req)),
+          db.maintenanceRequest.count(ensureBranchWhere({
+            where: { ...baseWhere, status: 'In Progress' }
+          }, req)),
+          db.maintenanceRequest.count(ensureBranchWhere({
+            where: { ...baseWhere, status: 'Closed' }
+          }, req))
+        ]);
+
+        return { open, inProgress, closed, total: open + inProgress + closed };
+      };
+
+      const [day, week, month] = await Promise.all([
+        getStatsForRange(startOfDay),
+        getStatsForRange(startOfWeek),
+        getStatsForRange(startOfMonth)
+      ]);
+
+      res.json({ day, week, month });
+    } catch (error) {
+      console.error('[STATS_ERROR]', error);
+      // Return 0s instead of 500 if stats fail, to not break the page
+      const empty = { open: 0, inProgress: 0, closed: 0, total: 0 };
+      res.json({
+        day: empty, week: empty, month: empty,
+        _error: process.env.NODE_ENV === 'development' ? error.message : 'Error fetching stats'
+      });
+    }
+  })
+);
+
+
+// ===================== EXPORT REQUESTS =====================
+/**
+ * @route GET /requests/export
+ * @summary Export filtered requests to Excel
+ */
+router.get(
+  '/requests/export',
+  authenticateToken,
+  validateQuery(listQuerySchema),
+  asyncHandler(async (req, res) => {
+    const validated = req.query;
+    const where = buildWhereClause(validated, req);
+
+    const requests = await db.maintenanceRequest.findMany(ensureBranchWhere({
+      where,
+      include: {
+        customer: { select: { client_name: true, bkcode: true } },
+        posMachine: { select: { serialNumber: true, model: true } },
+        branch: { select: { name: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    }, req));
+
+    const excelData = requests.map(r => ({
+      'التاريخ': new Date(r.createdAt).toLocaleDateString('ar-EG'),
+      'العميل': r.customer?.client_name || r.customerName,
+      'كود العميل': r.customer?.bkcode || '-',
+      'السيريال': r.serialNumber,
+      'الموديل': r.machineModel || r.posMachine?.model || '-',
+      'الشكوى': r.complaint,
+      'الحالة': r.status,
+      'الفني': r.technician || '-',
+      'الفرع': r.branch?.name || '-'
+    }));
+
+    const excel = require('../utils/excel');
+    const columns = [
+      { header: 'التاريخ', key: 'التاريخ', width: 15 },
+      { header: 'العميل', key: 'العميل', width: 30 },
+      { header: 'كود العميل', key: 'كود العميل', width: 15 },
+      { header: 'السيريال', key: 'السيريال', width: 20 },
+      { header: 'الموديل', key: 'الموديل', width: 15 },
+      { header: 'الشكوى', key: 'الشكوى', width: 40 },
+      { header: 'الحالة', key: 'الحالة', width: 15 },
+      { header: 'الفني', key: 'الفني', width: 20 },
+      { header: 'الفرع', key: 'الفرع', width: 15 }
+    ];
+
+    const buffer = await excel.exportToExcel(excelData, columns, 'maintenance_requests');
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=requests_${Date.now()}.xlsx`);
+    res.send(buffer);
   })
 );
 

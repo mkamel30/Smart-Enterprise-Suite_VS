@@ -12,7 +12,7 @@ export default function CustomerQuickList({
 }: CustomerQuickListProps) {
     return (
         <div className="bg-card rounded-[2rem] border border-border shadow-xl overflow-hidden animate-fade-in mt-8">
-            <div className="p-8 border-b border-border bg-muted/20">
+            <div className="p-8 border-b border-border bg-muted/20 text-right">
                 <h3 className="text-xl font-black">دليل العملاء</h3>
                 <p className="text-sm text-muted-foreground mt-1">اضغط على عميل لعرض التفاصيل الكاملة</p>
             </div>

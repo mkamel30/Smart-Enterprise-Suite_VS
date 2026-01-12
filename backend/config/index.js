@@ -35,8 +35,8 @@ const config = {
 
   // Rate Limiting
   rateLimiting: {
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60000,
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 minutes
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 2000
   },
 
   // Security

@@ -35,7 +35,23 @@ timeout /t 2 /nobreak >nul
 echo.
 echo Starting Backend Server on port 5000...
 cd backend
-start "Backend - Smart Enterprise Suite" cmd /k "npm run dev"
+
+echo Clearing Node.js cache...
+if exist ".cache" rmdir /s /q ".cache" 2>nul
+if exist "node_modules\.cache" rmdir /s /q "node_modules\.cache" 2>nul
+
+REM Clear require cache by using node directly instead of nodemon initially
+echo Syncing database schema...
+call npx prisma db push --skip-generate
+if errorlevel 1 (
+    echo WARNING: Database sync had issues, but continuing...
+)
+call npx prisma generate
+echo Database schema synced!
+echo.
+
+REM Use node directly for fresh start (no nodemon cache issues)
+start "Backend - Smart Enterprise Suite" cmd /k "node server.js"
 timeout /t 3 /nobreak >nul
 
 echo Starting Frontend Server on port 5173...

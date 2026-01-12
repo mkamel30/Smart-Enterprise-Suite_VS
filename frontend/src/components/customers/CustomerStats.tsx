@@ -11,7 +11,7 @@ interface CustomerStatsProps {
 
 export default function CustomerStats({ stats }: CustomerStatsProps) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" dir="rtl">
+        <div className="smart-grid mb-8" dir="rtl">
             {/* 1 - العملاء (Right) */}
             <div className="bg-card p-6 rounded-4xl border border-border shadow-xl hover:shadow-2xl transition-all group overflow-hidden relative">
                 <div className="absolute top-0 left-0 p-8 opacity-5 group-hover:scale-125 transition-transform">

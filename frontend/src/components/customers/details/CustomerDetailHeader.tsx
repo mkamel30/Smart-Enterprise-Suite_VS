@@ -14,9 +14,9 @@ export default function CustomerDetailHeader({
     onShowHistory
 }: CustomerDetailHeaderProps) {
     return (
-        <div className="p-8 border-b border-border/50 bg-muted/20 flex flex-row-reverse justify-between items-start">
+        <div className="p-6 border-b border-border/50 bg-muted/20 flex flex-row-reverse justify-between items-start">
             <div className="text-right">
-                <h2 className="text-3xl font-black tracking-tight flex flex-row-reverse items-center gap-3">
+                <h2 className="text-2xl font-black tracking-tight flex flex-row-reverse items-center gap-3">
                     <span>{customer.client_name}</span>
                     <button
                         onClick={onShowHistory}

@@ -258,7 +258,7 @@ const BranchRankingTable: React.FC<{
                 {index > 2 && index + 1}
               </td>
               <td className="branch-name">{branch.name}</td>
-              <td className="revenue">{(branch.revenue / 1000).toFixed(0)}K ج.م</td>
+              <td className="revenue">{(branch.revenue / 1000).toFixed(0)}ألف ج.م</td>
               <td className={`change ${branch.change >= 0 ? 'positive' : 'negative'}`}>
                 {branch.change >= 0 ? '▲' : '▼'} {Math.abs(branch.change)}%
               </td>
@@ -325,11 +325,11 @@ const ForecastChart: React.FC<{
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
           <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
-          <YAxis stroke="#6B7280" fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+          <YAxis stroke="#6B7280" fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)} ألف`} />
           <Tooltip
             contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#fff' }}
             formatter={(value: number, name: string) => [
-              `${(value / 1000).toFixed(1)}K ج.م`,
+              `${(value / 1000).toFixed(1)}ألف ج.م`,
               name === 'total' ? 'الإيراد' : name === 'upperBound' ? 'الحد الأعلى' : name === 'lowerBound' ? 'الحد الأدنى' : name
             ]}
           />
@@ -372,8 +372,10 @@ const BranchDetailModal: React.FC<{
   branchData: BranchDrillDown | null;
   onClose: () => void;
   isLoading: boolean;
-}> = ({ branchData, onClose, isLoading }) => {
-  if (!branchData && !isLoading) return null;
+  isError?: boolean;
+  error?: any;
+}> = ({ branchData, onClose, isLoading, isError, error }) => {
+  if (!branchData && !isLoading && !isError) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -382,6 +384,13 @@ const BranchDetailModal: React.FC<{
           <div className="modal-loading">
             <RefreshCw className="spin" size={32} />
             <span>جاري تحميل بيانات الفرع...</span>
+          </div>
+        ) : isError ? (
+          <div className="modal-error">
+            <AlertCircle size={32} color={COLORS.danger} />
+            <span>فشل تحميل بيانات الفرع</span>
+            <p>{error?.message || 'حدث خطأ غير متوقع'}</p>
+            <button className="btn-secondary" onClick={onClose}>إغلاق</button>
           </div>
         ) : branchData ? (
           <>
@@ -395,7 +404,7 @@ const BranchDetailModal: React.FC<{
               <div className="detail-section">
                 <h4><DollarSign size={16} /> الإيرادات</h4>
                 <div className="detail-value-large">
-                  {(branchData.revenue.currentMonth / 1000).toFixed(0)}K ج.م
+                  {(branchData.revenue.currentMonth / 1000).toFixed(0)}ألف ج.م
                 </div>
                 <div className="mini-chart">
                   {branchData.revenue.trend.map((t, i) => (
@@ -517,10 +526,16 @@ const ExecutiveDashboard: React.FC = () => {
   });
 
   // Fetch branch details for drill-down modal
-  const { data: branchDetail, isLoading: isBranchLoading } = useQuery<BranchDrillDown>({
+  const {
+    data: branchDetail,
+    isLoading: isBranchLoading,
+    isError: isBranchError,
+    error: branchError
+  } = useQuery<BranchDrillDown>({
     queryKey: ['branch-detail', drillDownBranchId],
     queryFn: () => api.getExecutiveBranchDetail(drillDownBranchId!),
     enabled: !!drillDownBranchId,
+    retry: 1, // Only retry once to avoid long "loading" hangs
   });
 
   const handleBranchClick = (branchId: string) => {
@@ -617,7 +632,7 @@ const ExecutiveDashboard: React.FC = () => {
         <KPICard
           title="إجمالي الإيرادات"
           value={(data.summary.totalRevenue / 1000).toFixed(0)}
-          unit="K ج.م"
+          unit="ألف ج.م"
           change={data.summary.revenueChange}
           icon={<DollarSign size={24} />}
           color={COLORS.success}
@@ -625,10 +640,10 @@ const ExecutiveDashboard: React.FC = () => {
         <KPICard
           title="المستحقات المعلقة"
           value={(data.summary.pendingDebts / 1000).toFixed(0)}
-          unit="K ج.م"
+          unit="ألف ج.م"
           icon={<Clock size={24} />}
           color={data.summary.overdueDebts > 0 ? COLORS.danger : COLORS.warning}
-          subtext={data.summary.overdueDebts > 0 ? `⚠️ ${(data.summary.overdueDebts / 1000).toFixed(0)}K متأخر` : undefined}
+          subtext={data.summary.overdueDebts > 0 ? `⚠️ ${(data.summary.overdueDebts / 1000).toFixed(0)} ألف متأخر` : undefined}
         />
         <KPICard
           title="معدل حل الشكاوى"
@@ -696,10 +711,10 @@ const ExecutiveDashboard: React.FC = () => {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
-              <YAxis stroke="#6B7280" fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+              <YAxis stroke="#6B7280" fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)} ألف`} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#fff' }}
-                formatter={(value: number) => [`${(value / 1000).toFixed(1)}K ج.م`, '']}
+                formatter={(value: number) => [`${(value / 1000).toFixed(1)}ألف ج.م`, '']}
               />
               <Legend />
               <Area
@@ -754,7 +769,7 @@ const ExecutiveDashboard: React.FC = () => {
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(1)}K ج.م`} />
+              <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(1)}ألف ج.م`} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -832,7 +847,7 @@ const ExecutiveDashboard: React.FC = () => {
                 <div className="performer-info">
                   <span className="performer-name">{performer.name}</span>
                   <span className="performer-stats">
-                    {performer.closedCount} طلب مغلق • {(performer.revenue / 1000).toFixed(1)}K ج.م
+                    {performer.closedCount} طلب مغلق • {(performer.revenue / 1000).toFixed(1)}ألف ج.م
                   </span>
                 </div>
               </div>
@@ -853,10 +868,10 @@ const ExecutiveDashboard: React.FC = () => {
               <div key={index} className="forecast-card">
                 <div className="forecast-month">{pred.month}</div>
                 <div className="forecast-value">
-                  {(pred.predicted / 1000).toFixed(0)}K
+                  {(pred.predicted / 1000).toFixed(0)} ألف
                 </div>
                 <div className="forecast-range">
-                  {(pred.lowerBound / 1000).toFixed(0)}K - {(pred.upperBound / 1000).toFixed(0)}K
+                  {(pred.lowerBound / 1000).toFixed(0)} ألف - {(pred.upperBound / 1000).toFixed(0)} ألف
                 </div>
                 <div className="forecast-confidence">
                   ثقة {pred.confidence}%
@@ -878,6 +893,8 @@ const ExecutiveDashboard: React.FC = () => {
         branchData={branchDetail || null}
         onClose={closeBranchModal}
         isLoading={isBranchLoading}
+        isError={isBranchError}
+        error={branchError}
       />
 
       <style>{`

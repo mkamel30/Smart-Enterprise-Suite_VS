@@ -33,7 +33,7 @@ const authenticateToken = (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
-    
+
     // Attach user info to request
     req.user = {
       id: decoded.id,
@@ -56,7 +56,7 @@ const authenticateToken = (req, res, next) => {
         }
       });
     }
-    
+
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({
         error: {
@@ -129,8 +129,8 @@ const requireManager = (req, res, next) => {
     throw new AppError('Authentication required', 401, 'NO_AUTH');
   }
 
-  const managerRoles = ['MANAGER', 'CENTER_MANAGER', 'ADMIN', 'SUPER_ADMIN', 'MANAGEMENT'];
-  
+  const managerRoles = ['MANAGER', 'CENTER_MANAGER', 'ADMIN', 'SUPER_ADMIN', 'MANAGEMENT', 'BRANCH_MANAGER', 'CS_SUPERVISOR'];
+
   if (!managerRoles.includes(req.user.role)) {
     throw new AppError('Manager access required', 403, 'FORBIDDEN');
   }
@@ -146,8 +146,8 @@ const requireTechnician = (req, res, next) => {
     throw new AppError('Authentication required', 401, 'NO_AUTH');
   }
 
-  const techRoles = ['TECHNICIAN', 'SUPERVISOR', 'MANAGER', 'CENTER_MANAGER', 'ADMIN', 'SUPER_ADMIN'];
-  
+  const techRoles = ['TECHNICIAN', 'SUPERVISOR', 'MANAGER', 'CENTER_MANAGER', 'ADMIN', 'SUPER_ADMIN', 'BRANCH_TECH', 'CENTER_TECH', 'CS_AGENT', 'CS_SUPERVISOR', 'BRANCH_MANAGER'];
+
   if (!techRoles.includes(req.user.role)) {
     throw new AppError('Technician access required', 403, 'FORBIDDEN');
   }

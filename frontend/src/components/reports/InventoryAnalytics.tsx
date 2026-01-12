@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Package, Database } from 'lucide-react';
+import { Package, Database, History } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,6 +20,15 @@ export function InventoryAnalytics({ data, filters }: InventoryAnalyticsProps) {
         queryFn: () => api.getInventoryReport({ branchId: filters.branchId }) as Promise<any[]>,
         enabled: !!user
     });
+
+    // Fetch movements report for the history section
+    const { data: movementsData } = useQuery({
+        queryKey: ['report-movements-exec', filters],
+        queryFn: () => api.getMovementsReport(filters.startDate, filters.endDate, filters.branchId),
+        enabled: !!user
+    });
+
+    const movements = movementsData?.items || [];
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -77,6 +86,48 @@ export function InventoryAnalytics({ data, filters }: InventoryAnalyticsProps) {
                                     <td className="p-4 text-center font-black text-primary">{(item.quantity * item.defaultCost).toLocaleString()} ج.م</td>
                                 </tr>
                             ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div className="lg:col-span-4 bg-card rounded-[2.5rem] border border-border shadow-xl overflow-hidden mt-8">
+                <div className="p-8 border-b border-border flex justify-between items-center">
+                    <h3 className="text-xl font-black flex items-center gap-3">
+                        <History className="text-orange-500" />
+                        سجل حركة القطع المبدلة (معدل الاستهلاك)
+                    </h3>
+                </div>
+                <div className="max-h-120 overflow-y-auto overflow-x-auto custom-scroll">
+                    <table className="w-full text-sm whitespace-nowrap">
+                        <thead className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+                            <tr>
+                                <th className="p-4 text-right">اسم القطعة</th>
+                                <th className="p-4 text-center">الكمية المسحوبة</th>
+                                <th className="p-4 text-center">مدفوعة</th>
+                                <th className="p-4 text-center">غير مدفوعة</th>
+                                <th className="p-4 text-right">الماكينات المتأثرة</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/50">
+                            {movements.map((m: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                                    <td className="p-4">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold">{m.partName}</span>
+                                            <span className="text-[10px] text-muted-foreground font-mono">{m.partNumber}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-center font-black">{m.totalQuantity}</td>
+                                    <td className="p-4 text-center text-emerald-600 font-bold">{m.totalQuantityPaid}</td>
+                                    <td className="p-4 text-center text-red-500 font-bold">{m.totalQuantityUnpaid}</td>
+                                    <td className="p-4 text-right text-xs text-muted-foreground whitespace-normal max-w-[300px]">
+                                        {m.machinesText}
+                                    </td>
+                                </tr>
+                            ))}
+                            {movements.length === 0 && (
+                                <tr><td colSpan={5} className="p-10 text-center text-muted-foreground font-bold italic">لا توجد حركات مخزنية في هذه الفترة</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

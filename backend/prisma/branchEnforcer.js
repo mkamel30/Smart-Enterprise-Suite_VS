@@ -10,6 +10,7 @@ const protectedModels = new Set([
   'WarehouseMachine',
   'WarehouseSim',
   'PosMachine',
+  'SimCard',
   'InventoryItem',
   'StockMovement',
   'Payment',
@@ -18,7 +19,6 @@ const protectedModels = new Set([
   'MaintenanceApproval',
   'MaintenanceApprovalRequest',
   'ServiceAssignment',
-  'StockMovement',
   'UsedPartLog',
   'MachineMovementLog',
   'SimMovementLog',
@@ -68,6 +68,19 @@ function attachBranchEnforcer(prisma, opts = {}) {
       const args = params.args || {};
 
       if (!models.has(params.model)) return next(params);
+
+      // Special marker: if query has _skipBranchEnforcer = true, skip the check
+      // This is set by ensureBranchWhere for admin users viewing all branches
+      if (args.where && args.where._skipBranchEnforcer === true) {
+        // Remove the marker before sending to Prisma
+        const { _skipBranchEnforcer, ...cleanWhere } = args.where;
+        params.args = { ...args, where: Object.keys(cleanWhere).length > 0 ? cleanWhere : undefined };
+        // If where is now empty, remove it entirely for findMany/aggregate
+        if (!params.args.where || Object.keys(params.args.where).length === 0) {
+          delete params.args.where;
+        }
+        return next(params);
+      }
 
       // If there is no `where` argument, block it
       if (!args.where) {

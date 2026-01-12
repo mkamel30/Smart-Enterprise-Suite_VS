@@ -196,13 +196,13 @@ export function generateMaintenanceReport(props: PrintReportProps): string {
         <table class="info-table">
             <tr>
                 <td class="label">صاحب النشاط:</td>
-                <td>${customer.bkcode || '-'}</td>
+                <td>${customer.client_name || '-'}</td>
                 <td class="label">الرقم القومي:</td>
                 <td>${customer.national_id || '-'}</td>
             </tr>
             <tr>
                 <td class="label">التليفون:</td>
-                <td>${customer.phone || '-'}</td>
+                <td>${customer.telephone_1 || customer.phone || '-'}</td>
                 <td class="label">العنوان:</td>
                 <td>${customer.address || '-'}</td>
             </tr>

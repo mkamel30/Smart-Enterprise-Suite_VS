@@ -37,6 +37,7 @@ import MaintenanceApprovals from './pages/MaintenanceApprovals';
 import TrackMachines from './pages/TrackMachines';
 import PendingPayments from './pages/PendingPayments';
 import ExecutiveDashboard from './pages/ExecutiveDashboard';
+import ProductionReports from './pages/ProductionReports';
 
 import { useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
@@ -103,6 +104,7 @@ function AppContent() {
                     <ExecutiveDashboard />
                   </ProtectedRoute>
                 } />
+                <Route path="/production-reports" element={<ProductionReports />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>

@@ -87,8 +87,8 @@ async function deductInventory(parts, branchId, reason, tx = db) {
       );
     }
 
-    await tx.inventoryItem.update({
-      where: { id: inventoryItem.id },
+    await tx.inventoryItem.updateMany({
+      where: { id: inventoryItem.id, branchId },
       data: { quantity: { decrement: part.quantity } },
     });
 
@@ -198,8 +198,8 @@ async function createAssignment(data, user) {
     });
 
     // Update machine status
-    await tx.warehouseMachine.update({
-      where: { id: data.machineId },
+    await tx.warehouseMachine.updateMany({
+      where: { id: data.machineId, branchId: data.centerBranchId },
       data: {
         status: 'UNDER_MAINTENANCE',
         currentAssignmentId: newAssignment.id,
@@ -260,11 +260,12 @@ async function requestApproval(data, user) {
       },
     });
 
-    // Update assignment status
-    await tx.serviceAssignment.update({
-      where: { id: data.assignmentId },
+    // Update assignment
+    await tx.serviceAssignment.updateMany({
+      where: { id: data.assignmentId, centerBranchId: user.branchId },
       data: {
         status: 'PENDING_APPROVAL',
+        approvalRequestId: approvalRequest.id,
         needsApproval: true,
         proposedParts: JSON.stringify(data.proposedParts),
         proposedTotal,
@@ -311,7 +312,7 @@ async function completeDirect(data, user) {
 
   // Transaction: Deduct stock + Create debt + Update assignment
   const result = await db.$transaction(async (tx) => {
-    // âœ… DEDUCT STOCK IMMEDIATELY (Direct scenario)
+    // ✅ DEDUCT STOCK IMMEDIATELY (Direct scenario)
     await deductInventory(
       data.usedParts,
       assignment.centerBranchId,
@@ -338,8 +339,8 @@ async function completeDirect(data, user) {
     }
 
     // Update assignment
-    const updatedAssignment = await tx.serviceAssignment.update({
-      where: { id: data.assignmentId },
+    await tx.serviceAssignment.updateMany({
+      where: { id: data.assignmentId, centerBranchId: user.branchId },
       data: {
         status: 'COMPLETED',
         usedParts: JSON.stringify(data.usedParts),
@@ -348,6 +349,10 @@ async function completeDirect(data, user) {
         resolution: data.resolution,
         completedAt: new Date(),
       },
+    });
+
+    const updatedAssignment = await tx.serviceAssignment.findFirst({
+      where: { id: data.assignmentId, centerBranchId: user.branchId }
     });
 
     // Create log entry
@@ -428,14 +433,18 @@ async function respondApproval(approvalRequestId, response, user) {
     });
 
     // Update assignment
-    const updatedAssignment = await tx.serviceAssignment.update({
-      where: { id: approvalRequest.assignmentId },
+    await tx.serviceAssignment.updateMany({
+      where: { id: approvalRequest.assignmentId, originBranchId: user.branchId },
       data: {
         status: response.status, // 'APPROVED' or 'REJECTED'
         approvedAt: response.status === 'APPROVED' ? new Date() : null,
         rejectedAt: response.status === 'REJECTED' ? new Date() : null,
         rejectionReason: response.rejectionReason,
       },
+    });
+
+    const updatedAssignment = await tx.serviceAssignment.findFirst({
+      where: { id: approvalRequest.assignmentId, originBranchId: user.branchId }
     });
 
     // Create log entry
@@ -479,7 +488,7 @@ async function completeAfterApproval(data, user) {
 
   // Transaction: Deduct stock (NOW!) + Create debt + Update assignment
   const result = await db.$transaction(async (tx) => {
-    // âœ… NOW DEDUCT STOCK (After approval scenario)
+    // ✅ NOW DEDUCT STOCK (After approval scenario)
     await deductInventory(
       data.usedParts,
       assignment.centerBranchId,
@@ -506,8 +515,8 @@ async function completeAfterApproval(data, user) {
     }
 
     // Update assignment
-    const updatedAssignment = await tx.serviceAssignment.update({
-      where: { id: data.assignmentId },
+    await tx.serviceAssignment.updateMany({
+      where: { id: data.assignmentId, centerBranchId: user.branchId },
       data: {
         status: 'COMPLETED',
         usedParts: JSON.stringify(data.usedParts),
@@ -690,7 +699,7 @@ async function recordPayment(data, user) {
 
   // Update debt
   const updatedDebt = await db.branchDebt.update({
-    where: { id: data.debtId },
+    where: { id: data.debtId, debtorBranchId: user.branchId },
     data: {
       paidAmount: { increment: data.amount },
       remainingAmount: { decrement: data.amount },
@@ -766,7 +775,7 @@ async function getShipments(filters, user) {
   return await Promise.all(shipments.map(async (shipment) => {
     const serials = shipment.items.map(i => i.serialNumber);
     const machines = await db.warehouseMachine.findMany({
-      where: { serialNumber: { in: serials } },
+      where: { serialNumber: { in: serials }, branchId: { not: null } },
       select: { serialNumber: true, status: true, resolution: true }
     });
 
@@ -788,20 +797,24 @@ async function getShipments(filters, user) {
  */
 async function receiveShipment(id, user) {
   return await db.$transaction(async (tx) => {
-    const order = await tx.transferOrder.update({
-      where: { id },
+    await tx.transferOrder.updateMany({
+      where: { id, toBranchId: user.branchId },
       data: {
         status: 'ACCEPTED',
         receivedByUserId: user.id,
         receivedBy: user.displayName,
         receivedAt: new Date()
-      },
+      }
+    });
+
+    const order = await tx.transferOrder.findFirst({
+      where: { id },
       include: { items: true }
     });
 
     for (const item of order.items) {
-      await tx.warehouseMachine.update({
-        where: { serialNumber: item.serialNumber },
+      await tx.warehouseMachine.updateMany({
+        where: { serialNumber: item.serialNumber, branchId: user.branchId },
         data: {
           status: 'RECEIVED_AT_CENTER',
           branchId: user.branchId

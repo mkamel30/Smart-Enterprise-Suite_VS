@@ -14,7 +14,7 @@ async function exchangeMachine(customerId, oldSerial, newSerial, newStatus, note
     return await db.$transaction(async (tx) => {
         // 1. Get old machine
         const oldMachine = await tx.posMachine.findFirst({
-            where: { serialNumber: oldSerial }
+            where: { serialNumber: oldSerial, branchId: user.branchId }
         });
 
         if (!oldMachine) {
@@ -27,7 +27,7 @@ async function exchangeMachine(customerId, oldSerial, newSerial, newStatus, note
 
         // 2. Get new machine
         const newMachine = await tx.posMachine.findFirst({
-            where: { serialNumber: newSerial }
+            where: { serialNumber: newSerial, branchId: user.branchId }
         });
 
         if (!newMachine) {
@@ -39,22 +39,26 @@ async function exchangeMachine(customerId, oldSerial, newSerial, newStatus, note
         }
 
         // 3. Update old machine
-        const updatedOldMachine = await tx.posMachine.update({
-            where: { id: oldMachine.id },
+        await tx.posMachine.updateMany({
+            where: { id: oldMachine.id, branchId: user.branchId },
             data: {
                 customerId: null,
                 status: 'WAREHOUSE'
             }
         });
 
+        const updatedOldMachine = await tx.posMachine.findFirst({ where: { id: oldMachine.id } });
+
         // 4. Update new machine
-        const updatedNewMachine = await tx.posMachine.update({
-            where: { id: newMachine.id },
+        await tx.posMachine.updateMany({
+            where: { id: newMachine.id, branchId: user.branchId },
             data: {
                 customerId: customerId,
                 status: newStatus
             }
         });
+
+        const updatedNewMachine = await tx.posMachine.findFirst({ where: { id: newMachine.id } });
 
         // 5. Create movement log
         await tx.machineMovementLog.create({
@@ -117,7 +121,7 @@ async function returnMachine(serial, customerId, reason, incomingStatus, notes, 
     return await db.$transaction(async (tx) => {
         // 1. Get machine
         const machine = await tx.posMachine.findFirst({
-            where: { serialNumber: serial }
+            where: { serialNumber: serial, branchId: user.branchId }
         });
 
         if (!machine) {
@@ -134,13 +138,15 @@ async function returnMachine(serial, customerId, reason, incomingStatus, notes, 
         });
 
         // 3. Update machine
-        const updatedMachine = await tx.posMachine.update({
-            where: { id: machine.id },
+        await tx.posMachine.updateMany({
+            where: { id: machine.id, branchId: user.branchId },
             data: {
                 customerId: null,
                 status: incomingStatus
             }
         });
+
+        const updatedMachine = await tx.posMachine.findFirst({ where: { id: machine.id } });
 
         // 4. Create movement log
         await tx.machineMovementLog.create({

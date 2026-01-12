@@ -191,14 +191,18 @@ router.put('/:id', authenticateToken, validateRequest(updateSimSchema), asyncHan
         throw { statusCode: 400, message: 'لا يمكن تغيير الحالة إلى "قيد النقل" يدوياً. يجب إنشاء إذن تحويل.' };
     }
 
-    const sim = await db.warehouseSim.update({
-        where: { id },
+    await db.warehouseSim.updateMany({
+        where: { id, branchId: existing.branchId },
         data: {
             serialNumber,
             type,
             status,
             notes
         }
+    });
+
+    const sim = await db.warehouseSim.findFirst({
+        where: { id, branchId: existing.branchId }
     });
 
     res.json(sim);
@@ -214,7 +218,7 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
             throw { statusCode: 403, message: 'Access denied' };
         }
         await db.warehouseSim.deleteMany({
-            where: { id: req.params.id, branchId: { not: null } }
+            where: { id: req.params.id, branchId: existing.branchId }
         });
     }
     res.json({ success: true });
@@ -259,7 +263,7 @@ router.post('/assign', authenticateToken, validateRequest(assignSimSchema), asyn
             await tx.payment.create({
                 data: {
                     branchId: customer.branchId, // Link payment to customer's branch
-                    customerId,
+                    customerId: customer.id, // Use actual customer cuid
                     customerName: customer.client_name,
                     amount: cost,
                     receiptNumber: receiptNumber || null,
@@ -278,13 +282,14 @@ router.post('/assign', authenticateToken, validateRequest(assignSimSchema), asyn
             data: {
                 serialNumber: warehouseSim.serialNumber,
                 type: warehouseSim.type,
-                customerId
+                customerId: customer.id, // Use actual customer cuid
+                branchId: customer.branchId // Added branchId
             }
         });
 
         // Delete from warehouse - RULE 1
         await tx.warehouseSim.deleteMany({
-            where: { id: simId, branchId: { not: null } }
+            where: { id: simId, branchId: warehouseSim.branchId }
         });
 
         // Log movement using centralized service
@@ -341,7 +346,7 @@ router.post('/exchange', authenticateToken, validateRequest(exchangeSimSchema), 
     const returningSim = await db.simCard.findFirst({
         where: {
             serialNumber: returningSimSerial,
-            customerId
+            customerId: customer.id // Use actual customer cuid
         }
     });
     if (!returningSim) {
@@ -370,7 +375,7 @@ router.post('/exchange', authenticateToken, validateRequest(exchangeSimSchema), 
             await tx.payment.create({
                 data: {
                     branchId: customer.branchId,
-                    customerId,
+                    customerId: customer.id, // Use actual customer cuid
                     customerName: customer.client_name,
                     amount: cost,
                     receiptNumber: receiptNumber || null,
@@ -386,7 +391,7 @@ router.post('/exchange', authenticateToken, validateRequest(exchangeSimSchema), 
 
         // Delete old SIM from customer - RULE 1
         await tx.simCard.deleteMany({
-            where: { id: returningSim.id, branchId: { not: null } }
+            where: { id: returningSim.id, branchId: customer.branchId }
         });
 
         // Add old SIM to warehouse (Assign to branchId of customer/user)
@@ -405,13 +410,14 @@ router.post('/exchange', authenticateToken, validateRequest(exchangeSimSchema), 
             data: {
                 serialNumber: newSim.serialNumber,
                 type: newSim.type,
-                customerId
+                customerId: customer.id, // Use actual customer cuid
+                branchId: customer.branchId // Added branchId
             }
         });
 
         // Delete new SIM from warehouse - RULE 1
         await tx.warehouseSim.deleteMany({
-            where: { id: newSimId, branchId: { not: null } }
+            where: { id: newSimId, branchId: newSim.branchId }
         });
 
         // Log EXCHANGE_OUT (old SIM returning) using centralized service
@@ -419,7 +425,7 @@ router.post('/exchange', authenticateToken, validateRequest(exchangeSimSchema), 
             simId: returningSim.id,
             serialNumber: returningSimSerial,
             action: 'EXCHANGE_OUT',
-            customerId,
+            customerId: customer.id, // Use actual customer cuid
             details: {
                 customerName: customer.client_name,
                 status: returningStatus,
@@ -435,7 +441,7 @@ router.post('/exchange', authenticateToken, validateRequest(exchangeSimSchema), 
             simId: clientSim.id,
             serialNumber: newSim.serialNumber,
             action: 'EXCHANGE_IN',
-            customerId,
+            customerId: customer.id, // Use actual customer cuid
             details: {
                 customerName: customer.client_name,
                 type: newSim.type,
@@ -457,17 +463,6 @@ router.post('/return', authenticateToken, validateRequest(returnSimSchema), asyn
     const { customerId, simSerial, status, type, notes, performedBy } = req.body;
     const branchId = req.user.branchId || req.body.branchId;
 
-    // Validate returning SIM belongs to customer
-    const returningSim = await db.simCard.findFirst({
-        where: {
-            serialNumber: simSerial,
-            customerId
-        }
-    });
-    if (!returningSim) {
-        throw { statusCode: 400, message: 'الشريحة غير موجودة عند العميل' };
-    }
-
     const customer = await db.customer.findFirst({
         where: { bkcode: customerId, branchId }
     });
@@ -476,12 +471,22 @@ router.post('/return', authenticateToken, validateRequest(returnSimSchema), asyn
         throw { statusCode: 403, message: 'Access denied to customer' };
     }
 
+    // Validate returning SIM belongs to customer
+    const returningSim = await db.simCard.findFirst({
+        where: {
+            serialNumber: simSerial,
+            customerId: customer?.id // Use actual customer cuid
+        }
+    });
+    if (!returningSim) {
+        throw { statusCode: 400, message: 'الشريحة غير موجودة عند العميل' };
+    }
 
     // Use transaction
     await db.$transaction(async (tx) => {
         // Delete from customer - RULE 1
         await tx.simCard.deleteMany({
-            where: { id: returningSim.id, branchId: { not: null } }
+            where: { id: returningSim.id, branchId: customer.branchId }
         });
 
         // Add to warehouse
@@ -500,7 +505,7 @@ router.post('/return', authenticateToken, validateRequest(returnSimSchema), asyn
             simId: returningSim.id,
             serialNumber: simSerial,
             action: 'RETURN',
-            customerId,
+            customerId: customer?.id, // Use actual customer cuid
             details: {
                 customerName: customer?.client_name,
                 status,
@@ -791,7 +796,7 @@ router.post('/transfer', authenticateToken, validateRequest(transferSimsSchema),
         // 3. Mark items as IN_TRANSIT in the source warehouse
         // They stay in the source branch until received at the destination
         await tx.warehouseSim.updateMany({
-            where: { id: { in: simIds } },
+            where: { id: { in: simIds }, branchId: req.user.branchId },
             data: { status: 'IN_TRANSIT' }
         });
 

@@ -1,7 +1,43 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import type { Customer } from '../lib/types';
+
+/**
+ * Safely extracts a Customer[] from any API response shape.
+ * Handles: plain array, { data: [] }, { customers: [] }, or undefined/null.
+ */
+function normalizeCustomersResponse(raw: unknown): Customer[] {
+    if (Array.isArray(raw)) {
+        return raw;
+    }
+    if (raw && typeof raw === 'object') {
+        const obj = raw as Record<string, unknown>;
+        if (Array.isArray(obj.data)) return obj.data;
+        if (Array.isArray(obj.customers)) return obj.customers;
+        if (Array.isArray(obj.items)) return obj.items;
+    }
+    // Log unexpected shapes for debugging (does not crash UI)
+    if (raw !== undefined && raw !== null) {
+        console.warn('[useCustomerData] Unexpected customers response shape:', raw);
+    }
+    return [];
+}
+
+/**
+ * Safely extracts a MaintenanceRequest[] from any API response shape.
+ */
+function normalizeRequestsResponse(raw: unknown): any[] {
+    if (Array.isArray(raw)) {
+        return raw;
+    }
+    if (raw && typeof raw === 'object') {
+        const obj = raw as Record<string, unknown>;
+        if (Array.isArray(obj.data)) return obj.data;
+        if (Array.isArray(obj.requests)) return obj.requests;
+    }
+    return [];
+}
 
 export function useCustomerData(isAdmin: boolean, initialBranchId?: string) {
     const queryClient = useQueryClient();
@@ -30,35 +66,48 @@ export function useCustomerData(isAdmin: boolean, initialBranchId?: string) {
         staleTime: 1000 * 60 * 60
     });
 
-    const { data: customers, isLoading } = useQuery({
+    // Fetch customers - normalize response to always be Customer[]
+    const { data: rawCustomers, isLoading, error: customersError } = useQuery({
         queryKey: ['customers', filterBranchId],
-        queryFn: async () => (await api.getCustomers({ branchId: filterBranchId })) as any[]
+        queryFn: () => api.getCustomers({ branchId: filterBranchId })
     });
 
-    const { data: requests } = useQuery({
+    // Fetch requests - normalize response to always be array
+    const { data: rawRequests } = useQuery({
         queryKey: ['requests'],
-        queryFn: async () => (await api.getRequests()) as any[]
+        queryFn: () => api.getRequests()
     });
+
+    // Normalize to safe arrays (never undefined, never wrong shape)
+    const customers: Customer[] = useMemo(
+        () => normalizeCustomersResponse(rawCustomers),
+        [rawCustomers]
+    );
+
+    const requests: any[] = useMemo(
+        () => normalizeRequestsResponse(rawRequests),
+        [rawRequests]
+    );
 
     const selectedCustomer = useMemo(() => {
-        if (!selectedCustomerCode || !customers) return null;
-        return customers.find((c: any) => c.bkcode === selectedCustomerCode) || null;
+        if (!selectedCustomerCode || customers.length === 0) return null;
+        return customers.find((c) => c.bkcode === selectedCustomerCode) || null;
     }, [customers, selectedCustomerCode]);
 
     const machinesWithOpenRequests = useMemo(() => {
-        if (!requests) return new Set<string>();
+        if (requests.length === 0) return new Set<string>();
         return new Set(
             requests
-                .filter((r: any) => r.status !== 'Closed' && r.posMachineId)
-                .map((r: any) => r.posMachineId)
+                .filter((r) => r.status !== 'Closed' && r.posMachineId)
+                .map((r) => r.posMachineId)
         );
     }, [requests]);
 
+    // Stats calculation - safely iterates over guaranteed array
     const stats = useMemo(() => {
-        if (!customers) return { customers: 0, machines: 0, simCards: 0 };
         let machineCount = 0;
         let simCount = 0;
-        customers.forEach((c: any) => {
+        customers.forEach((c) => {
             machineCount += c.posMachines?.length || 0;
             simCount += c.simCards?.length || 0;
         });
@@ -69,12 +118,13 @@ export function useCustomerData(isAdmin: boolean, initialBranchId?: string) {
         };
     }, [customers]);
 
+    // Search results - safely iterates over guaranteed array
     const searchResults = useMemo(() => {
-        if (!searchQuery || searchQuery.length < 2 || !customers) return [];
+        if (!searchQuery || searchQuery.length < 2 || customers.length === 0) return [];
         const query = searchQuery.toLowerCase();
         const results: any[] = [];
 
-        customers.forEach((customer: any) => {
+        customers.forEach((customer) => {
             const matchesCustomer =
                 customer.bkcode?.toLowerCase().includes(query) ||
                 customer.client_name?.toLowerCase().includes(query);
@@ -121,18 +171,28 @@ export function useCustomerData(isAdmin: boolean, initialBranchId?: string) {
     }, [searchQuery, customers]);
 
     return {
+        // Branch filtering
         filterBranchId,
         setFilterBranchId,
+
+        // Search
         searchQuery,
         setSearchQuery,
+        searchResults,
+
+        // Selection
         selectedCustomerCode,
         setSelectedCustomerCode,
-        branches,
-        customers,
-        isLoading,
         selectedCustomer,
+
+        // Data - guaranteed to be typed arrays
+        branches,
+        customers,  // Always Customer[], never undefined
+        isLoading,
+        error: customersError,
+
+        // Derived data
         machinesWithOpenRequests,
-        stats,
-        searchResults
+        stats
     };
 }

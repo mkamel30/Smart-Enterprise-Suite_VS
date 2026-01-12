@@ -155,8 +155,8 @@ router.post('/force-update-models', async (req, res) => {
             }
 
             if (matched) {
-                await db.warehouseMachine.update({
-                    where: { id: machine.id },
+                await db.warehouseMachine.updateMany({
+                    where: { id: machine.id, branchId: machine.branchId },
                     data: {
                         model: matched.model,
                         manufacturer: matched.manufacturer
@@ -189,8 +189,8 @@ router.post('/force-update-models', async (req, res) => {
             }
 
             if (matched) {
-                await db.posMachine.update({
-                    where: { id: machine.id },
+                await db.posMachine.updateMany({
+                    where: { id: machine.id, branchId: machine.branchId },
                     data: {
                         model: matched.model,
                         manufacturer: matched.manufacturer

@@ -18,7 +18,7 @@ const { asyncHandler, AppError } = require('../utils/errorHandler');
  */
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     // Only allow management roles
-    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'];
+    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER', 'CS_SUPERVISOR'];
     if (!allowedRoles.includes(req.user.role)) {
         throw new AppError('Access denied: Executive access required', 403, 'FORBIDDEN');
     }
@@ -72,26 +72,38 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
         _sum: { amount: true }
     }, req));
 
-    // Pending Debts - BranchDebt uses debtorBranchId, not branchId
-    const debtFilter = branchId ? { debtorBranchId: branchId } : { debtorBranchId: { not: '' } };
-    const pendingDebts = await db.branchDebt.aggregate({
+    // Pending Debts - Remaining installments from machine sales + pending maintenance debts
+    // 1. Get remaining installments from machine sales
+    const machineSales = await db.machineSale.findMany(ensureBranchWhere({
         where: {
-            ...debtFilter,
+            ...branchFilter,
+            status: { not: 'CANCELLED' }
+        },
+        select: { totalPrice: true, paidAmount: true }
+    }, req));
+    const remainingInstallments = machineSales.reduce((sum, s) => sum + (s.totalPrice - s.paidAmount), 0);
+
+    // 2. Get pending maintenance debts from BranchDebt
+    // Note: BranchDebt uses debtorBranchId/creditorBranchId, not branchId
+    // Use _skipBranchEnforcer marker for admin all-branches view
+    const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
+    const pendingPayments = await db.branchDebt.findMany({
+        where: {
+            ...(branchId ? { debtorBranchId: branchId } : (isAdmin ? { _skipBranchEnforcer: true } : {})),
             status: 'PENDING_PAYMENT'
         },
-        _sum: { amount: true }
+        select: { remainingAmount: true, createdAt: true }
     });
+    const pendingMaintenanceDebts = pendingPayments.reduce((sum, p) => sum + p.remainingAmount, 0);
 
-    // Overdue Debts (> 30 days)
+    // Total Pending Debts
+    const pendingDebtsTotal = remainingInstallments + pendingMaintenanceDebts;
+
+    // Overdue Debts (> 30 days) - only from pending payments
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const overdueDebts = await db.branchDebt.aggregate({
-        where: {
-            ...debtFilter,
-            status: 'PENDING_PAYMENT',
-            createdAt: { lt: thirtyDaysAgo }
-        },
-        _sum: { amount: true }
-    });
+    const overdueDebtsTotal = pendingPayments
+        .filter(p => new Date(p.createdAt) < thirtyDaysAgo)
+        .reduce((sum, p) => sum + p.remainingAmount, 0);
 
     // ===================== 2. OPERATIONAL KPIs =====================
 
@@ -287,10 +299,10 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     // ===================== 7. ALERTS & NOTIFICATIONS =====================
 
     // Pending Approvals - MaintenanceApprovalRequest uses originBranchId
-    const approvalFilter = branchId ? { originBranchId: branchId } : { originBranchId: { not: '' } };
+    // Use _skipBranchEnforcer marker for admin all-branches view
     const pendingApprovals = await db.maintenanceApprovalRequest.count({
         where: {
-            ...approvalFilter,
+            ...(branchId ? { originBranchId: branchId } : (isAdmin ? { _skipBranchEnforcer: true } : {})),
             status: 'PENDING'
         }
     });
@@ -325,13 +337,12 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     }
 
     // Overdue debts alert
-    const overdueAmount = overdueDebts._sum.amount || 0;
-    if (overdueAmount > 0) {
+    if (overdueDebtsTotal > 0) {
         criticalAlerts.push({
             type: 'DEBTS',
-            severity: overdueAmount > 50000 ? 'critical' : 'warning',
-            message: `مديونيات متأخرة: ${overdueAmount.toLocaleString()} ج.م`,
-            amount: overdueAmount
+            severity: overdueDebtsTotal > 50000 ? 'critical' : 'warning',
+            message: `مديونيات متأخرة: ${overdueDebtsTotal.toLocaleString()} ج.م`,
+            amount: overdueDebtsTotal
         });
     }
 
@@ -398,17 +409,15 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
     // ===================== 9. QUICK STATS =====================
 
-    const totalMachines = await db.warehouseMachine.count(ensureBranchWhere({
-        where: branchFilter
-    }, req));
-
-    const machinesWithCustomers = await db.posMachine.count(ensureBranchWhere({
+    // Total POS machines assigned to customers (ماكينة)
+    const totalMachines = await db.posMachine.count(ensureBranchWhere({
         where: {
             ...branchFilter,
             customerId: { not: null }
         }
     }, req));
 
+    // Total customers (عميل)
     const totalCustomers = await db.customer.count(ensureBranchWhere({
         where: branchFilter
     }, req));
@@ -427,8 +436,8 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
             totalRevenue: currentTotal,
             previousRevenue: previousTotal,
             revenueChange: parseFloat(revenueChange),
-            pendingDebts: pendingDebts._sum.amount || 0,
-            overdueDebts: overdueAmount,
+            pendingDebts: pendingDebtsTotal,
+            overdueDebts: overdueDebtsTotal,
             closureRate,
             avgResolutionTime: parseFloat(avgResolutionTime),
             overdueRequests,
@@ -454,9 +463,7 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
             transfers: pendingTransfers
         },
         quickStats: {
-            totalMachines,
-            machinesWithCustomers,
-            machineUtilization: totalMachines > 0 ? Math.round((machinesWithCustomers / totalMachines) * 100) : 0,
+            totalMachines, // POS machines assigned to customers
             totalCustomers,
             totalRequests: requestsTotal,
             closedRequests: requestsClosed
@@ -475,7 +482,8 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
  * @summary Get detailed analytics for a specific branch (drill-down)
  */
 router.get('/branch/:branchId', authenticateToken, asyncHandler(async (req, res) => {
-    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT'];
+    // Match allowed roles of main executive dashboard
+    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER', 'CS_SUPERVISOR'];
     if (!allowedRoles.includes(req.user.role)) {
         throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
@@ -618,13 +626,13 @@ router.get('/branch/:branchId', authenticateToken, asyncHandler(async (req, res)
         where: { branchId },
         select: {
             id: true,
-            name: true,
+            client_name: true,
             bkcode: true,
             _count: {
                 select: { machines: true }
             }
         },
-        orderBy: { name: 'asc' },
+        orderBy: { client_name: 'asc' },
         take: 10
     });
 
@@ -680,7 +688,7 @@ router.get('/branch/:branchId', authenticateToken, asyncHandler(async (req, res)
         },
         topCustomers: topCustomers.map(c => ({
             id: c.id,
-            name: c.name,
+            name: c.client_name, // Fixed: was c.name
             bkcode: c.bkcode,
             machineCount: c._count.machines
         })),

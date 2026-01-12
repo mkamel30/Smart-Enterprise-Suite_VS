@@ -87,12 +87,52 @@ body,
   font-family: var(--font-inter), var(--font-arabic), sans-serif;
 }
 
+/* Responsive Table Helper */
+.table-container {
+  @apply w-full overflow-x-auto rounded-xl border border-border bg-card;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-container table {
+  @apply min-w-full divide-y divide-border;
+}
+
+/* Mobile-First Grid Stacking */
+.smart-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+}
+
+.smart-grid-2 {
+  @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
+}
+
+/* Responsive Padding */
+.page-container {
+  @apply p-4 sm:p-6 lg:p-8 transition-all duration-300;
+}
+
+/* Modal Responsive Padding Adjustments */
+@media (max-width: 640px) {
+  .modal-content-padding {
+    @apply p-4;
+  }
+  
+  .modal-header-padding {
+    @apply p-4 pb-2;
+  }
+  
+  .modal-footer-padding {
+    @apply p-4 pt-2;
+  }
+}
+
 /* Atomic Component Overrides */
 input,
 select,
 textarea {
   border-radius: var(--radius-sm);
   background-color: hsl(var(--card));
+  @apply text-sm sm:text-base; /* Better for mobile touch */
 }
 
 button {

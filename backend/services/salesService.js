@@ -1,5 +1,6 @@
 const db = require('../db');
 const { roundMoney } = require('./paymentService');
+const { getBranchFilter } = require('../middleware/permissions');
 const { ensureSerialNotAssignedToCustomer } = require('./serialService');
 const { AppError, NotFoundError } = require('../utils/errorHandler');
 const { logAction } = require('../utils/logger');
@@ -13,7 +14,7 @@ const salesService = {
      * Get all sales with branch filtering
      */
     async getAllSales(req) {
-        const branchFilter = (req && req.getBranchFilter) ? req.getBranchFilter() : {};
+        const branchFilter = getBranchFilter(req);
         return await db.machineSale.findMany(ensureBranchWhere({
             where: branchFilter,
             include: {
@@ -28,7 +29,7 @@ const salesService = {
      * Get installments with filters
      */
     async getInstallments(req, { overdue }) {
-        const branchFilter = (req && req.getBranchFilter) ? req.getBranchFilter() : {};
+        const branchFilter = getBranchFilter(req);
         let where = { ...branchFilter };
 
         if (overdue === 'true') {
@@ -93,13 +94,15 @@ const salesService = {
         // 4. Serial conflict check
         await ensureSerialNotAssignedToCustomer(serialNumber);
 
-        // 5. Customer Check
+        // 5. Customer Check - Get the actual CUID
         const customerBkcode = String(customerId).trim();
         const customer = await db.customer.findFirst(ensureBranchWhere({
             where: { bkcode: customerBkcode }
         }, req));
         if (!customer) throw new NotFoundError('Customer');
         if (user.branchId && customer.branchId !== user.branchId) throw new AppError('Access denied to customer', 403);
+
+        const actualCustomerId = customer.id;
 
         // 6. Transactional Sale Execution
         const result = await db.$transaction(async (tx) => {
@@ -111,7 +114,7 @@ const salesService = {
                 data: {
                     branchId,
                     serialNumber,
-                    customerId,
+                    customerId: actualCustomerId, // Use the cuid
                     type,
                     totalPrice: roundedTotalPrice,
                     paidAmount: roundedPaidAmount,
@@ -162,7 +165,7 @@ const salesService = {
                     serialNumber: machine.serialNumber,
                     model: machine.model,
                     manufacturer: machine.manufacturer,
-                    customerId,
+                    customerId: actualCustomerId, // Use the cuid
                     branchId,
                     isMain: false
                 }
@@ -184,7 +187,7 @@ const salesService = {
                 await tx.payment.create({
                     data: {
                         branchId,
-                        customerId,
+                        customerId: actualCustomerId, // Use the cuid
                         customerName: customer.client_name,
                         amount: roundedPaidAmount,
                         reason: `بيع ماكينة ${serialNumber}`,
@@ -371,41 +374,55 @@ const salesService = {
         if (user.branchId && sale.branchId !== user.branchId) throw new AppError('Access denied', 403);
 
         await db.$transaction(async (tx) => {
-            await tx.installment.deleteMany({ where: { saleId: id } });
+            // 1. Delete all installments
+            await tx.installment.deleteMany({ where: { saleId: id, branchId: sale.branchId } });
 
+            // 2. Delete associated payments (receipts)
+            // We search for payments that match the specific sale reason format
+            await tx.payment.deleteMany({
+                where: {
+                    customerId: sale.customerId,
+                    branchId: sale.branchId,
+                    type: 'SALE',
+                    reason: `بيع ماكينة ${sale.serialNumber}`
+                }
+            });
+
+            // 3. Find and Delete PosMachine (customer machine)
             const posMachine = await tx.posMachine.findFirst({
-                where: { serialNumber: sale.serialNumber, branchId: { not: null } }
+                where: { serialNumber: sale.serialNumber, branchId: sale.branchId }
             });
 
             if (posMachine && posMachine.customerId === sale.customerId) {
-                await tx.posMachine.deleteMany({ where: { id: posMachine.id, branchId: { not: null } } });
+                await tx.posMachine.deleteMany({ where: { id: posMachine.id, branchId: sale.branchId } });
             }
 
+            // 4. Update Warehouse Machine status back to NEW
             const warehouseMachine = await tx.warehouseMachine.findFirst({
-                where: { serialNumber: sale.serialNumber, branchId: { not: null } }
+                where: { serialNumber: sale.serialNumber, branchId: sale.branchId }
             });
 
             if (warehouseMachine) {
                 await tx.warehouseMachine.updateMany({
-                    where: { id: warehouseMachine.id, branchId: { not: null } },
+                    where: { id: warehouseMachine.id, branchId: warehouseMachine.branchId },
                     data: { status: 'NEW' }
                 });
-            }
 
-            await tx.machineSale.deleteMany({ where: { id, branchId: { not: null } } });
-
-            if (warehouseMachine) {
+                // 5. Log the void movement
                 await tx.machineMovementLog.create({
                     data: {
                         machineId: warehouseMachine.id,
                         serialNumber: warehouseMachine.serialNumber,
                         action: 'SALE_VOID',
-                        details: `Sale ${id} voided for customer ${sale.customerId}`,
+                        details: `إلغاء البيع ${id} وإعادة الماكينة للمخزن - العميل: ${sale.customerId}`,
                         performedBy: user.displayName || 'Admin',
                         branchId: user.branchId || sale.branchId
                     }
                 });
             }
+
+            // 6. Delete the Sale record itself
+            await tx.machineSale.deleteMany({ where: { id, branchId: sale.branchId } });
         });
 
         return { success: true };

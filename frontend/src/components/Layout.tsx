@@ -34,45 +34,55 @@ import {
 import { Menu } from 'lucide-react';
 
 const allNavItems = [
-    { path: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
-    { path: '/executive-dashboard', label: 'لوحة الإدارة العليا', icon: TrendingUp }, // Management only
-    // { path: '/maintenance-board', label: 'لوحة الصيانة', icon: LayoutDashboard }, // Deprecated
-    { path: '/requests', label: 'طلبات الصيانة', icon: ClipboardList },
-    { path: '/maintenance/shipments', label: 'الشحنات الواردة', icon: Truck }, // مركز الصيانة
-    { path: '/maintenance-approvals', label: 'موافقات الصيانة', icon: CheckCircle }, // الفرع
-    { path: '/track-machines', label: 'متابعة الماكينات', icon: Eye }, // الفرع
-    { path: '/pending-payments', label: 'المستحقات المعلقة', icon: Wallet }, // المركز والفرع
-    { path: '/customers', label: 'العملاء', icon: Building },
+    // 1. لوحات التحكم
     {
-        label: 'المخازن',
+        label: 'لوحات التحكم',
+        icon: LayoutDashboard,
+        children: [
+            { path: '/', label: 'لوحة التحكم الرئيسية', icon: LayoutDashboard },
+            { path: '/executive-dashboard', label: 'لوحة الإدارة العليا', icon: TrendingUp },
+        ]
+    },
+    // 2. الصيانة
+    {
+        label: 'الصيانة',
+        icon: Wrench,
+        children: [
+            { path: '/requests', label: 'طلبات الصيانة', icon: ClipboardList },
+            { path: '/maintenance/shipments', label: 'الشحنات الواردة', icon: Truck },
+            { path: '/maintenance-approvals', label: 'موافقات الصيانة', icon: CheckCircle },
+            { path: '/track-machines', label: 'متابعة الماكينات', icon: Eye },
+            { path: '/pending-payments', label: 'المستحقات المعلقة', icon: Wallet },
+        ]
+    },
+    // 3. العملاء والمبيعات
+    {
+        label: 'العملاء والمبيعات',
+        icon: Building,
+        children: [
+            { path: '/customers', label: 'العملاء', icon: Building },
+            { path: '/receipts', label: 'المبيعات والأقساط', icon: FileText },
+            { path: '/payments', label: 'المدفوعات', icon: Wallet },
+        ]
+    },
+    // 4. المخازن والنقل
+    {
+        label: 'المخازن والنقل',
         icon: Package,
         children: [
             { path: '/warehouse', label: 'قطع الغيار', icon: Box },
             { path: '/warehouse-machines', label: 'مخزن الماكينات', icon: Monitor },
             { path: '/warehouse-sims', label: 'مخزن الشرائح', icon: Smartphone },
-        ]
-    },
-    {
-        label: 'أذونات الصرف',
-        icon: FileText,
-        children: [
-            { path: '/transfer-orders', label: 'عرض وإنشاء الأذونات', icon: FileText },
+            { path: '/transfer-orders', label: 'أذونات الصرف', icon: FileText },
             { path: '/receive-orders', label: 'استلام الأذونات', icon: Package },
         ]
     },
+    // 5. الإدارة والتقارير
     {
-        label: 'المالية والمبيعات',
-        icon: DollarSign,
-        children: [
-            { path: '/receipts', label: 'المبيعات والأقساط', icon: FileText },
-            { path: '/payments', label: 'المدفوعات', icon: Wallet },
-        ]
-    },
-    { path: '/reports', label: 'التقارير', icon: BarChart3 },
-    {
-        label: 'الإدارة',
+        label: 'الإدارة والتقارير',
         icon: Settings,
         children: [
+            { path: '/reports', label: 'التقارير', icon: BarChart3 },
             { path: '/technicians', label: 'المستخدمين', icon: UserCircle },
             { path: '/approvals', label: 'الموافقات', icon: CheckCircle },
             { path: '/branches', label: 'الفروع', icon: Building },
@@ -259,7 +269,7 @@ export default function Layout({ children }: LayoutProps) {
                                         <span className={`text-sm ${isActive ? 'font-black' : 'font-bold'}`}>{item.label}</span>
                                     </div>
                                     {showBadge && (
-                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'}`}>
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-rose-500/50 ${isActive ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'}`}>
                                             {activeReqCount}
                                         </span>
                                     )}

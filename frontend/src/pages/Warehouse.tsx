@@ -12,19 +12,12 @@ export default function Warehouse() {
     const { user } = useAuth();
     const isAdmin = !user?.branchId;
     const [filterBranchId, setFilterBranchId] = useState('');
-    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<'inventory' | 'movements'>('inventory');
-    const [showImportDialog, setShowImportDialog] = useState(false);
-    const [importData, setImportData] = useState<any[]>([]);
-    const [selectedModel, setSelectedModel] = useState<string>('');
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    // Fetch branches for filter if admin
-    const { data: branches } = useQuery({
-        queryKey: ['branches'],
-        queryFn: () => api.getActiveBranches(),
-        enabled: !!user && isAdmin,
-        staleTime: 1000 * 60 * 60
+    const queryClient = useQueryClient();
+    const [movementFilters, setMovementFilters] = useState({
+        startDate: '',
+        endDate: '',
+        search: ''
     });
 
     const { data: inventory, isLoading } = useQuery({
@@ -33,104 +26,38 @@ export default function Warehouse() {
         enabled: !!user
     });
 
-    const { data: movements } = useQuery({
-        queryKey: ['stock-movements', filterBranchId],
-        queryFn: () => api.getStockMovements({ branchId: filterBranchId }),
+    const { data: movements, isLoading: isMovementsLoading } = useQuery({
+        queryKey: ['stock-movements', filterBranchId, movementFilters],
+        queryFn: () => api.getStockMovements({
+            branchId: filterBranchId,
+            ...movementFilters
+        }),
         enabled: !!user
     });
 
-    const { data: spareParts } = useQuery({
-        queryKey: ['spare-parts'],
-        queryFn: () => api.getSpareParts(),
-        enabled: !!user
-    });
+    // Filter inventory (just use inventory directly if no filtering needed)
+    const filteredInventory = inventory || [];
 
-    // Extract unique models from inventory
-    const availableModels = Array.from(new Set(
-        inventory?.flatMap((item: any) =>
-            item.compatibleModels ? item.compatibleModels.split(/[;,]/).map((m: string) => m.trim()) : []
-        ) || []
-    )).filter(Boolean).sort();
+    const handleExportMovements = () => {
+        if (!movements?.length) return;
 
-    // Filtered inventory
-    const filteredInventory = inventory?.filter((item: any) => {
-        if (!selectedModel) return true;
-        if (!item.compatibleModels) return false;
-        const models = item.compatibleModels.split(/[;,]/).map((m: string) => m.trim());
-        return models.includes(selectedModel);
-    }) || [];
-
-    // Download template with all parts from catalog (no code - auto generated)
-    const handleDownloadTemplate = () => {
-        if (!spareParts?.length) {
-            toast.error('لا توجد قطع في القانون. أضف قطع في الإعدادات أولاً.');
-            return;
-        }
-
-        const templateData = spareParts.map((p: any) => ({
-            'اسم القطعة': p.name,
-            'الكمية المضافة': 0
+        const exportData = movements.map((mov: any) => ({
+            'النوع': mov.type === 'IN' ? 'دخول' : 'خروج',
+            'القطعة': mov.partName,
+            'رقم القطعة': mov.partNumber,
+            'الكمية': mov.quantity,
+            'السبب': mov.reason,
+            'كود العميل': mov.customerBkCode || '',
+            'سيريال الماكينة': mov.machineSerial || '',
+            'القائم بالحركة': mov.performedBy || '',
+            'التاريخ': new Date(mov.createdAt).toLocaleString('ar-EG')
         }));
 
-        const ws = XLSX.utils.json_to_sheet(templateData);
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        ws['!dir'] = { rtl: true };
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'المخزون');
-        XLSX.writeFile(wb, 'spare_parts_stock_import.xlsx');
-    };
-
-    // Handle file upload
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const data = new Uint8Array(event.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-            // Match with spare parts by name
-            const parsed = jsonData.map((row: any) => {
-                const partName = row['اسم القطعة'] || '';
-                const quantity = parseInt(row['الكمية المضافة']) || 0;
-
-                const part = spareParts?.find((p: any) => p.name === partName);
-
-                return {
-                    partId: part?.id,
-                    partNumber: part?.partNumber,
-                    name: partName,
-                    quantity
-                };
-            }).filter((item: any) => item.partId && item.quantity > 0);
-
-            setImportData(parsed);
-            setShowImportDialog(true);
-        };
-        reader.readAsArrayBuffer(file);
-    };
-
-    const handleConfirmImport = async () => {
-        try {
-            const items = importData.map(item => ({
-                partId: item.partId,
-                quantity: item.quantity
-            }));
-
-            await api.importInventory(items, filterBranchId || undefined);
-
-            if (true) {
-                queryClient.invalidateQueries({ queryKey: ['inventory'] });
-                queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-                setShowImportDialog(false);
-                setImportData([]);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-            }
-        } catch (error) {
-            console.error('Import failed:', error);
-        }
+        XLSX.utils.book_append_sheet(wb, ws, 'سجل الحركة');
+        XLSX.writeFile(wb, `movements_log_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
     // Export current inventory
@@ -140,13 +67,16 @@ export default function Warehouse() {
         const exportData = inventory.map((item: any) => ({
             'الكود': item.partNumber,
             'اسم القطعة': item.name,
+            'الموديلات المتوافقة': item.compatibleModels,
+            'السعر': item.defaultCost,
             'الكمية الحالية': item.quantity
         }));
 
         const ws = XLSX.utils.json_to_sheet(exportData);
+        ws['!dir'] = { rtl: true };
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'المخزون');
-        XLSX.writeFile(wb, 'current_inventory.xlsx');
+        XLSX.writeFile(wb, `current_stock_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
     if (isLoading) {
@@ -162,7 +92,6 @@ export default function Warehouse() {
                 <button
                     onClick={() => setActiveTab('inventory')}
                     className={`px-6 py-3 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'inventory' ? 'bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white shadow-lg' : 'bg-white border-2 border-[#0A2472]/10 text-[#0A2472] hover:bg-[#0A2472]/5'}`}
-                    title="عرض المخزون الحالي من قطع الغيار"
                 >
                     <Package size={18} />
                     المخزون الحالي
@@ -170,7 +99,6 @@ export default function Warehouse() {
                 <button
                     onClick={() => setActiveTab('movements')}
                     className={`px-6 py-3 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'movements' ? 'bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white shadow-lg' : 'bg-white border-2 border-[#0A2472]/10 text-[#0A2472] hover:bg-[#0A2472]/5'}`}
-                    title="عرض سجل حركة الدخول والخروج"
                 >
                     <History size={18} />
                     سجل الحركة
@@ -178,12 +106,11 @@ export default function Warehouse() {
             </div>
 
             {activeTab === 'inventory' && (
-                <div className="bg-white rounded-2xl border-2 border-[#0A2472]/10 shadow-xl">
-                    <div className="p-4 border-b flex justify-between items-center">
+                <div className="bg-white rounded-2xl border-2 border-[#0A2472]/10 shadow-xl overflow-hidden">
+                    <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
                         <div className="flex items-center gap-4">
                             <div>
-                                <p className="font-medium">إجمالي الأصناف: {filteredInventory?.length || 0}</p>
-                                <p className="text-xs text-slate-500">تمبليت يحتوي على كل القطع من القانون مع عمود الكمية</p>
+                                <p className="font-bold text-[#0A2472]">إجمالي الأصناف: {filteredInventory?.length || 0}</p>
                             </div>
 
                             {/* Branch Filter */}
@@ -193,7 +120,7 @@ export default function Warehouse() {
                                     <select
                                         value={filterBranchId}
                                         onChange={(e) => setFilterBranchId(e.target.value)}
-                                        className="border rounded-lg px-2 py-1 text-sm min-w-30"
+                                        className="border-2 border-[#0A2472]/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-[#0A2472]/30"
                                     >
                                         <option value="">كل الفروع</option>
                                         {(branches as any[])?.map((branch: any) => (
@@ -204,12 +131,12 @@ export default function Warehouse() {
                             )}
 
                             {/* Model Filter */}
-                            <div className="mr-8 flex items-center gap-2">
-                                <label className="text-sm font-medium">تصفية بالموديل:</label>
+                            <div className="mr-4 flex items-center gap-2">
+                                <label className="text-sm font-bold text-slate-600">الموديل:</label>
                                 <select
                                     value={selectedModel}
                                     onChange={(e) => setSelectedModel(e.target.value)}
-                                    className="border rounded-lg px-2 py-1 text-sm min-w-37.5"
+                                    className="border-2 border-[#0A2472]/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-[#0A2472]/30"
                                 >
                                     <option value="">(الكل)</option>
                                     {availableModels.map((model: any) => (
@@ -220,98 +147,147 @@ export default function Warehouse() {
                         </div>
 
                         <div className="flex gap-2">
-                            <button onClick={handleDownloadTemplate} className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-slate-50 text-sm" title="تحميل قالب Excel لإضافة كميات جديدة">
-                                <Download size={16} />تمبليت Excel
+                            <button onClick={handleDownloadTemplate} className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm">
+                                <Download size={16} />تمبليت إضافة
                             </button>
-                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-slate-50 text-sm" title="استيراد كميات من ملف Excel">
+                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm">
                                 <Upload size={16} />استيراد Excel
                             </button>
                             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-                            <button onClick={handleExport} className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-slate-50 text-sm" title="تصدير المخزون الحالي إلى ملف Excel">
+                            <button onClick={handleExport} className="flex items-center gap-2 bg-[#80C646] text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-[#80C646]/20 transition-all font-bold text-sm">
                                 <Download size={16} />تصدير المخزون
                             </button>
                         </div>
                     </div>
 
                     <table className="w-full">
-                        <thead className="bg-slate-50">
+                        <thead className="bg-[#0A2472] text-white">
                             <tr>
-                                <th className="text-center p-4">الكود</th>
-                                <th className="text-center p-4">اسم القطعة</th>
-                                <th className="text-center p-4">الموديلات</th>
-                                <th className="text-right p-4">السعر</th>
-                                <th className="text-right p-4">الكمية</th>
-                                <th className="text-right p-4">تعديل</th>
+                                <th className="text-center p-4 font-black">الكود</th>
+                                <th className="text-center p-4 font-black">اسم القطعة</th>
+                                <th className="text-center p-4 font-black">الموديلات</th>
+                                <th className="text-right p-4 font-black">السعر</th>
+                                <th className="text-right p-4 font-black">الكمية</th>
+                                <th className="text-right p-4 font-black">تعديل</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredInventory?.map((item: any) => (
                                 <InventoryRow key={item.id} item={item} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['inventory'] })} />
                             ))}
-                            {(!filteredInventory?.length) && (
-                                <tr>
-                                    <td colSpan={6} className="p-8 text-center text-slate-500">
-                                        <Package size={48} className="mx-auto mb-2 opacity-50" />
-                                        لا توجد قطع مطابقة للبحث
-                                    </td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
                 </div>
             )}
 
             {activeTab === 'movements' && (
-                <div className="bg-white rounded-lg border shadow-sm">
-                    <div className="p-4 border-b">
-                        <p className="font-medium">سجل حركة المخزون</p>
-                        <p className="text-xs text-slate-500">آخر 100 حركة</p>
+                <div className="bg-white rounded-2xl border-2 border-[#0A2472]/10 shadow-xl overflow-hidden">
+                    <div className="p-4 border-b bg-slate-50/50 flex flex-col md:flex-row justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="relative group">
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[#0A2472] transition-colors" />
+                                <input
+                                    type="text"
+                                    placeholder="بحث ذكي..."
+                                    value={movementFilters.search}
+                                    onChange={(e) => setMovementFilters(prev => ({ ...prev, search: e.target.value }))}
+                                    className="pr-10 pl-4 py-2 border-2 border-[#0A2472]/10 rounded-xl outline-none focus:border-[#0A2472]/30 font-bold text-sm w-full md:w-64"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-bold text-slate-500">من:</label>
+                                <input
+                                    type="date"
+                                    value={movementFilters.startDate}
+                                    onChange={(e) => setMovementFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                                    className="border-2 border-[#0A2472]/10 rounded-lg px-2 py-1 text-xs font-bold outline-none"
+                                />
+                                <label className="text-xs font-bold text-slate-500">إلى:</label>
+                                <input
+                                    type="date"
+                                    value={movementFilters.endDate}
+                                    onChange={(e) => setMovementFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                                    className="border-2 border-[#0A2472]/10 rounded-lg px-2 py-1 text-xs font-bold outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleExportMovements}
+                            className="bg-[#0A2472] text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-[#0A2472]/20 transition-all font-bold text-sm flex items-center justify-center gap-2"
+                        >
+                            <Download size={16} />
+                            تصدير السجل
+                        </button>
                     </div>
 
-                    <table className="w-full">
-                        <thead className="bg-slate-50">
-                            <tr>
-                                <th className="text-right p-4">النوع</th>
-                                <th className="text-right p-4">القطعة</th>
-                                <th className="text-right p-4">الكمية</th>
-                                <th className="text-right p-4">السبب</th>
-                                <th className="text-right p-4">التاريخ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {movements?.map((mov: any) => (
-                                <tr key={mov.id} className="border-t hover:bg-slate-50">
-                                    <td className="p-4">
-                                        {mov.type === 'IN' ? (
-                                            <span className="flex items-center gap-1 text-green-600">
-                                                <ArrowDownCircle size={18} />
-                                                دخول
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-1 text-red-600">
-                                                <ArrowUpCircle size={18} />
-                                                خروج
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="font-medium">{mov.partName}</div>
-                                        <div className="text-xs text-slate-500">{mov.partNumber}</div>
-                                    </td>
-                                    <td className="p-4 font-bold">{mov.quantity}</td>
-                                    <td className="p-4 text-sm">{mov.reason || '-'}</td>
-                                    <td className="p-4 text-sm">{new Date(mov.createdAt).toLocaleString('ar-EG')}</td>
-                                </tr>
-                            ))}
-                            {(!movements?.length) && (
-                                <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-500">
-                                        لا توجد حركات
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                    <div className="min-h-[400px]">
+                        {isMovementsLoading ? (
+                            <div className="p-12 text-center text-slate-500 font-bold">جاري تحميل السجل...</div>
+                        ) : (
+                            <table className="w-full">
+                                <thead className="bg-[#0A2472] text-white">
+                                    <tr>
+                                        <th className="text-right p-4 font-black">النوع</th>
+                                        <th className="text-right p-4 font-black">القطعة</th>
+                                        <th className="text-right p-4 font-black">الكمية</th>
+                                        <th className="text-right p-4 font-black">التفاصيل / العميل</th>
+                                        <th className="text-right p-4 font-black">التاريخ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {movements?.map((mov: any) => (
+                                        <tr key={mov.id} className="border-t hover:bg-slate-50 transition-colors">
+                                            <td className="p-4">
+                                                {mov.type === 'IN' ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-700 font-black text-xs border border-green-200">
+                                                        <ArrowDownCircle size={14} />
+                                                        دخول
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 font-black text-xs border border-red-200">
+                                                        <ArrowUpCircle size={14} />
+                                                        خروج
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-bold text-slate-800">{mov.partName}</div>
+                                                <div className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{mov.partNumber}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className="text-lg font-black">{mov.quantity}</span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="text-sm font-medium text-slate-700">{mov.reason || '-'}</div>
+                                                {(mov.customerBkCode || mov.machineSerial) && (
+                                                    <div className="flex flex-col mt-1 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-[#0A2472] font-black">
+                                                            <span>كود العميل: {mov.customerBkCode}</span>
+                                                            <span className="text-slate-300">|</span>
+                                                            <span>ماكينة: {mov.machineSerial}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div className="text-[10px] text-slate-400 mt-0.5">بواسطة: {mov.performedBy || 'System'}</div>
+                                            </td>
+                                            <td className="p-4 text-xs font-bold text-slate-500">
+                                                {new Date(mov.createdAt).toLocaleString('ar-EG')}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {(!movements?.length) && (
+                                        <tr>
+                                            <td colSpan={5} className="p-12 text-center text-slate-400 font-bold">
+                                                لا توجد حركات مطابقة للبحث
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
                 </div>
             )}
 

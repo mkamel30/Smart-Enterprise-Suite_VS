@@ -33,7 +33,7 @@ async function createRequest(data, user) {
         // Create request
         const request = await tx.maintenanceRequest.create({
             data: {
-                customerId: data.customerId,
+                customerId: customer.id, // Use actual customer cuid
                 posMachineId: data.posMachineId || null,
                 customerName: customer.client_name,
                 machineModel: data.machineModel,
@@ -60,13 +60,13 @@ async function createRequest(data, user) {
 
         // If taking machine to warehouse
         if (data.takeMachine && data.posMachineId) {
-            const machine = await tx.posMachine.findUnique({
-                where: { id: data.posMachineId }
+            const machine = await tx.posMachine.findFirst({
+                where: { id: data.posMachineId, branchId: request.branchId }
             });
             if (machine) {
                 await receiveMachineToWarehouse(tx, {
                     serialNumber: machine.serialNumber,
-                    customerId: customer.bkcode,
+                    customerId: customer.id, // Use actual customer cuid
                     customerName: customer.client_name,
                     requestId: request.id,
                     branchId: request.branchId,

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { translateStatus } from '../lib/translations';
 
 interface ApprovalRequest {
     id: string;
@@ -136,9 +137,9 @@ export default function MaintenanceApprovals() {
                         className="border rounded-lg px-3 py-2 text-sm bg-background"
                     >
                         <option value="">كل الطلبات</option>
-                        <option value="PENDING">معلق</option>
-                        <option value="APPROVED">موافق عليه</option>
-                        <option value="REJECTED">مرفوض</option>
+                        <option value="PENDING">{translateStatus('PENDING')}</option>
+                        <option value="APPROVED">{translateStatus('APPROVED')}</option>
+                        <option value="REJECTED">{translateStatus('REJECTED')}</option>
                     </select>
                 </div>
             </div>
@@ -182,8 +183,7 @@ export default function MaintenanceApprovals() {
                                                     request.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
                                                         'bg-red-100 text-red-700'
                                                     }`}>
-                                                    {request.status === 'PENDING' ? 'معلق' :
-                                                        request.status === 'APPROVED' ? 'موافق' : 'مرفوض'}
+                                                    {translateStatus(request.status)}
                                                 </span>
                                             </div>
 

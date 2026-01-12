@@ -143,8 +143,8 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-2xl bg-white rounded-2xl shadow-2xl" dir="rtl">
                 <DialogHeader className="bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white p-6 pb-4 shrink-0">
-                    <DialogTitle className="text-2xl font-black">إغلاق الطلب</DialogTitle>
-                    <DialogDescription className="text-[#6CE4F0]/90">
+                    <DialogTitle className="text-2xl font-black text-right text-white">إغلاق الطلب</DialogTitle>
+                    <DialogDescription className="text-[#6CE4F0]/90 text-right">
                         إضافة الإجراء المتخذ والقطع المستخدمة
                     </DialogDescription>
                 </DialogHeader>
@@ -320,15 +320,15 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
 
                 {/* Footer */}
                 <div className="p-6 border-t border-[#0A2472]/10 bg-white shrink-0 flex flex-row-reverse gap-3" dir="rtl">
-                    <Button 
-                        variant="outline" 
-                        onClick={onClose} 
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
                         className="flex-1 h-11 font-bold border-2 border-[#0A2472]/20 text-[#0A2472] hover:bg-[#0A2472]/5 hover:border-[#0A2472]/30 transition-colors"
                     >
                         إغلاق
                     </Button>
-                    <Button 
-                        onClick={handleSubmit} 
+                    <Button
+                        onClick={handleSubmit}
                         className="flex-[2] h-11 bg-gradient-to-r from-[#80C646] to-[#6DB840] hover:from-[#6DB840] hover:to-[#5CA630] text-white font-bold shadow-md hover:shadow-lg transition-all"
                     >
                         إغلاق الطلب وحفظ

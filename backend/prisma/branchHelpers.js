@@ -46,18 +46,33 @@ function ensureBranchWhere(args = {}, req) {
   if (!req || !req.user) return args;
 
   const userRole = req.user.role;
-  const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(userRole);
+  const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS', 'CS_SUPERVISOR', 'CENTER_MANAGER'].includes(userRole);
 
-  // Resolve branchId from various sources
-  const branchId = req.user.branchId || req.body?.branchId || req.query?.branchId;
+  // Check for the special marker in the top-level or in args.where
+  const hasMarker = args._skipBranchEnforcer === true || (args.where && args.where._skipBranchEnforcer === true);
 
-  // If no branchId is found and user is Admin, we still include the key to satisfy the enforcer
+  if (hasMarker) {
+    // Strip the marker to avoid Prisma initialization errors
+    if (args.where) delete args.where._skipBranchEnforcer;
+    delete args._skipBranchEnforcer;
+
+    // For admin/management roles, we truly skip. For others, we might still want the filter
+    // but the marker shouldn't be what triggers it.
+    if (['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role)) {
+      return args;
+    }
+  }
+  // Resolve branchId from various sources - treat empty strings as null
+  const rawBranchId = req.user.branchId || req.body?.branchId || req.query?.branchId;
+  const branchId = (rawBranchId && rawBranchId.trim() !== '') ? rawBranchId : null;
+
+  // If no branchId is found and user is Admin, add _skipBranchEnforcer marker
+  // This tells the enforcer to skip the branch check and not filter any data
   if (!branchId && isAdmin) {
     if (!args.where) {
-      return { ...args, where: { branchId: { not: null } } };
+      return { ...args, where: { _skipBranchEnforcer: true } };
     }
-    const where = { ...args.where, branchId: { not: null } };
-    return { ...args, where };
+    return { ...args, where: { ...args.where, _skipBranchEnforcer: true } };
   }
 
   // If still no branchId and NOT admin, we might still return as is 

@@ -123,8 +123,9 @@ class ApiClient {
         return this.request(`/customers${query}`);
     }
 
-    async getCustomersLite() {
-        return this.request('/customers/lite');
+    async getCustomersLite(search?: string) {
+        const query = search ? `?search=${encodeURIComponent(search)}` : '';
+        return this.request(`/customers/lite${query}`);
     }
 
     // Inventory
@@ -236,9 +237,14 @@ class ApiClient {
 
 
     // Requests
-    async getRequests(params?: { branchId?: string }): Promise<MaintenanceRequest[]> {
-        const query = params?.branchId ? `?branchId=${params.branchId}` : '';
-        return this.request(`/requests${query}`);
+    async getRequests(params?: { branchId?: string; search?: string }): Promise<MaintenanceRequest[]> {
+        const queryParams = new URLSearchParams();
+        if (params?.branchId) queryParams.append('branchId', params.branchId);
+        if (params?.search) queryParams.append('search', params.search);
+        queryParams.append('includeRelations', 'true');
+
+        const response = await this.request<any>(`/requests?${queryParams.toString()}`);
+        return response.data || response;
     }
 
     async getRequest(id: string) {
@@ -270,6 +276,34 @@ class ApiClient {
         return this.request(`/requests/${id}`, {
             method: 'DELETE',
         });
+    }
+
+    async getRequestStats(branchId?: string): Promise<any> {
+        return this.request(`/requests/stats${branchId ? `?branchId=${branchId}` : ''}`);
+    }
+
+    async exportRequests(branchId?: string, search?: string): Promise<void> {
+        const query = new URLSearchParams();
+        if (branchId) query.append('branchId', branchId);
+        if (search) query.append('search', search);
+
+        const headers: any = {};
+        if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+
+        const response = await fetch(`${this.baseUrl}/requests/export?${query.toString()}`, {
+            headers
+        });
+
+        if (!response.ok) throw new Error('Export failed');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `requests_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
     }
 
     // Users/Technicians
@@ -1195,53 +1229,15 @@ class ApiClient {
         });
     }
 
-    // ===== PERMISSIONS =====
-
-    // Get all permissions matrix
-    async getPermissions(): Promise<{
-        pages: Record<string, Record<string, boolean>>;
-        actions: Record<string, Record<string, boolean>>;
-        roles: string[];
-    }> {
-        return this.request('/permissions');
-    }
-
-    // Update a single permission
-    async updatePermission(data: {
-        role: string;
-        permissionType: 'PAGE' | 'ACTION';
-        permissionKey: string;
-        isAllowed: boolean;
-    }): Promise<any> {
-        return this.request('/permissions', {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // Bulk update permissions
-    async bulkUpdatePermissions(permissions: Array<{
-        role: string;
-        permissionType: 'PAGE' | 'ACTION';
-        permissionKey: string;
-        isAllowed: boolean;
-    }>): Promise<{ updated: number }> {
-        return this.request('/permissions/bulk', {
-            method: 'POST',
-            body: JSON.stringify({ permissions })
-        });
-    }
-
-    // Reset permissions to defaults
-    async resetPermissions(): Promise<{ message: string }> {
-        return this.request('/permissions/reset', {
-            method: 'POST'
-        });
-    }
-
     // Check if current user has permission
     async checkPermission(type: 'PAGE' | 'ACTION', key: string): Promise<{ allowed: boolean }> {
         return this.request(`/permissions/check?type=${type}&key=${encodeURIComponent(key)}`);
+    }
+    async getAuditLogs(params: { entityType: string; entityId?: string }): Promise<any[]> {
+        const query = new URLSearchParams();
+        query.append('entityType', params.entityType);
+        if (params.entityId) query.append('entityId', params.entityId);
+        return this.request(`/audit-logs?${query.toString()}`);
     }
 }
 

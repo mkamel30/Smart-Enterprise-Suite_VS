@@ -3,7 +3,7 @@ import { api } from '../api/client';
 import { useState, useEffect } from 'react';
 import type { MaintenanceRequest, Technician } from '../lib/types';
 import { useLocation } from 'react-router-dom';
-import { Plus, Trash2, UserCheck, Eye, Printer, CheckCircle, Filter, DollarSign } from 'lucide-react';
+import { Plus, Trash2, UserCheck, Eye, Printer, CheckCircle, Filter, DollarSign, Search, FileDown, Calendar, Clock, CheckCheck } from 'lucide-react';
 import { FaHistory } from 'react-icons/fa';
 import AuditLogModal from '../components/AuditLogModal';
 import { CloseRequestModal } from '../components/CloseRequestModal';
@@ -15,6 +15,7 @@ import { SendToCenterModal } from '../components/SendToCenterModal';
 import { RequestApprovalModal } from '../components/RequestApprovalModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
+import { translateStatus } from '../lib/translations';
 
 export default function Requests() {
     const location = useLocation();
@@ -28,9 +29,12 @@ export default function Requests() {
     const [showSendToCenterDialog, setShowSendToCenterDialog] = useState(false);
     const [showApprovalDialog, setShowApprovalDialog] = useState(false);
     const [prefilledData, setPrefilledData] = useState<any>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
 
     // Admin Filter State
     const [filterBranchId, setFilterBranchId] = useState('');
+    const [activeTab, setActiveTab] = useState<'open' | 'closed'>('open');
     const isAdmin = !user?.branchId;
 
     // Check if navigated from customers page with create request intent
@@ -41,13 +45,21 @@ export default function Requests() {
                 customerId: state.customerId,
                 machineId: state.machineId,
                 customerName: state.customerName,
-                machineSerial: state.machineSerial
+                machineSerial: state.machineSerial,
+                customer: state.customer,
+                machine: state.machine
             });
             setShowCreateForm(true);
             // Clear the state to prevent re-opening on refresh
             window.history.replaceState({}, document.title);
         }
     }, [location]);
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     // Form states
 
@@ -56,8 +68,14 @@ export default function Requests() {
     const [selectedTechnician, setSelectedTechnician] = useState('');
 
     const { data: requests, isLoading } = useQuery<MaintenanceRequest[]>({
-        queryKey: ['requests', filterBranchId],
-        queryFn: () => api.getRequests({ branchId: filterBranchId })
+        queryKey: ['requests', filterBranchId, debouncedSearch],
+        queryFn: () => api.getRequests({ branchId: filterBranchId, search: debouncedSearch })
+    });
+
+    const { data: stats } = useQuery({
+        queryKey: ['requests-stats', filterBranchId],
+        queryFn: () => api.getRequestStats(filterBranchId),
+        refetchInterval: 1000 * 60 // Refresh stats every minute
     });
 
     // Fetch branches for filter if admin
@@ -71,10 +89,7 @@ export default function Requests() {
     // Derive selected request from list to ensure reactivity
     const selectedRequest = requests?.find(r => r.id === selectedRequestId) || null;
 
-    const { data: customers } = useQuery({
-        queryKey: ['customers-lite'],
-        queryFn: () => api.getCustomersLite()
-    });
+
 
     const { data: technicians } = useQuery<Technician[]>({
         queryKey: ['technicians'],
@@ -196,6 +211,7 @@ export default function Requests() {
     const getStatusBadge = (status: string) => {
         const colors: Record<string, string> = {
             'Open': 'bg-[#F5C451]/20 text-[#F5C451] border-2 border-[#F5C451]/30',
+            'Pending': 'bg-orange-500/20 text-orange-600 border-2 border-orange-500/30',
             'In Progress': 'bg-[#6CE4F0]/20 text-[#0A2472] border-2 border-[#6CE4F0]/50',
             'Closed': 'bg-[#80C646]/20 text-[#80C646] border-2 border-[#80C646]/30',
         };
@@ -203,19 +219,18 @@ export default function Requests() {
     };
 
     const getStatusLabel = (status: string) => {
-        const labels: Record<string, string> = {
-            'Open': 'مفتوح',
-            'In Progress': 'قيد العمل',
-            'Closed': 'مغلق',
-        };
-        return labels[status] || status;
+        return translateStatus(status);
     };
 
+    const handleExport = async () => {
+        try {
+            await api.exportRequests(filterBranchId, debouncedSearch);
+        } catch (error) {
+            console.error('Export failed:', error);
+        }
+    };
 
-
-    if (isLoading) {
-        return <div className="flex h-full items-center justify-center p-8">جاري التحميل...</div>;
-    }
+    // Note: Removed early return on isLoading to prevent search input from losing focus
 
     return (
         <div className="px-4 lg:px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30" dir="rtl">
@@ -237,25 +252,107 @@ export default function Requests() {
                         </div>
                     )}
                 </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative group">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0A2472] transition-colors" size={18} />
+                        <input
+                            type="text"
+                            placeholder="بحث بـ (العميل، السيريال، الشكوى)..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="bg-white border-2 border-[#0A2472]/10 rounded-xl pr-10 pl-4 py-2.5 outline-none focus:border-[#0A2472]/30 focus:shadow-lg focus:shadow-[#0A2472]/5 transition-all w-full md:w-[300px] text-sm font-bold"
+                        />
+                    </div>
+                    <button
+                        onClick={handleExport}
+                        className="flex items-center gap-2 bg-white text-[#0A2472] border-2 border-[#0A2472]/10 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm"
+                    >
+                        <FileDown size={18} />
+                        تصدير
+                    </button>
+                    <button
+                        onClick={() => setShowCreateForm(true)}
+                        className="flex items-center gap-2 bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-[#0A2472]/20 transition-all font-black text-sm active:scale-95 shadow-md"
+                    >
+                        <Plus size={20} strokeWidth={3} />
+                        طلب جديد
+                    </button>
+                </div>
+            </div>
+
+            {/* Quick Report Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {['day', 'week', 'month'].map((period) => {
+                    const periodStats = stats?.[period] || { open: 0, inProgress: 0, closed: 0, total: 0 };
+                    const periodLabel = period === 'day' ? 'اليوم' : period === 'week' ? 'هذا الأسبوع' : 'هذا الشهر';
+                    const Icon = period === 'day' ? Clock : period === 'week' ? Calendar : CheckCheck;
+
+                    return (
+                        <div key={period} className="bg-white rounded-2xl p-4 border-2 border-[#0A2472]/10 shadow-sm flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-3 rounded-xl ${period === 'day' ? 'bg-amber-50 text-amber-600' : period === 'week' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                                    <Icon size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-500">{periodLabel}</h3>
+                                    <p className="text-xl font-black text-[#0A2472]">{periodStats.total}</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <div className="text-center">
+                                    <div className="text-[10px] font-black text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full mb-1">معلق</div>
+                                    <span className="font-bold text-slate-700">{periodStats.open}</span>
+                                </div>
+                                <div className="text-center px-2 border-x border-slate-100">
+                                    <div className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full mb-1">جاري</div>
+                                    <span className="font-bold text-slate-700">{periodStats.inProgress}</span>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-[10px] font-black text-green-500 bg-green-50 px-2 py-0.5 rounded-full mb-1">منتهي</div>
+                                    <span className="font-bold text-slate-700">{periodStats.closed}</span>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Tabs for Open/Closed */}
+            <div className="flex gap-2 mb-6">
                 <button
-                    onClick={() => setShowCreateForm(true)}
-                    className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:shadow-[#0A2472]/20 transition-all font-black active:scale-95"
+                    onClick={() => setActiveTab('open')}
+                    className={`px-6 py-3 rounded-xl font-black transition-all flex items-center gap-2 ${activeTab === 'open' ? 'bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white shadow-lg' : 'bg-white border-2 border-[#0A2472]/10 text-[#0A2472] hover:bg-[#0A2472]/5'}`}
                 >
-                    <Plus size={20} strokeWidth={3} />
-                    طلب جديد
+                    <Clock size={18} />
+                    الطلبات المفتوحة
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'open' ? 'bg-white/20' : 'bg-[#0A2472]/10'}`}>
+                        {requests?.filter((r: any) => r.status !== 'Closed').length || 0}
+                    </span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('closed')}
+                    className={`px-6 py-3 rounded-xl font-black transition-all flex items-center gap-2 ${activeTab === 'closed' ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg' : 'bg-white border-2 border-green-200 text-green-700 hover:bg-green-50'}`}
+                >
+                    <CheckCircle size={18} />
+                    الطلبات المغلقة
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'closed' ? 'bg-white/20' : 'bg-green-100'}`}>
+                        {requests?.filter((r: any) => r.status === 'Closed').length || 0}
+                    </span>
                 </button>
             </div>
 
             <div className="bg-white rounded-2xl border-2 border-[#0A2472]/10 shadow-xl shadow-[#0A2472]/5 overflow-hidden">
                 <div className="p-4 border-b border-[#0A2472]/10 bg-gradient-to-r from-[#0A2472]/5 to-transparent">
-                    <p className="text-[#0A2472] font-black">إجمالي الطلبات: {requests?.length || 0}</p>
+                    <p className="text-[#0A2472] font-black">
+                        {activeTab === 'open' ? 'الطلبات المفتوحة' : 'الطلبات المغلقة'}: {requests?.filter((r: any) => activeTab === 'open' ? r.status !== 'Closed' : r.status === 'Closed').length || 0}
+                    </p>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full whitespace-nowrap">
                         <thead className="bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white">
                             <tr>
-                                <th className="text-center p-4 font-black">العميل</th>
+                                <th className="text-center p-4 font-black">العميل / الكود</th>
                                 <th className="text-center p-4 font-black">الماكينة</th>
                                 <th className="text-center p-4 font-black">الشكوى</th>
                                 <th className="text-center p-4 font-black">الحالة</th>
@@ -265,9 +362,14 @@ export default function Requests() {
                             </tr>
                         </thead>
                         <tbody>
-                            {requests?.map((request: any) => (
+                            {requests?.filter((r: any) => activeTab === 'open' ? r.status !== 'Closed' : r.status === 'Closed').map((request: any) => (
                                 <tr key={request.id} className="border-t border-slate-100 hover:bg-[#0A2472]/5 transition-colors">
-                                    <td className="p-4 font-bold text-center">{request.customer?.client_name || '-'}</td>
+                                    <td className="p-4 text-center">
+                                        <div className="flex flex-col items-center">
+                                            <span className="font-bold text-sm text-[#0A2472]">{request.customer?.client_name || '-'}</span>
+                                            <span className="text-[10px] text-slate-400 font-mono mt-0.5">{request.customer?.bkcode || '-'}</span>
+                                        </div>
+                                    </td>
                                     <td className="p-4 font-mono font-medium text-[#0A2472] text-center">{request.posMachine?.serialNumber || '-'}</td>
                                     <td className="p-4 max-w-xs truncate text-center">{request.complaint || '-'}</td>
                                     <td className="p-4 text-center">
@@ -291,7 +393,7 @@ export default function Requests() {
                                             >
                                                 <Eye size={18} />
                                             </button>
-                                            {request.status === 'Open' && (
+                                            {(request.status === 'Open' || request.status === 'Pending') && (
                                                 <button
                                                     onClick={() => { setSelectedRequestId(request.id); setShowAssignDialog(true); }}
                                                     className="p-2 text-[#7E5BAB] hover:bg-[#7E5BAB]/10 rounded-lg transition-all"
@@ -336,7 +438,17 @@ export default function Requests() {
                                     </td>
                                 </tr>
                             ))}
-                            {(!requests || requests.length === 0) && (
+                            {isLoading && (
+                                <tr>
+                                    <td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-slate-500">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <div className="w-5 h-5 border-2 border-[#0A2472] border-t-transparent rounded-full animate-spin"></div>
+                                            جاري التحميل...
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                            {!isLoading && (!requests || requests.length === 0) && (
                                 <tr>
                                     <td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-slate-500">
                                         لا توجد طلبات صيانة
@@ -351,7 +463,6 @@ export default function Requests() {
             {/* Create Request Modal */}
             {showCreateForm && (
                 <CreateRequestModal
-                    customers={(customers || []) as any[]}
                     onClose={() => {
                         setShowCreateForm(false);
                         setPrefilledData(null);

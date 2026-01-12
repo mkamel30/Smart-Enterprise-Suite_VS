@@ -102,7 +102,7 @@ export function SimExchangeModal({ isOpen, onClose, customer, currentSim, onSucc
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-lg" dir="rtl">
+            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] h-auto overflow-hidden sm:max-w-lg" dir="rtl">
                 <DialogHeader className="bg-orange-50 p-6 pb-4 border-b shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <RefreshCw className="text-orange-600" />
@@ -120,7 +120,7 @@ export function SimExchangeModal({ isOpen, onClose, customer, currentSim, onSucc
                         </div>
 
                         {/* Returning SIM Status & Type */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-1.5">حالة الشريحة المرتجعة *</label>
                                 <div className="flex gap-2 h-10 bg-slate-50 p-1 rounded-lg border border-slate-200">
@@ -202,7 +202,7 @@ export function SimExchangeModal({ isOpen, onClose, customer, currentSim, onSucc
                         )}
 
                         {/* Cost & Payment */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-1.5">التكلفة (اختياري)</label>
                                 <input

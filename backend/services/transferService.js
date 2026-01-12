@@ -322,7 +322,7 @@ async function createBulkTransfer({ serialNumbers, toBranchId, waybillNumber, no
 
     const result = await db.$transaction(async (tx) => {
         const machines = await tx.warehouseMachine.findMany({
-            where: { serialNumber: { in: serialNumbers } },
+            where: { serialNumber: { in: serialNumbers }, branchId: fromBranchId },
             select: { id: true, serialNumber: true, model: true, manufacturer: true, requestId: true }
         });
         const machineMap = new Map(machines.map(m => [m.serialNumber, m]));

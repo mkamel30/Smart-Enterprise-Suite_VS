@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { BarChart3 } from 'lucide-react';
+import { canPerformAction } from '../lib/permissions';
 import { ReportsTabs } from '../components/reports/ReportsTabs';
 import { ReportsFilters } from '../components/reports/ReportsFilters';
 import { FinancialOverview } from '../components/reports/FinancialOverview';
@@ -12,11 +13,19 @@ import { AiStrategicAssistant } from '../components/reports/AiStrategicAssistant
 
 export default function Reports() {
     const { user } = useAuth();
-    const centralRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS'];
-    const isCentral = !!user && centralRoles.includes(user.role);
+
+    // Dynamic Permissions
+    const canViewExecutive = canPerformAction(user?.role, 'VIEW_EXECUTIVE_SUMMARY');
+    const canViewRankings = canPerformAction(user?.role, 'VIEW_BRANCH_RANKINGS');
+    const canViewInventory = canPerformAction(user?.role, 'VIEW_INVENTORY_VALUATION');
+
+    // centralRoles logic replacement for filters
+    const isCentral = canPerformAction(user?.role, 'VIEW_ALL_BRANCHES');
     const isCenter = user?.role === 'CENTER_MANAGER' || user?.role === 'CENTER_TECH';
 
-    const [activeTab, setActiveTab] = useState<'financial' | 'branches' | 'inventory' | 'ai'>('financial');
+    // Set initial tab based on permissions
+    const defaultTab = canViewExecutive ? 'financial' : (canViewInventory ? 'inventory' : 'ai');
+    const [activeTab, setActiveTab] = useState<'financial' | 'branches' | 'inventory' | 'ai'>(defaultTab);
 
     // Default dates: 1st of month to today
     const defaultDates = useMemo(() => {
@@ -68,12 +77,12 @@ export default function Reports() {
     };
 
     return (
-        <div className="px-8 pt-4 pb-8 space-y-8 animate-fade-in" dir="rtl">
+        <div className="page-container space-y-8 animate-fade-in" dir="rtl">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="text-4xl font-black text-foreground mb-2 flex items-center gap-4">
-                        <BarChart3 className="text-primary" size={40} />
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-2 flex items-center gap-4">
+                        <BarChart3 className="text-primary hidden sm:block" size={40} />
                         {isCenter ? 'تقرير أداء المركز' : 'مركز التحليلات الاستراتيجية'}
                     </h1>
                     <p className="text-muted-foreground font-medium">
@@ -81,7 +90,16 @@ export default function Reports() {
                     </p>
                 </div>
 
-                <ReportsTabs activeTab={activeTab} setActiveTab={setActiveTab} showBranches={!isCenter} />
+                <ReportsTabs
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    permissions={{
+                        financial: canViewExecutive,
+                        branches: canViewRankings,
+                        inventory: canViewInventory,
+                        ai: true // Always visible or add permission if needed
+                    }}
+                />
             </div>
 
             {/* Filter Bar */}

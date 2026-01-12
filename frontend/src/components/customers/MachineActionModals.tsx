@@ -31,7 +31,7 @@ export function MachineExchangeModal({
 }: MachineExchangeModalProps) {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-lg" dir="rtl">
+            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] h-auto overflow-hidden sm:max-w-lg" dir="rtl">
                 <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <ArrowLeftRight className="text-green-600" />
@@ -146,7 +146,7 @@ export function MachineReturnModal({
 }: MachineReturnModalProps) {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-md" dir="rtl">
+            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] h-auto overflow-hidden sm:max-w-md" dir="rtl">
                 <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <Truck className="text-orange-600" />

@@ -87,7 +87,9 @@ export default function Customers() {
                 customerId: customer.bkcode,
                 machineId: machine.id,
                 customerName: customer.client_name,
-                machineSerial: machine.serialNumber
+                machineSerial: machine.serialNumber,
+                customer: customer,
+                machine: machine
             }
         });
     };
@@ -125,7 +127,7 @@ export default function Customers() {
     }
 
     return (
-        <div className="min-h-screen px-8 pt-8 pb-12 bg-slate-50/50" dir="rtl">
+        <div className="min-h-screen page-container bg-slate-50/50" dir="rtl">
             <CustomerHeader
                 isAdmin={isAdmin}
                 filterBranchId={filterBranchId}

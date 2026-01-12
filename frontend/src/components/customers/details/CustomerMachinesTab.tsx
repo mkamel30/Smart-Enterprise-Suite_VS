@@ -34,10 +34,10 @@ export default function CustomerMachinesTab({
         <div className="space-y-6">
             {/* Machines Section */}
             <div>
-                <header className="flex flex-row-reverse justify-between items-center mb-4">
-                    <h4 className="text-xl font-black flex flex-row-reverse items-center gap-3">
-                        <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
-                            <Monitor size={22} />
+                <header className="flex flex-row-reverse justify-between items-center mb-3">
+                    <h4 className="text-lg font-black flex flex-row-reverse items-center gap-2">
+                        <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500">
+                            <Monitor size={18} />
                         </div>
                         <span>الماكينات المسجلة ({customer.posMachines?.length || 0})</span>
                     </h4>
@@ -51,7 +51,7 @@ export default function CustomerMachinesTab({
                             return (
                                 <div
                                     key={machine.id}
-                                    className={`group rounded-2xl border p-4 transition-all hover:shadow-xl relative overflow-hidden ${isBorrowed ? 'bg-orange-50/50 border-orange-200 shadow-orange-500/5' : 'bg-card border-border hover:border-primary shadow-lg shadow-slate-200/50'
+                                    className={`group rounded-xl border p-3 transition-all hover:shadow-xl relative overflow-hidden ${isBorrowed ? 'bg-orange-50/50 border-orange-200 shadow-orange-500/5' : 'bg-card border-border hover:border-primary shadow-lg shadow-slate-200/50'
                                         }`}
                                 >
                                     {isBorrowed && (
@@ -60,7 +60,7 @@ export default function CustomerMachinesTab({
                                         </div>
                                     )}
                                     <div className="flex-1">
-                                        <div className="font-mono text-lg font-black tracking-tighter flex items-center gap-2">
+                                        <div className="font-mono text-base font-black tracking-tighter flex items-center gap-2">
                                             {machine.serialNumber}
                                         </div>
                                         <div className="text-xs font-bold text-muted-foreground mt-1 uppercase tracking-widest">
@@ -69,7 +69,7 @@ export default function CustomerMachinesTab({
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border/30">
+                                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
                                         {machine.isMain && (
                                             <span className="bg-blue-500/10 text-blue-500 text-[10px] font-black px-2 py-1 rounded-full">رئيسية</span>
                                         )}
@@ -81,39 +81,39 @@ export default function CustomerMachinesTab({
                                             {onViewHistory && (
                                                 <button
                                                     onClick={() => onViewHistory(machine.serialNumber)}
-                                                    className="p-3 bg-muted hover:bg-primary/10 hover:text-primary rounded-xl transition-all active:scale-90"
+                                                    className="p-2 bg-muted hover:bg-primary/10 hover:text-primary rounded-lg transition-all active:scale-90"
                                                     title="سجل الحركات"
                                                 >
-                                                    <FaHistory size={16} />
+                                                    <FaHistory size={14} />
                                                 </button>
                                             )}
                                             {onReturn && (
                                                 <button
                                                     onClick={() => onReturn(customer, machine)}
-                                                    className="p-3 bg-muted hover:bg-orange-500/10 hover:text-orange-500 rounded-xl transition-all active:scale-90"
+                                                    className="p-2 bg-muted hover:bg-orange-500/10 hover:text-orange-500 rounded-lg transition-all active:scale-90"
                                                     title="سحب الماكينة"
                                                 >
-                                                    <Truck size={16} />
+                                                    <Truck size={14} />
                                                 </button>
                                             )}
                                             {onExchange && (
                                                 <button
                                                     onClick={() => onExchange(customer, machine)}
-                                                    className="p-3 bg-muted hover:bg-emerald-500/10 hover:text-emerald-500 rounded-xl transition-all active:scale-90"
+                                                    className="p-2 bg-muted hover:bg-emerald-500/10 hover:text-emerald-500 rounded-lg transition-all active:scale-90"
                                                     title="استبدال"
                                                 >
-                                                    <ArrowLeftRight size={16} />
+                                                    <ArrowLeftRight size={14} />
                                                 </button>
                                             )}
                                             {onCreateRequest && (
                                                 <button
                                                     onClick={() => onCreateRequest(customer, machine)}
                                                     disabled={hasOpenRequest}
-                                                    className={`p-3 rounded-xl transition-all active:scale-90 ${hasOpenRequest ? 'opacity-20 cursor-not-allowed grayscale' : 'bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20'
+                                                    className={`p-2 rounded-lg transition-all active:scale-90 ${hasOpenRequest ? 'opacity-20 cursor-not-allowed grayscale' : 'bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20'
                                                         }`}
                                                     title="طلب صيانة"
                                                 >
-                                                    <Wrench size={16} />
+                                                    <Wrench size={14} />
                                                 </button>
                                             )}
                                         </div>
@@ -123,27 +123,27 @@ export default function CustomerMachinesTab({
                         })}
                     </div>
                 ) : (
-                    <div className="p-12 border-2 border-dashed border-border rounded-2xl text-center">
-                        <Monitor size={32} className="mx-auto text-muted-foreground opacity-20 mb-3" />
-                        <p className="text-muted-foreground font-black">لا توجد ماكينات مسجلة حالياً</p>
+                    <div className="p-10 border-2 border-dashed border-border rounded-xl text-center">
+                        <Monitor size={30} className="mx-auto text-muted-foreground opacity-20 mb-3" />
+                        <p className="text-muted-foreground font-black text-sm">لا توجد ماكينات مسجلة حالياً</p>
                     </div>
                 )}
             </div>
 
             {/* SIM Cards Section */}
-            <div className="pt-6 border-t border-border/50">
-                <header className="flex flex-row-reverse justify-between items-center mb-4">
-                    <h4 className="text-xl font-black flex flex-row-reverse items-center gap-3">
-                        <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
-                            <RefreshCw size={22} />
+            <div className="pt-5 border-t border-border/50">
+                <header className="flex flex-row-reverse justify-between items-center mb-3">
+                    <h4 className="text-lg font-black flex flex-row-reverse items-center gap-2">
+                        <div className="p-1.5 bg-purple-500/10 rounded-lg text-purple-500">
+                            <RefreshCw size={18} />
                         </div>
                         <span>الشرائح ({customer.simCards?.length || 0})</span>
                     </h4>
                     <button
                         onClick={() => onSimPurchase?.(customer)}
-                        className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-2xl font-black text-sm shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-95 flex flex-row-reverse items-center gap-2"
+                        className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl font-black text-xs shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-95 flex flex-row-reverse items-center gap-2"
                     >
-                        <Plus size={18} strokeWidth={3} />
+                        <Plus size={16} strokeWidth={3} />
                         إضافة شريحة جديدة
                     </button>
                 </header>
@@ -153,26 +153,26 @@ export default function CustomerMachinesTab({
                         {customer.simCards.map((sim: any) => (
                             <div
                                 key={sim.id}
-                                className="bg-card border border-border group rounded-2xl p-4 transition-all hover:shadow-xl shadow-lg shadow-slate-200/50"
+                                className="bg-card border border-border group rounded-xl p-3 transition-all hover:shadow-xl shadow-lg shadow-slate-200/50"
                             >
                                 <div className="flex justify-between items-start">
-                                    <div className="font-mono text-lg font-black tracking-tighter">
+                                    <div className="font-mono text-base font-black tracking-tighter">
                                         {sim.serialNumber}
                                     </div>
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => onSimHistory?.(customer, sim)}
-                                            className="p-3 bg-muted hover:bg-purple-500/10 hover:text-purple-500 rounded-xl transition-all active:scale-90"
+                                            className="p-2 bg-muted hover:bg-purple-500/10 hover:text-purple-500 rounded-lg transition-all active:scale-90"
                                             title="سجل الحركات"
                                         >
-                                            <FaHistory size={16} />
+                                            <FaHistory size={14} />
                                         </button>
                                         <button
                                             onClick={() => onSimExchange?.(customer, sim)}
-                                            className="p-3 bg-muted hover:bg-orange-500/10 hover:text-orange-500 rounded-xl transition-all active:scale-90"
+                                            className="p-2 bg-muted hover:bg-orange-500/10 hover:text-orange-500 rounded-lg transition-all active:scale-90"
                                             title="استبدال الشريحة"
                                         >
-                                            <RefreshCw size={16} />
+                                            <RefreshCw size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -207,10 +207,10 @@ export default function CustomerMachinesTab({
                                     ) : (
                                         <div className="flex items-center gap-3">
                                             <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${sim.type === 'Vodafone' ? 'bg-red-500/10 text-red-500' :
-                                                sim.type === 'Orange' ? 'bg-orange-500/10 text-orange-500' :
-                                                    sim.type === 'Etisalat' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                        sim.type === 'WE' ? 'bg-purple-500/10 text-purple-500' :
-                                                            'bg-slate-500/10 text-slate-500'
+                                                    sim.type === 'Orange' ? 'bg-orange-500/10 text-orange-500' :
+                                                        sim.type === 'Etisalat' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                            sim.type === 'WE' ? 'bg-purple-500/10 text-purple-500' :
+                                                                'bg-slate-500/10 text-slate-500'
                                                 }`}>
                                                 {sim.type || 'غير محدد'}
                                             </span>
@@ -227,9 +227,9 @@ export default function CustomerMachinesTab({
                         ))}
                     </div>
                 ) : (
-                    <div className="p-16 border-2 border-dashed border-border rounded-[2.5rem] text-center">
-                        <RefreshCw size={40} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                        <p className="text-muted-foreground font-black">لا توجد شرائح مسجلة حالياً</p>
+                    <div className="p-12 border-2 border-dashed border-border rounded-xl text-center">
+                        <RefreshCw size={36} className="mx-auto text-muted-foreground opacity-20 mb-4" />
+                        <p className="text-muted-foreground font-black text-sm">لا توجد شرائح مسجلة حالياً</p>
                     </div>
                 )}
             </div>

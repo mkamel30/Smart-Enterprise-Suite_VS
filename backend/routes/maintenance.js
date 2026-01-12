@@ -278,4 +278,40 @@ router.post(
   })
 );
 
+/**
+ * GET /api/maintenance/tracking/export
+ * Export tracked machines to Excel
+ */
+const { exportToExcel } = require('../utils/excel');
+router.get('/tracking/export', authenticateToken, asyncHandler(async (req, res) => {
+  const assignments = await maintenanceService.getAssignments(req.query, req.user);
+
+  const data = (assignments.assignments || assignments).map(a => ({
+    'تاريخ التعيين': new Date(a.assignedAt || a.createdAt).toLocaleDateString('ar-EG'),
+    'السيريال': a.serialNumber || '-',
+    'العميل': a.customerName || '-',
+    'الفني': a.technicianName || '-',
+    'الحالة': a.status || '-',
+    'التكلفة': a.totalCost || 0,
+    'تاريخ البدء': a.startedAt ? new Date(a.startedAt).toLocaleDateString('ar-EG') : '-',
+    'تاريخ الانتهاء': a.completedAt ? new Date(a.completedAt).toLocaleDateString('ar-EG') : '-'
+  }));
+
+  const columns = [
+    { header: 'تاريخ التعيين', key: 'تاريخ التعيين', width: 15 },
+    { header: 'السيريال', key: 'السيريال', width: 20 },
+    { header: 'العميل', key: 'العميل', width: 25 },
+    { header: 'الفني', key: 'الفني', width: 20 },
+    { header: 'الحالة', key: 'الحالة', width: 15 },
+    { header: 'التكلفة', key: 'التكلفة', width: 12 },
+    { header: 'تاريخ البدء', key: 'تاريخ البدء', width: 15 },
+    { header: 'تاريخ الانتهاء', key: 'تاريخ الانتهاء', width: 15 }
+  ];
+
+  const buffer = await exportToExcel(data, columns, 'tracking_export');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename=tracking_export.xlsx');
+  res.send(buffer);
+}));
+
 module.exports = router;

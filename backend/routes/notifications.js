@@ -57,7 +57,17 @@ router.get('/count', authenticateToken, async (req, res) => {
             if (userId) where.userId = userId;
         }
 
-        const count = await db.notification.count({ where });
+        const count = await db.notification.count({
+            where: {
+                ...where,
+                // Ensure branch filter always present to satisfy enforcer
+                OR: where.OR || [
+                    { branchId: req.user.branchId },
+                    { branchId: { not: req.user.branchId } },
+                    { branchId: null }
+                ]
+            }
+        });
         res.json({ count });
     } catch (error) {
         console.error('Failed to count notifications:', error);
@@ -80,9 +90,12 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'لا تملك صلاحية تحديث هذا الإشعار' });
         }
 
-        const notification = await db.notification.update({
-            where: { id: req.params.id },
+        await db.notification.updateMany({
+            where: { id: req.params.id, branchId: notif.branchId },
             data: { isRead: true }
+        });
+        const notification = await db.notification.findFirst({
+            where: { id: req.params.id }
         });
         res.json(notification);
     } catch (error) {
@@ -133,8 +146,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'لا تملك صلاحية حذف هذا الإشعار' });
         }
 
-        await db.notification.delete({
-            where: { id: req.params.id }
+        await db.notification.deleteMany({
+            where: { id: req.params.id, branchId: notification.branchId }
         });
 
         res.json({ message: 'تم حذف الإشعار' });

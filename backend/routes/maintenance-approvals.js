@@ -23,10 +23,12 @@ router.get('/', authenticateToken, async (req, res) => {
 
         if (status) where.status = status;
 
-        const requests = await db.maintenanceApprovalRequest.findMany(ensureBranchWhere({
+        // Note: MaintenanceApprovalRequest has no branchId field - uses originBranchId/centerBranchId
+        // Already filtered by targetBranchId above
+        const requests = await db.maintenanceApprovalRequest.findMany({
             where,
             orderBy: { createdAt: 'desc' }
-        }, req));
+        });
 
         res.json(requests);
     } catch (error) {
@@ -57,8 +59,14 @@ router.get('/pending-count', authenticateToken, async (req, res) => {
 // Get single approval request
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        const request = await db.maintenanceApprovalRequest.findUnique({
-            where: { id: req.params.id }
+        const request = await db.maintenanceApprovalRequest.findFirst({
+            where: {
+                id: req.params.id,
+                OR: [
+                    { targetBranchId: req.user.branchId },
+                    { centerBranchId: req.user.branchId }
+                ]
+            }
         });
 
         if (!request) {
@@ -81,8 +89,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Approve request (الفرع يوافق)
 router.put('/:id/approve', authenticateToken, async (req, res) => {
     try {
-        const approvalRequest = await db.maintenanceApprovalRequest.findUnique({
-            where: { id: req.params.id }
+        const approvalRequest = await db.maintenanceApprovalRequest.findFirst({
+            where: { id: req.params.id, targetBranchId: req.user.branchId }
         });
 
         if (!approvalRequest) {
@@ -101,8 +109,8 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
 
         const result = await db.$transaction(async (tx) => {
             // Update approval request
-            const updated = await tx.serviceApprovalRequest.update({
-                where: { id: req.params.id },
+            await tx.maintenanceApprovalRequest.updateMany({
+                where: { id: req.params.id, targetBranchId: req.user.branchId },
                 data: {
                     status: 'APPROVED',
                     respondedBy: req.user.displayName || req.user.email,
@@ -111,10 +119,14 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
                 }
             });
 
+            const updated = await tx.maintenanceApprovalRequest.findFirst({
+                where: { id: req.params.id }
+            });
+
             // Update assignment IF exists
             if (approvalRequest.assignmentId) {
-                await tx.serviceAssignment.update({
-                    where: { id: approvalRequest.assignmentId },
+                await tx.serviceAssignment.updateMany({
+                    where: { id: approvalRequest.assignmentId, originBranchId: req.user.branchId },
                     data: {
                         status: 'APPROVED',
                         approvalStatus: 'APPROVED'
@@ -122,13 +134,13 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
                 });
 
                 // Update machine status via assignment machineId
-                const assignment = await tx.serviceAssignment.findUnique({
-                    where: { id: approvalRequest.assignmentId }
+                const assignment = await tx.serviceAssignment.findFirst({
+                    where: { id: approvalRequest.assignmentId, originBranchId: req.user.branchId }
                 });
 
                 if (assignment) {
-                    await tx.warehouseMachine.update({
-                        where: { id: assignment.machineId },
+                    await tx.warehouseMachine.updateMany({
+                        where: { id: assignment.machineId, branchId: approvalRequest.centerBranchId },
                         data: { status: 'REPAIR_APPROVED' } // Changed from APPROVED to REPAIR_APPROVED for clarity
                     });
 
@@ -145,8 +157,8 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
                 }
             } else {
                 // No assignment (Batch Workflow) - Update Machine Directly by Serial
-                await tx.warehouseMachine.update({
-                    where: { serialNumber: approvalRequest.machineSerial },
+                await tx.warehouseMachine.updateMany({
+                    where: { serialNumber: approvalRequest.machineSerial, branchId: approvalRequest.centerBranchId },
                     data: {
                         status: 'REPAIR_APPROVED',
                         // If we had a boolean/flag for approval, set it here
@@ -180,8 +192,8 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
     try {
         const { rejectionReason } = req.body;
 
-        const approvalRequest = await db.maintenanceApprovalRequest.findUnique({
-            where: { id: req.params.id }
+        const approvalRequest = await db.maintenanceApprovalRequest.findFirst({
+            where: { id: req.params.id, targetBranchId: req.user.branchId }
         });
 
         if (!approvalRequest) {
@@ -200,8 +212,8 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
 
         const result = await db.$transaction(async (tx) => {
             // Update approval request
-            const updated = await tx.serviceApprovalRequest.update({
-                where: { id: req.params.id },
+            await tx.maintenanceApprovalRequest.updateMany({
+                where: { id: req.params.id, targetBranchId: req.user.branchId },
                 data: {
                     status: 'REJECTED',
                     rejectionReason,
@@ -211,10 +223,14 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
                 }
             });
 
+            const updated = await tx.maintenanceApprovalRequest.findFirst({
+                where: { id: req.params.id }
+            });
+
             // Update assignment IF exists
             if (approvalRequest.assignmentId) {
-                await tx.serviceAssignment.update({
-                    where: { id: approvalRequest.assignmentId },
+                await tx.serviceAssignment.updateMany({
+                    where: { id: approvalRequest.assignmentId, originBranchId: req.user.branchId },
                     data: {
                         status: 'REJECTED',
                         approvalStatus: 'REJECTED',
@@ -224,13 +240,13 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
                 });
 
                 // Update machine status
-                const assignment = await tx.serviceAssignment.findUnique({
-                    where: { id: approvalRequest.assignmentId }
+                const assignment = await tx.serviceAssignment.findFirst({
+                    where: { id: approvalRequest.assignmentId, originBranchId: req.user.branchId }
                 });
 
                 if (assignment) {
-                    await tx.warehouseMachine.update({
-                        where: { id: assignment.machineId },
+                    await tx.warehouseMachine.updateMany({
+                        where: { id: assignment.machineId, branchId: approvalRequest.centerBranchId },
                         data: { status: 'REPAIR_REJECTED' }
                     });
 
@@ -247,8 +263,8 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
                 }
             } else {
                 // No assignment (Batch Workflow) - Update Machine Directly
-                await tx.warehouseMachine.update({
-                    where: { serialNumber: approvalRequest.machineSerial },
+                await tx.warehouseMachine.updateMany({
+                    where: { serialNumber: approvalRequest.machineSerial, branchId: approvalRequest.centerBranchId },
                     data: { status: 'REPAIR_REJECTED' }
                 });
             }

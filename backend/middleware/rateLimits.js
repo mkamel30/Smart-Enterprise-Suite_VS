@@ -2,6 +2,7 @@
 const RedisStore = require('rate-limit-redis');
 const redis = require('redis');
 const logger = require('../utils/logger');
+const config = require('../config');
 
 // Optional: Use Redis for distributed rate limiting (recommended for production)
 // If Redis is not available, it will fall back to in-memory store
@@ -29,15 +30,19 @@ if (process.env.REDIS_URL) {
 
 /**
  * Global API rate limiter
- * 100 requests per 15 minutes per IP
+ * Uses values from config/index.js
  */
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: config.rateLimiting.windowMs,
+  max: config.rateLimiting.maxRequests,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req) => {
+    // Skip rate limiting in development
+    if (config.isDevelopment) {
+      return true;
+    }
     // Skip rate limiting for health checks
     if (req.path === '/health' || req.path === '/api/health') {
       return true;
@@ -63,11 +68,11 @@ const apiLimiter = rateLimit({
 
 /**
  * Strict login rate limiter
- * 5 attempts per 15 minutes per IP
+ * 30 attempts per 15 minutes per IP (Increased for dev convenience, keeps security in prod)
  */
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: config.isDevelopment ? 100 : 10,
   message: 'Too many login attempts, please try again later.',
   skipSuccessfulRequests: true, // Don't count successful requests
   skipFailedRequests: false, // Count all requests (including successful)
@@ -120,14 +125,15 @@ const passwordResetLimiter = rateLimit({
 
 /**
  * API creation rate limiter (for POST requests)
- * 30 requests per 15 minutes per IP
+ * 200 requests per 15 minutes per IP (Increased for bulk imports)
  */
 const createLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // Limit each IP to 30 POST requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: config.isDevelopment ? 1000 : 200,
   message: 'Too many items created, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => config.isDevelopment,
   keyGenerator: (req) => {
     // Use user ID if authenticated, fallback to IP
     return req.user?.id || req.ip;
@@ -151,14 +157,15 @@ const createLimiter = rateLimit({
 
 /**
  * API update rate limiter (for PUT/PATCH requests)
- * 50 requests per 15 minutes per IP
+ * 500 requests per 15 minutes per IP
  */
 const updateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Limit each IP to 50 PUT/PATCH requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: config.isDevelopment ? 1000 : 500,
   message: 'Too many items updated, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => config.isDevelopment,
   keyGenerator: (req) => {
     return req.user?.id || req.ip;
   },
@@ -181,14 +188,15 @@ const updateLimiter = rateLimit({
 
 /**
  * API deletion rate limiter (for DELETE requests)
- * 10 requests per 15 minutes per IP (strictest)
+ * 50 requests per 15 minutes per IP
  */
 const deleteLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 DELETE requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: config.isDevelopment ? 200 : 50,
   message: 'Too many items deleted, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => config.isDevelopment,
   keyGenerator: (req) => {
     return req.user?.id || req.ip;
   },
@@ -211,11 +219,11 @@ const deleteLimiter = rateLimit({
 
 /**
  * File upload rate limiter
- * 20 uploads per 1 hour per IP
+ * 100 uploads per 1 hour per IP (Increased for bulk operations)
  */
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // Limit each IP to 20 uploads per hour
+  max: config.isDevelopment ? 1000 : 100,
   message: 'Too many file uploads, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,

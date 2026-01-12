@@ -38,7 +38,7 @@ export default function CustomerDetailCard({
     const [showHistory, setShowHistory] = useState(false);
 
     return (
-        <div className="bg-card rounded-[3rem] border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
+        <div className="bg-card rounded-[2rem] border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 max-w-5xl mx-auto">
             {/* History Modal */}
             <AuditLogModal
                 isOpen={showHistory}
@@ -54,8 +54,8 @@ export default function CustomerDetailCard({
                 onShowHistory={() => setShowHistory(true)}
             />
 
-            <div className="p-6">
-                <Tabs defaultValue="machines" className="space-y-6">
+            <div className="p-5">
+                <Tabs defaultValue="machines" className="space-y-4">
                     <CustomerDetailTabs
                         machineCount={customer.posMachines?.length || 0}
                         simCount={customer.simCards?.length || 0}

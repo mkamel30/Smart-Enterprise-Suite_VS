@@ -67,8 +67,8 @@ router.post('/', authenticateToken, async (req, res) => {
             });
 
             // 2. Update Request Status
-            await tx.maintenanceRequest.update({
-                where: { id: requestId },
+            await tx.maintenanceRequest.updateMany({
+                where: { id: requestId, branchId: request.branchId },
                 data: { status: 'WAITING_APPROVAL' }
             });
 
@@ -131,8 +131,8 @@ router.put('/:id/respond', authenticateToken, async (req, res) => {
         // ALL OPERATIONS IN TRANSACTION FOR ATOMICITY
         const result = await db.$transaction(async (tx) => {
             // 1. Update approval
-            const approval = await tx.maintenanceApproval.update({
-                where: { id },
+            await tx.maintenanceApproval.updateMany({
+                where: { id, branchId: previousApproval.branchId },
                 data: {
                     status,
                     respondedAt: new Date(),
@@ -141,15 +141,19 @@ router.put('/:id/respond', authenticateToken, async (req, res) => {
                 }
             });
 
+            const approval = await tx.maintenanceApproval.findFirst({
+                where: { id, branchId: previousApproval.branchId }
+            });
+
             // 2. Reload with related request
-            const approvalWithRequest = await tx.maintenanceApproval.findUnique({
-                where: { id },
+            const approvalWithRequest = await tx.maintenanceApproval.findFirst({
+                where: { id, branchId: previousApproval.branchId },
                 include: { request: true }
             });
 
             // 3. Update Request Status
-            await tx.maintenanceRequest.update({
-                where: { id: approval.requestId },
+            await tx.maintenanceRequest.updateMany({
+                where: { id: approval.requestId, branchId: previousApproval.branchId },
                 data: { status: status === 'APPROVED' ? 'AT_CENTER' : 'CANCELLED' }
             });
 

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UserCheck, Search, MessageSquare, Monitor } from 'lucide-react';
+import { X, UserCheck, Search, MessageSquare, Monitor, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../api/client';
 
 
 interface MachineReturnToCustomerModalProps {
@@ -11,7 +13,6 @@ interface MachineReturnToCustomerModalProps {
     onClose: () => void;
     onSubmit: (customerId: string, notes: string) => void;
     selectedMachine: any;
-    clients: any[];
     isLoading: boolean;
 }
 
@@ -20,7 +21,6 @@ export const MachineReturnToCustomerModal: React.FC<MachineReturnToCustomerModal
     onClose,
     onSubmit,
     selectedMachine,
-    clients,
     isLoading
 }) => {
     const [clientSearch, setClientSearch] = useState('');
@@ -28,10 +28,25 @@ export const MachineReturnToCustomerModal: React.FC<MachineReturnToCustomerModal
     const [selectedClient, setSelectedClient] = useState<any>(null);
     const [notes, setNotes] = useState('');
 
-    const filteredClients = clients?.filter(c =>
-        c.client_name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-        c.bkcode.includes(clientSearch)
-    ) || [];
+    // Live search for customers using server-side filtering
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(clientSearch);
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timer);
+    }, [clientSearch]);
+
+    const { data: searchResults, isLoading: isSearching } = useQuery({
+        queryKey: ['customer-search', debouncedSearch],
+        queryFn: () => api.getCustomersLite(debouncedSearch),
+        enabled: debouncedSearch.length > 0 && !selectedClient,
+        staleTime: 30000 // Cache for 30 seconds
+    });
+
+    const filteredClients = searchResults || [];
 
     const handleSelectClient = (client: any) => {
         setSelectedClient(client);
@@ -87,6 +102,7 @@ export const MachineReturnToCustomerModal: React.FC<MachineReturnToCustomerModal
                                         value={clientSearch}
                                         onChange={(e) => {
                                             setClientSearch(e.target.value);
+                                            setSelectedClient(null);
                                             setShowClientList(true);
                                         }}
                                         onFocus={() => setShowClientList(true)}
@@ -94,23 +110,34 @@ export const MachineReturnToCustomerModal: React.FC<MachineReturnToCustomerModal
                                     />
                                 </div>
                                 <AnimatePresence>
-                                    {showClientList && clientSearch.length > 1 && (
+                                    {showClientList && clientSearch.length > 0 && (
                                         <motion.div
                                             initial={{ opacity: 0, y: -10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto"
                                         >
-                                            {filteredClients.map(c => (
-                                                <button
-                                                    key={c.bkcode}
-                                                    type="button"
-                                                    onClick={() => handleSelectClient(c)}
-                                                    className="w-full text-right p-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
-                                                >
-                                                    <div className="font-bold text-slate-800">{c.client_name}</div>
-                                                    <div className="text-xs text-slate-500">{c.bkcode}</div>
-                                                </button>
-                                            ))}
+                                            {isSearching ? (
+                                                <div className="p-4 text-center text-slate-500 flex items-center justify-center gap-2">
+                                                    <Loader2 size={16} className="animate-spin" />
+                                                    جاري البحث...
+                                                </div>
+                                            ) : filteredClients.length === 0 ? (
+                                                <div className="p-4 text-center text-slate-500">
+                                                    لا توجد نتائج
+                                                </div>
+                                            ) : (
+                                                filteredClients.map(c => (
+                                                    <button
+                                                        key={c.bkcode}
+                                                        type="button"
+                                                        onClick={() => handleSelectClient(c)}
+                                                        className="w-full text-right p-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
+                                                    >
+                                                        <div className="font-bold text-slate-800">{c.client_name}</div>
+                                                        <div className="text-xs text-slate-500">{c.bkcode}</div>
+                                                    </button>
+                                                ))
+                                            )}
                                         </motion.div>
                                     )}
                                 </AnimatePresence>

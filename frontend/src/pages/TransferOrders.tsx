@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useSearchParams } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { exportTransferOrders } from '../utils/exportUtils';
 
 // Import modular components
 import { TransferOrdersStats } from '../components/transfers/TransferOrdersStats';
@@ -167,6 +168,13 @@ export default function TransferOrders() {
                 </h1>
 
                 <TransferOrdersStats stats={stats} />
+                <button
+                    onClick={exportTransferOrders}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                    <Download size={18} />
+                    تصدير Excel
+                </button>
             </div>
 
             {/* Tabs */}

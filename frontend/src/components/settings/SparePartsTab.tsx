@@ -1,17 +1,22 @@
 import React, { useState, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Trash2, Package, Edit, Download, Upload, History, Check } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Trash2, Package, Edit, Download, Upload, History, Check, Square, CheckSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { api } from '../../api/client';
 import { useApiMutation } from '../../hooks/useApiMutation';
+import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export function SparePartsTab() {
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
     const [showAddForm, setShowAddForm] = useState(false);
     const [showEditForm, setShowEditForm] = useState(false);
     const [showImportDialog, setShowImportDialog] = useState(false);
     const [showPriceLogs, setShowPriceLogs] = useState(false);
     const [selectedPart, setSelectedPart] = useState<any>(null);
     const [importData, setImportData] = useState<any[]>([]);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [newPart, setNewPart] = useState({
@@ -24,7 +29,12 @@ export function SparePartsTab() {
     });
 
     const createMutation = useApiMutation({
-        mutationFn: (data: any) => api.createSparePart(data),
+        mutationFn: (data: any) => api.createSparePart({
+            ...data,
+            userId: user?.id,
+            userName: user?.displayName || user?.email,
+            branchId: user?.branchId
+        }),
         successMessage: 'تم إضافة القطعة بنجاح',
         errorMessage: 'فشل إضافة القطعة',
         invalidateKeys: [['spare-parts']],
@@ -35,7 +45,12 @@ export function SparePartsTab() {
     });
 
     const updateMutation = useApiMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => api.updateSparePart(id, data),
+        mutationFn: ({ id, data }: { id: string; data: any }) => api.updateSparePart(id, {
+            ...data,
+            userId: user?.id,
+            userName: user?.displayName || user?.email,
+            branchId: user?.branchId
+        }),
         successMessage: 'تم تحديث القطعة بنجاح',
         errorMessage: 'فشل تحديث القطعة',
         invalidateKeys: [['spare-parts']],
@@ -51,6 +66,56 @@ export function SparePartsTab() {
         errorMessage: 'فشل حذف القطعة',
         invalidateKeys: [['spare-parts']]
     });
+
+    const bulkDeleteMutation = useApiMutation({
+        mutationFn: (ids: string[]) => api.post('/spare-parts/bulk-delete', {
+            ids,
+            userId: user?.id,
+            userName: user?.displayName || user?.email,
+            branchId: user?.branchId
+        }),
+        successMessage: 'تم حذف القطع المحددة',
+        errorMessage: 'فشل حذف القطع',
+        invalidateKeys: [['spare-parts']],
+        onSuccess: () => {
+            setSelectedIds(new Set());
+        }
+    });
+
+    const importMutation = useApiMutation({
+        mutationFn: (parts: any[]) => api.post('/spare-parts/import', {
+            parts,
+            userId: user?.id,
+            userName: user?.displayName || user?.email,
+            branchId: user?.branchId
+        }),
+        successMessage: 'تم استيراد البيانات بنجاح',
+        errorMessage: 'فشل استيراد البيانات',
+        invalidateKeys: [['spare-parts']],
+        onSuccess: (data: any) => {
+            setShowImportDialog(false);
+            setImportData([]);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            if (data.skipped > 0) {
+                toast(`تم تخطي ${data.skipped} عنصر مكرر`, { icon: 'ℹ️' });
+            }
+        }
+    });
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === parts?.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(parts?.map((p: any) => p.id)));
+        }
+    };
+
+    const toggleSelect = (id: string) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedIds(newSet);
+    };
 
     const handleDownloadTemplate = () => {
         const templateData = [
@@ -89,12 +154,7 @@ export function SparePartsTab() {
     };
 
     const handleConfirmImport = async () => {
-        for (const part of importData) {
-            await createMutation.mutateAsync(part);
-        }
-        setShowImportDialog(false);
-        setImportData([]);
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        importMutation.mutate(importData);
     };
 
     const handleExport = () => {
@@ -127,6 +187,19 @@ export function SparePartsTab() {
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                    {selectedIds.size > 0 && (
+                        <button
+                            onClick={() => {
+                                if (confirm(`هل أنت متأكد من حذف ${selectedIds.size} عنصر؟`)) {
+                                    bulkDeleteMutation.mutate(Array.from(selectedIds));
+                                }
+                            }}
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-2xl font-black text-xs transition-all shadow-lg animate-pulse"
+                        >
+                            <Trash2 size={16} className="inline ml-2" />
+                            حذف المحدد ({selectedIds.size})
+                        </button>
+                    )}
                     <button onClick={handleDownloadTemplate} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-3 rounded-2xl font-black text-xs transition-all border border-border">
                         <Download size={16} /> قالب Excel
                     </button>
@@ -147,6 +220,11 @@ export function SparePartsTab() {
                 <table className="w-full">
                     <thead className="bg-muted/90 backdrop-blur-md sticky top-0 z-10 border-b border-border">
                         <tr>
+                            <th className="p-5 text-center w-12 bg-muted/90">
+                                <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-primary transition-colors">
+                                    {selectedIds.size > 0 && selectedIds.size === parts?.length ? <CheckSquare size={20} /> : <Square size={20} />}
+                                </button>
+                            </th>
                             <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">الكود</th>
                             <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">اسم القطعة</th>
                             <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">الموديلات المتوافقة</th>
@@ -157,7 +235,12 @@ export function SparePartsTab() {
                     </thead>
                     <tbody className="divide-y divide-border/50">
                         {parts?.map((p: any) => (
-                            <tr key={p.id} className="hover:bg-muted/30 transition-colors group">
+                            <tr key={p.id} className={`hover:bg-muted/30 transition-colors group ${selectedIds.has(p.id) ? 'bg-primary/5' : ''}`}>
+                                <td className="p-5 text-center">
+                                    <button onClick={() => toggleSelect(p.id)} className={`${selectedIds.has(p.id) ? 'text-primary' : 'text-muted-foreground/30 group-hover:text-muted-foreground'} transition-colors`}>
+                                        {selectedIds.has(p.id) ? <CheckSquare size={20} /> : <Square size={20} />}
+                                    </button>
+                                </td>
                                 <td className="p-5 font-mono font-black text-primary text-sm">{p.partNumber}</td>
                                 <td className="p-5 font-black text-foreground">{p.name}</td>
                                 <td className="p-5">
@@ -184,7 +267,7 @@ export function SparePartsTab() {
                             </tr>
                         ))}
                         {(!parts?.length) && (
-                            <tr><td colSpan={6} className="p-20 text-center text-muted-foreground">
+                            <tr><td colSpan={7} className="p-20 text-center text-muted-foreground">
                                 <Package size={64} className="mx-auto mb-4 opacity-20" />
                                 <p className="font-black text-xl">لا توجد قطع غيار مسجلة</p>
                                 <p className="text-sm mt-1">ابدأ بإضافة قطع يدوياً أو استيراد ملف Excel</p>

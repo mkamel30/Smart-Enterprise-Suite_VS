@@ -43,8 +43,14 @@ router.get('/', authenticateToken, async (req, res) => {
 // Get single assignment
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        const assignment = await db.serviceAssignment.findUnique({
-            where: { id: req.params.id },
+        const assignment = await db.serviceAssignment.findFirst({
+            where: {
+                id: req.params.id,
+                OR: [
+                    { branchId: req.user.branchId },
+                    { centerBranchId: req.user.branchId }
+                ]
+            },
             include: {
                 machine: true,
                 logs: {
@@ -81,8 +87,8 @@ router.post('/', authenticateToken, async (req, res) => {
         const branchId = req.body.branchId || req.user.branchId;
 
         // Validate machine exists
-        const machine = await db.warehouseMachine.findUnique({
-            where: { id: machineId }
+        const machine = await db.warehouseMachine.findFirst({
+            where: { id: machineId, branchId }
         });
 
         if (!machine) {
@@ -108,8 +114,8 @@ router.post('/', authenticateToken, async (req, res) => {
             });
 
             // Update machine status and link to assignment
-            await tx.warehouseMachine.update({
-                where: { id: machineId },
+            await tx.warehouseMachine.updateMany({
+                where: { id: machineId, branchId },
                 data: {
                     status: 'ASSIGNED',
                     currentAssignmentId: assignment.id,
@@ -164,17 +170,21 @@ router.put('/:id/start', authenticateToken, async (req, res) => {
 
         const result = await db.$transaction(async (tx) => {
             // Update assignment
-            const updated = await tx.serviceAssignment.update({
-                where: { id: req.params.id },
+            await tx.serviceAssignment.updateMany({
+                where: { id: req.params.id, branchId: assignment.branchId },
                 data: {
                     status: 'IN_PROGRESS',
                     startedAt: new Date()
                 }
             });
 
+            const updated = await tx.serviceAssignment.findFirst({
+                where: { id: req.params.id, branchId: assignment.branchId }
+            });
+
             // Update machine status
-            await tx.warehouseMachine.update({
-                where: { id: assignment.machineId },
+            await tx.warehouseMachine.updateMany({
+                where: { id: assignment.machineId, branchId: assignment.branchId },
                 data: { status: 'IN_PROGRESS' }
             });
 
@@ -213,12 +223,16 @@ router.put('/:id/update-parts', authenticateToken, async (req, res) => {
         }
 
         const result = await db.$transaction(async (tx) => {
-            const updated = await tx.serviceAssignment.update({
-                where: { id: req.params.id },
+            await tx.serviceAssignment.updateMany({
+                where: { id: req.params.id, branchId: assignment.branchId },
                 data: {
                     usedParts: JSON.stringify(usedParts),
                     totalCost: totalCost || 0
                 }
+            });
+
+            const updated = await tx.serviceAssignment.findFirst({
+                where: { id: req.params.id, branchId: assignment.branchId }
             });
 
             // Log
@@ -271,8 +285,8 @@ router.post('/:id/request-approval', authenticateToken, async (req, res) => {
             });
 
             // Update assignment
-            const updated = await tx.serviceAssignment.update({
-                where: { id: req.params.id },
+            await tx.serviceAssignment.updateMany({
+                where: { id: req.params.id, branchId: assignment.branchId },
                 data: {
                     status: 'PENDING_APPROVAL',
                     approvalStatus: 'PENDING',
@@ -282,9 +296,13 @@ router.post('/:id/request-approval', authenticateToken, async (req, res) => {
                 }
             });
 
+            const updated = await tx.serviceAssignment.findFirst({
+                where: { id: req.params.id, branchId: assignment.branchId }
+            });
+
             // Update machine status
-            await tx.warehouseMachine.update({
-                where: { id: assignment.machineId },
+            await tx.warehouseMachine.updateMany({
+                where: { id: assignment.machineId, branchId: assignment.branchId },
                 data: { status: 'PENDING_APPROVAL' }
             });
 
@@ -344,8 +362,8 @@ router.put('/:id/complete', authenticateToken, async (req, res) => {
 
         const result = await db.$transaction(async (tx) => {
             // Update assignment
-            const updated = await tx.serviceAssignment.update({
-                where: { id: req.params.id },
+            await tx.serviceAssignment.updateMany({
+                where: { id: req.params.id, branchId: assignment.branchId },
                 data: {
                     status: 'COMPLETED',
                     actionTaken,
@@ -354,27 +372,34 @@ router.put('/:id/complete', authenticateToken, async (req, res) => {
                 }
             });
 
+            const updated = await tx.serviceAssignment.findFirst({
+                where: { id: req.params.id, branchId: assignment.branchId }
+            });
+
             // Update machine status
-            await tx.warehouseMachine.update({
-                where: { id: assignment.machineId },
+            await tx.warehouseMachine.updateMany({
+                where: { id: assignment.machineId, branchId: assignment.branchId },
                 data: {
                     status: 'READY_FOR_RETURN',
                     resolution: resolution || 'REPAIRED'
                 }
             });
 
-            // If there's a cost, create pending payment
+            // If there's a cost, create branch debt
             if (assignment.totalCost > 0 && assignment.approvalStatus === 'APPROVED') {
-                await tx.pendingPayment.create({
+                await tx.branchDebt.create({
                     data: {
-                        assignmentId: assignment.id,
+                        type: 'MAINTENANCE',
+                        referenceId: assignment.id,
                         machineSerial: assignment.serialNumber,
                         customerId: assignment.customerId || '',
                         customerName: assignment.customerName || '',
                         amount: assignment.totalCost,
+                        remainingAmount: assignment.totalCost,
                         partsDetails: assignment.usedParts || '[]',
-                        centerBranchId: assignment.branchId,
-                        targetBranchId: assignment.originBranchId
+                        creditorBranchId: assignment.branchId,
+                        debtorBranchId: assignment.originBranchId,
+                        status: 'PENDING'
                     }
                 });
             }
@@ -392,8 +417,8 @@ router.put('/:id/complete', authenticateToken, async (req, res) => {
                     });
 
                     if (invItem && invItem.quantity >= part.quantity) {
-                        await tx.inventoryItem.update({
-                            where: { id: invItem.id },
+                        await tx.inventoryItem.updateMany({
+                            where: { id: invItem.id, branchId: assignment.branchId },
                             data: {
                                 quantity: { decrement: part.quantity }
                             }

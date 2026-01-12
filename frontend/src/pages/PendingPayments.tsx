@@ -8,10 +8,13 @@ import {
     Clock,
     Receipt,
     DollarSign,
-    Package
+    Package,
+    Download
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { translateStatus } from '../lib/translations';
+import { exportPendingPayments } from '../utils/exportUtils';
 
 interface PendingPaymentItem {
     id: string;
@@ -157,14 +160,21 @@ export default function PendingPayments() {
 
                 {/* Filter */}
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={exportPendingPayments}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                    >
+                        <Download size={18} />
+                        تصدير Excel
+                    </button>
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                         className="border rounded-lg px-3 py-2 text-sm bg-background"
                     >
                         <option value="">الكل</option>
-                        <option value="PENDING">معلق</option>
-                        <option value="PAID">مسدد</option>
+                        <option value="PENDING">{translateStatus('PENDING')}</option>
+                        <option value="PAID">{translateStatus('PAID')}</option>
                     </select>
                 </div>
             </div>
@@ -218,7 +228,7 @@ export default function PendingPayments() {
                                                 <span className="font-mono font-bold text-lg">{payment.machineSerial}</span>
                                                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${isPending ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
                                                     }`}>
-                                                    {isPending ? 'معلق' : 'مسدد'}
+                                                    {translateStatus(payment.status)}
                                                 </span>
                                             </div>
 

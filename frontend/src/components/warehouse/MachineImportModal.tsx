@@ -15,8 +15,12 @@ const COLUMNS = [
     { key: 'serialNumber', header: 'Serial Number' },
     { key: 'model', header: 'Model' },
     { key: 'manufacturer', header: 'Manufacturer' },
+    { key: 'status', header: 'Status' },
     { key: 'notes', header: 'Notes' }
 ];
+
+// Valid status values
+const VALID_STATUSES = ['NEW', 'STANDBY', 'SOLD', 'CLIENT_REPAIR', 'AT_CENTER', 'EXTERNAL_REPAIR', 'SCRAPPED', 'IN_TRANSIT'];
 
 export function MachineImportModal({ isOpen, onClose, onSuccess }: MachineImportModalProps) {
     const { user } = useAuth();
@@ -64,7 +68,7 @@ export function MachineImportModal({ isOpen, onClose, onSuccess }: MachineImport
             worksheet.eachRow((row, rowNumber) => {
                 if (rowNumber === 1) return;
 
-                const rowData: any = { status: 'NEW' };
+                const rowData: any = {};
                 row.eachCell((cell, colNumber) => {
                     const key = headerMapping[colNumber];
                     if (key) {
@@ -86,6 +90,13 @@ export function MachineImportModal({ isOpen, onClose, onSuccess }: MachineImport
 
                 if (rowData.serialNumber) {
                     rowData.serialNumber = String(rowData.serialNumber);
+                    // Validate and normalize status
+                    if (rowData.status) {
+                        const upperStatus = String(rowData.status).toUpperCase().trim();
+                        rowData.status = VALID_STATUSES.includes(upperStatus) ? upperStatus : 'NEW';
+                    } else {
+                        rowData.status = 'NEW';
+                    }
                     rows.push(rowData);
                 }
             });
@@ -182,9 +193,24 @@ export function MachineImportModal({ isOpen, onClose, onSuccess }: MachineImport
                             <div className="mb-4">
                                 <h3 className="font-bold text-lg mb-1">معاينة البيانات</h3>
                                 <p className="text-sm text-slate-500">
-                                    عرض أول 5 سجلات من {file?.name} (إجمالي: {allData.length} ماكينة)
+                                    عرض أول 5 سجلات من {file?.name}
                                 </p>
                             </div>
+
+                            {/* Total count badge */}
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center">
+                                        <span className="text-white font-black text-lg">{allData.length}</span>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-emerald-800">إجمالي الماكينات للاستيراد</div>
+                                        <div className="text-sm text-emerald-600">سيتم استيراد {allData.length} ماكينة إلى مخزنك</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="text-sm text-slate-500 mb-2 font-medium">معاينة أول {preview.length} صفوف:</div>
 
                             <div className="border rounded-xl overflow-hidden mb-4 overflow-x-auto">
                                 <table className="w-full text-sm text-right whitespace-nowrap">
@@ -207,11 +233,11 @@ export function MachineImportModal({ isOpen, onClose, onSuccess }: MachineImport
                                 </table>
                             </div>
 
-                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
-                                <p className="text-sm text-emerald-800">
-                                    ✓ سيتم استيراد <strong>{allData.length}</strong> ماكينة إلى مخزنك.
-                                </p>
-                            </div>
+                            {allData.length > 5 && (
+                                <div className="text-center text-sm text-slate-400 mb-4">
+                                    ... و {allData.length - 5} ماكينة أخرى
+                                </div>
+                            )}
 
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <button

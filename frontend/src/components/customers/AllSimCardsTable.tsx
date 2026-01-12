@@ -115,7 +115,7 @@ export default function AllSimCardsTable({ customers }: AllSimCardsTableProps) {
                 </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-slate-100">
+            <div className="table-container">
                 <table className="w-full text-right text-sm">
                     <thead className="bg-slate-50 border-b text-slate-600">
                         <tr>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import toast from 'react-hot-toast';
 import { RepairModal } from './RepairModal';
 import { AssignTechnicianModal } from './AssignTechnicianModal';
+import { translateStatus } from '../../lib/translations';
 
 const COLUMNS = {
     RECEIVED_AT_CENTER: { title: 'تم الاستلام', color: 'bg-blue-50/50', headerColor: 'bg-blue-100', borderColor: 'border-blue-200' },
@@ -185,7 +186,7 @@ const MaintenanceKanban: React.FC = () => {
                                                                         machine.resolution === 'SCRAPPED' ? 'bg-red-100 text-red-700' :
                                                                             'bg-slate-100 text-slate-600'
                                                                         }`}>
-                                                                        {machine.resolution}
+                                                                        {translateStatus(machine.resolution)}
                                                                     </span>
                                                                 )}
                                                             </div>

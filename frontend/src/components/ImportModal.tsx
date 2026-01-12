@@ -22,6 +22,7 @@ interface ImportModalProps {
 export default function ImportModal({ isOpen, onClose, title, onImport, onSuccess, columns }: ImportModalProps) {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<any[]>([]);
+    const [totalRows, setTotalRows] = useState(0);
     const [progress, setProgress] = useState(0);
     const [result, setResult] = useState<any>(null);
     const [step, setStep] = useState<'select' | 'preview' | 'importing' | 'result'>('select');
@@ -61,7 +62,6 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
 
             worksheet.eachRow((row, rowNumber) => {
                 if (rowNumber === 1) return;
-                if (rowNumber > 6) return;
 
                 const rowData: any = {};
                 row.eachCell((cell, colNumber) => {
@@ -79,7 +79,9 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
                 }
             });
 
-            setPreview(rows);
+            // Set total count and preview (first 5 rows only)
+            setTotalRows(rows.length);
+            setPreview(rows.slice(0, 5));
             setStep('preview');
         } catch (error) {
             console.error('Preview error:', error);
@@ -117,6 +119,7 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
     const handleClose = () => {
         setFile(null);
         setPreview([]);
+        setTotalRows(0);
         setProgress(0);
         setResult(null);
         setStep('select');
@@ -151,7 +154,7 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="p-0 border-0 flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-xl" dir="rtl">
+            <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] sm:max-h-[90vh] h-auto overflow-hidden sm:max-w-xl" dir="rtl">
                 <DialogHeader className="bg-slate-50 p-6 pb-4 border-b shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <Upload className="text-blue-600" />
@@ -186,8 +189,22 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
                             <div className="flex items-center gap-2 mb-4 text-green-600 bg-green-50 p-3 rounded-xl border border-green-100">
                                 <CheckCircle size={20} />
                                 <span className="font-bold">تم تحميل الملف: {file?.name}</span>
-                                <span className="text-slate-500 text-sm">({preview.length} صفوف للمعاينة)</span>
                             </div>
+
+                            {/* Total count badge */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                                        <span className="text-white font-black text-lg">{totalRows}</span>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-blue-800">إجمالي السجلات للاستيراد</div>
+                                        <div className="text-sm text-blue-600">سيتم استيراد {totalRows} سجل من الملف</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="text-sm text-slate-500 mb-2 font-medium">معاينة أول {preview.length} صفوف:</div>
 
                             <div className="overflow-x-auto border rounded-xl shadow-sm">
                                 <table className="w-full text-sm">
@@ -211,6 +228,12 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
                                     </tbody>
                                 </table>
                             </div>
+
+                            {totalRows > 5 && (
+                                <div className="text-center text-sm text-slate-400 mt-2">
+                                    ... و {totalRows - 5} صفوف أخرى
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -90,10 +90,12 @@ export default function MachineWarehouse() {
         queryFn: () => api.getMachineParameters()
     });
 
-    const { data: clients } = useQuery<any[]>({
-        queryKey: ['clients-lite'],
-        queryFn: () => api.getCustomersLite() as Promise<any[]>
-    });
+    // Clients are now loaded on-demand in the modals via live search
+    // No need to preload 50 clients
+    // const { data: clients } = useQuery<any[]>({
+    //     queryKey: ['clients-lite'],
+    //     queryFn: () => api.getCustomersLite() as Promise<any[]>
+    // });
 
     const { data: pendingSerials } = useQuery({
         queryKey: ['pending-transfer-serials', user?.branchId],
@@ -326,7 +328,6 @@ export default function MachineWarehouse() {
                 isOpen={modals.exchange}
                 onClose={() => setModals(prev => ({ ...prev, exchange: false }))}
                 selectedMachine={selectedItem}
-                clients={(clients as any) || []}
                 isLoading={exchangeMutation.isPending}
                 performedBy={performedBy}
                 onSubmit={(data) => exchangeMutation.mutate(data)}
@@ -336,7 +337,6 @@ export default function MachineWarehouse() {
                 isOpen={modals.sale}
                 onClose={() => setModals(prev => ({ ...prev, sale: false }))}
                 selectedMachine={selectedItem}
-                clients={(clients as any) || []}
                 isLoading={saleMutation.isPending}
                 performedBy={performedBy}
                 userBranchId={user?.branchId || undefined}
@@ -362,7 +362,6 @@ export default function MachineWarehouse() {
                 isOpen={modals.returnToCustomer}
                 onClose={() => setModals(prev => ({ ...prev, returnToCustomer: false }))}
                 selectedMachine={selectedItem}
-                clients={(clients as any) || []}
                 isLoading={false}
                 onSubmit={async (customerId, notes) => {
                     try {

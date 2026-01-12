@@ -49,6 +49,8 @@ export type Customer = {
   notes?: string;
   papers_date?: Date | string;
   isSpecial?: boolean;
+  posMachines?: PosMachine[];
+  simCards?: SimCard[];
 };
 
 // Represents a single POS machine owned by a customer.
@@ -207,6 +209,7 @@ export type Payment = {
   createdAt: string;
   customer?: {
     client_name: string;
+    bkcode?: string;
   };
 };
 

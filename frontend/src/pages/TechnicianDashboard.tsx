@@ -22,6 +22,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import toast from 'react-hot-toast';
+import { translateStatus } from '../lib/translations';
 
 interface ServiceAssignment {
     id: string;
@@ -256,10 +257,10 @@ export default function TechnicianDashboard() {
                         className="border rounded-lg px-3 py-2 text-sm bg-background"
                     >
                         <option value="">كل الحالات</option>
-                        <option value="ASSIGNED">مهام جديدة</option>
-                        <option value="IN_PROGRESS">جاري العمل</option>
-                        <option value="PENDING_APPROVAL">بانتظار الموافقة</option>
-                        <option value="READY_FOR_RETURN">جاهز للإرجاع</option>
+                        <option value="ASSIGNED">{translateStatus('ASSIGNED')}</option>
+                        <option value="IN_PROGRESS">{translateStatus('IN_PROGRESS')}</option>
+                        <option value="PENDING_APPROVAL">{translateStatus('PENDING_APPROVAL')}</option>
+                        <option value="READY_FOR_RETURN">{translateStatus('READY_FOR_RETURN')}</option>
                     </select>
                 </div>
             </div>
@@ -285,7 +286,7 @@ export default function TechnicianDashboard() {
                                                 <span className="font-mono font-bold text-lg bg-slate-100 px-2 rounded">{machine.serialNumber}</span>
                                                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1.5 border ${status.color}`}>
                                                     {status.icon}
-                                                    {status.label}
+                                                    {translateStatus(machine.status)}
                                                 </span>
                                             </div>
                                             <div className="text-sm text-muted-foreground flex items-center gap-4">

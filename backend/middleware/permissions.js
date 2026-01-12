@@ -11,6 +11,9 @@ const ROLES = {
     CENTER_MANAGER: 'CENTER_MANAGER',
     CENTER_TECH: 'CENTER_TECH',
     BRANCH_MANAGER: 'BRANCH_MANAGER',
+    CS_SUPERVISOR: 'CS_SUPERVISOR',
+    CS_AGENT: 'CS_AGENT',
+    BRANCH_TECH: 'BRANCH_TECH',
     TECHNICIAN: 'TECHNICIAN'
 };
 
@@ -47,9 +50,12 @@ const PERMISSIONS = {
     TRANSFERS_SEND_PARTS: 'transfers:send:parts',
     TRANSFERS_SEND_TO_CENTER: 'transfers:send:center',
 
-    // Reports permissions
+    // Reports & Analytics permissions
     REPORTS_ALL: 'reports:all',
     REPORTS_BRANCH: 'reports:branch',
+    ANALYTICS_VIEW_EXECUTIVE: 'analytics:view:executive',
+    ANALYTICS_VIEW_RANKINGS: 'analytics:view:rankings',
+    ANALYTICS_VIEW_INVENTORY: 'analytics:view:inventory',
 
     // User management
     USERS_MANAGE: 'users:manage',
@@ -67,7 +73,10 @@ const ROLE_PERMISSIONS = {
         PERMISSIONS.MAINTENANCE_VIEW_ALL,
         PERMISSIONS.INVENTORY_VIEW_ALL,
         PERMISSIONS.TRANSFERS_VIEW_ALL,
-        PERMISSIONS.REPORTS_ALL
+        PERMISSIONS.REPORTS_ALL,
+        PERMISSIONS.ANALYTICS_VIEW_EXECUTIVE,
+        PERMISSIONS.ANALYTICS_VIEW_RANKINGS,
+        PERMISSIONS.ANALYTICS_VIEW_INVENTORY
     ],
 
     [ROLES.ADMIN_AFFAIRS]: [
@@ -100,6 +109,31 @@ const ROLE_PERMISSIONS = {
         PERMISSIONS.INVENTORY_RECEIVE,
         PERMISSIONS.TRANSFERS_SEND_TO_CENTER,
         PERMISSIONS.REPORTS_BRANCH
+    ],
+
+    [ROLES.CS_SUPERVISOR]: [
+        PERMISSIONS.CUSTOMERS_VIEW_BRANCH,
+        PERMISSIONS.CUSTOMERS_MANAGE,
+        PERMISSIONS.MAINTENANCE_VIEW_BRANCH,
+        PERMISSIONS.MAINTENANCE_MANAGE_INTERNAL,
+        PERMISSIONS.INVENTORY_VIEW_BRANCH,
+        PERMISSIONS.INVENTORY_RECEIVE,
+        PERMISSIONS.TRANSFERS_SEND_TO_CENTER,
+        PERMISSIONS.REPORTS_BRANCH
+    ],
+
+    [ROLES.CS_AGENT]: [
+        PERMISSIONS.CUSTOMERS_VIEW_BRANCH,
+        PERMISSIONS.MAINTENANCE_VIEW_BRANCH,
+        PERMISSIONS.MAINTENANCE_MANAGE_INTERNAL,
+        PERMISSIONS.INVENTORY_VIEW_BRANCH
+    ],
+
+    [ROLES.BRANCH_TECH]: [
+        PERMISSIONS.CUSTOMERS_VIEW_BRANCH,
+        PERMISSIONS.MAINTENANCE_VIEW_BRANCH,
+        PERMISSIONS.MAINTENANCE_MANAGE_INTERNAL,
+        PERMISSIONS.INVENTORY_VIEW_BRANCH
     ],
 
     [ROLES.TECHNICIAN]: [
@@ -170,14 +204,7 @@ const getBranchFilter = (req) => {
         return {};
     }
 
-    // ADMIN_AFFAIRS and CENTER_MANAGER should see only their own branch
-    if ([ROLES.ADMIN_AFFAIRS, ROLES.CENTER_MANAGER].includes(userRole)) {
-        if (userBranchId) {
-            return { branchId: userBranchId };
-        }
-    }
-
-    // Branch/Tech users can only see their branch
+    // All other roles see only their branch
     if (userBranchId) {
         return { branchId: userBranchId };
     }
@@ -192,7 +219,7 @@ const canAccessBranch = async (req, branchId, db) => {
     const userRole = req.user?.role || ROLES.TECHNICIAN;
     const userBranchId = req.user?.branchId;
 
-    // Admin and management can access all (ADMIN_AFFAIRS removed - they are branch-scoped)
+    // Admin and management can access all
     if ([ROLES.SUPER_ADMIN, ROLES.MANAGEMENT].includes(userRole)) {
         return true;
     }
@@ -211,6 +238,14 @@ const canAccessBranch = async (req, branchId, db) => {
     return branchId === userBranchId;
 };
 
+/**
+ * Check if a role has global access (can view all branches)
+ */
+const isGlobalRole = (role) => {
+    const globalRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS', 'CS_SUPERVISOR', 'CENTER_MANAGER'];
+    return globalRoles.includes(role);
+};
+
 module.exports = {
     ROLES,
     BRANCH_TYPES,
@@ -220,5 +255,6 @@ module.exports = {
     hasAnyPermission,
     requirePermission,
     getBranchFilter,
-    canAccessBranch
+    canAccessBranch,
+    isGlobalRole
 };

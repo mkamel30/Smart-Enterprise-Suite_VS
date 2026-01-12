@@ -9,8 +9,10 @@ import {
     User,
     Wrench,
     Package,
-    RefreshCw
+    RefreshCw,
+    Download
 } from 'lucide-react';
+import { exportTracking } from '../utils/exportUtils';
 
 interface TrackedMachine {
     id: string;
@@ -103,6 +105,14 @@ export default function TrackMachines() {
                         <option value="PENDING_APPROVAL">بانتظار الموافقة</option>
                         <option value="COMPLETED">مكتملة</option>
                     </select>
+
+                    <button
+                        onClick={exportTracking}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                    >
+                        <Download size={18} />
+                        تصدير Excel
+                    </button>
 
                     <button
                         onClick={() => refetch()}

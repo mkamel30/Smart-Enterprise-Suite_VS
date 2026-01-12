@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { FileText, Calendar, AlertCircle, CheckCircle, Trash2, Edit3, Search } from 'lucide-react';
+import { FileText, Calendar, AlertCircle, CheckCircle, Trash2, Edit3, Search, Printer, Download } from 'lucide-react';
 import { useApiMutation } from '../hooks/useApiMutation';
 import { PaymentFields, usePaymentForm } from '../components/PaymentFields';
+import { openSaleReport } from '../utils/reports/SaleReport';
+import { exportSales } from '../utils/exportUtils';
 
 export default function Receipts() {
     const [activeTab, setActiveTab] = useState<'SALES' | 'INSTALLMENTS'>('SALES');
@@ -54,7 +56,7 @@ export default function Receipts() {
     const deleteSaleMutation = useApiMutation({
         mutationFn: (id: string) => api.deleteSale(id),
         successMessage: 'تم إلغاء عملية البيع',
-        successDetail: 'تم استرجاع الماكينة للمخزن',
+        successDetail: 'تم استرجاع الماكينة للمخزن وإلغاء جميع الإيصالات والحسابات المرتبطة',
         errorMessage: 'فشل إلغاء البيع',
         onSuccess: async () => {
             // Explicit invalidation for instant refresh
@@ -125,7 +127,17 @@ export default function Receipts() {
 
     return (
         <div className="px-8 pt-4 pb-8" dir="rtl">
-            <h1 className="text-3xl font-bold mb-6">متابعة المبيعات والأقساط</h1>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-3xl font-bold">متابعة المبيعات والأقساط</h1>
+                <button
+                    onClick={exportSales}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                    <Download size={18} />
+                    تصدير Excel
+                </button>
+            </div>
+
 
             {/* Tabs */}
             <div className="flex gap-4 mb-6 border-b">
@@ -180,7 +192,14 @@ export default function Receipts() {
                                         <td className="p-3 font-bold text-sm">{sale.totalPrice?.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td className="p-3 text-green-600 font-bold text-sm">{sale.paidAmount?.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td className="p-3 text-red-600 font-bold text-sm">{(sale.totalPrice - sale.paidAmount)?.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td className="p-4 flex gap-1">
+                                        <td className="p-4 flex gap-2">
+                                            <button
+                                                onClick={() => openSaleReport({ sale, installments: sale.installments || [] })}
+                                                className="p-1 text-slate-500 hover:bg-slate-100 rounded"
+                                                title="طباعة عقد البيع"
+                                            >
+                                                <Printer size={16} />
+                                            </button>
                                             {sale.type === 'INSTALLMENT' && (
                                                 <button
                                                     onClick={() => openEditModal(sale)}
@@ -192,8 +211,12 @@ export default function Receipts() {
                                             )}
                                             <button
                                                 onClick={() => {
-                                                    if (confirm(`هل أنت متأكد من إلغاء عملية بيع الماكينة ${sale.serialNumber}?\nسيتم استرجاع الماكينة للمخزن وحذف جميع الحسابات المتعلقة بها.`)) {
-                                                        deleteSaleMutation.mutate(sale.id);
+                                                    const confirm1 = confirm(`هل أنت متأكد من إلغاء عملية بيع الماكينة ${sale.serialNumber}؟`);
+                                                    if (confirm1) {
+                                                        const confirm2 = confirm(`تنبيه هام: سيتم حذف جميع الحسابات والأقساط والإيصالات المتعلقة بهذه العملية وإعادة الماكينة للمخزن. هل تريد الاستمرار؟`);
+                                                        if (confirm2) {
+                                                            deleteSaleMutation.mutate(sale.id);
+                                                        }
                                                     }
                                                 }}
                                                 className="p-1 text-red-500 hover:bg-red-50 rounded"
@@ -259,6 +282,7 @@ export default function Receipts() {
                                         <tr>
                                             <th className="p-4">تاريخ الاستحقاق</th>
                                             <th className="p-4">العميل</th>
+                                            <th className="p-4">الماكينة</th>
                                             <th className="p-4">الكود</th>
                                             <th className="p-4">وصف القسط</th>
                                             <th className="p-4">المبلغ</th>
@@ -282,6 +306,7 @@ export default function Receipts() {
                                                         </div>
                                                     </td>
                                                     <td className="p-4">{inst.sale?.customer?.client_name}</td>
+                                                    <td className="p-4 font-mono text-xs">{inst.sale?.serialNumber}</td>
                                                     <td className="p-4 font-mono text-slate-500">{inst.sale?.customer?.bkcode}</td>
                                                     <td className="p-4">{inst.description}</td>
                                                     <td className="p-4 font-bold">{inst.amount?.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -346,9 +371,15 @@ export default function Receipts() {
                                                                     {new Date(inst.dueDate).toLocaleDateString('ar-EG')}
                                                                 </td>
                                                                 {groupBy === 'month' && (
-                                                                    <td className="p-3">{inst.sale?.customer?.client_name} ({inst.sale?.customer?.bkcode})</td>
+                                                                    <td className="p-3">
+                                                                        <div className="font-bold">{inst.sale?.customer?.client_name}</div>
+                                                                        <div className="text-xs text-slate-400 font-mono">{inst.sale?.customer?.bkcode} | {inst.sale?.serialNumber}</div>
+                                                                    </td>
                                                                 )}
-                                                                <td className="p-3 text-slate-500">{inst.description}</td>
+                                                                <td className="p-3 text-slate-500">
+                                                                    <div>{inst.description}</div>
+                                                                    {groupBy === 'customer' && <div className="text-[10px] font-mono text-[#0A2472]/60">{inst.sale?.serialNumber}</div>}
+                                                                </td>
                                                                 <td className="p-3 font-bold w-24">{inst.amount?.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                                 <td className="p-3 w-24">
                                                                     {inst.isPaid ? (

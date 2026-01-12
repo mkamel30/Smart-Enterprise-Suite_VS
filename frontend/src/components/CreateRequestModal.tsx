@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, X, User, Monitor, Wrench, AlertCircle, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
+import { Search, X, User, Monitor, Wrench, AlertCircle, CheckCircle2, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent } from './ui/dialog';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../api/client';
 
 interface CreateRequestModalProps {
-    customers: any[];
     onClose: () => void;
     onSubmit: (data: any) => void;
     prefilled?: {
@@ -11,55 +12,88 @@ interface CreateRequestModalProps {
         machineId: string;
         customerName?: string;
         machineSerial?: string;
+        customer?: any;
+        machine?: any;
     } | null;
 }
 
-export function CreateRequestModal({ customers, onClose, onSubmit, prefilled }: CreateRequestModalProps) {
+export function CreateRequestModal({ onClose, onSubmit, prefilled }: CreateRequestModalProps) {
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
     const [selectedMachine, setSelectedMachine] = useState<any>(null);
     const [problemDescription, setProblemDescription] = useState('');
     const [showResults, setShowResults] = useState(false);
 
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Live backend search
+    const { data: customers = [], isLoading: isSearching } = useQuery({
+        queryKey: ['customer-search-lite', debouncedSearch],
+        queryFn: () => api.getCustomersLite(debouncedSearch),
+        enabled: debouncedSearch.length >= 2 && !selectedCustomer,
+    });
+
     // Handle prefilled data from navigation
     useEffect(() => {
-        if (prefilled && customers.length > 0) {
-            const customer = customers.find(c => c.bkcode === prefilled.customerId);
-            if (customer) {
-                setSelectedCustomer(customer);
-                if (prefilled.machineId && customer.posMachines) {
-                    const machine = customer.posMachines.find((m: any) => m.id === prefilled.machineId);
-                    if (machine) {
-                        setSelectedMachine(machine);
-                    }
+        if (prefilled) {
+            // Priority 1: Use full objects if provided
+            if (prefilled.customer) {
+                setSelectedCustomer(prefilled.customer);
+                if (prefilled.machine) {
+                    setSelectedMachine(prefilled.machine);
+                } else if (prefilled.machineId && prefilled.customer.posMachines) {
+                    const machine = prefilled.customer.posMachines.find((m: any) => m.id === prefilled.machineId);
+                    if (machine) setSelectedMachine(machine);
                 }
+                return;
+            }
+
+            // Priority 3: Fallback - Create partial objects from prefilled IDs and names
+            // This ensures the form is NOT empty even if the search list hasn't loaded or doesn't contain this customer
+            if (prefilled.customerId) {
+                const mockCustomer = {
+                    bkcode: prefilled.customerId,
+                    client_name: prefilled.customerName || 'عميل غير معروف',
+                    posMachines: [] as any[]
+                };
+
+                if (prefilled.machineId && prefilled.machineSerial) {
+                    const mockMachine = { id: prefilled.machineId, serialNumber: prefilled.machineSerial };
+                    mockCustomer.posMachines = [mockMachine];
+                    setSelectedMachine(mockMachine);
+                }
+
+                setSelectedCustomer(mockCustomer);
             }
         }
-    }, [prefilled, customers]);
+    }, [prefilled]);
 
-    // Smart search - by customer ID (bkcode), name, or machine serial
+    // Format search results for display
     const searchResults = useMemo(() => {
-        if (!searchQuery || searchQuery.length < 2) return [];
-        const query = searchQuery.toLowerCase();
+        if (!debouncedSearch || debouncedSearch.length < 2) return [];
+        const query = debouncedSearch.toLowerCase();
 
         const results: any[] = [];
 
         customers?.forEach((customer: any) => {
-            const matchesCustomer =
-                customer.bkcode?.toLowerCase().includes(query) ||
-                customer.client_name?.toLowerCase().includes(query);
+            // Simple mapping - the backend already filtered these
+            results.push({
+                type: 'customer',
+                customer,
+                matchText: `${customer.bkcode} - ${customer.client_name}`
+            });
 
+            // Also check if machines match the query (server search matches both but we might want to highlight machines)
             const matchingMachines = customer.posMachines?.filter((m: any) =>
                 m.serialNumber?.toLowerCase().includes(query)
             ) || [];
-
-            if (matchesCustomer) {
-                results.push({
-                    type: 'customer',
-                    customer,
-                    matchText: `${customer.bkcode} - ${customer.client_name}`
-                });
-            }
 
             matchingMachines.forEach((machine: any) => {
                 results.push({
@@ -71,8 +105,15 @@ export function CreateRequestModal({ customers, onClose, onSubmit, prefilled }: 
             });
         });
 
-        return results.slice(0, 10);
-    }, [searchQuery, customers]);
+        // Unique results to avoid duplications if both name and machines match
+        const seen = new Set();
+        return results.filter(r => {
+            const key = r.type === 'machine' ? `m-${r.machine.id}` : `c-${r.customer.id}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).slice(0, 10);
+    }, [debouncedSearch, customers]);
 
     const handleSelectResult = (result: any) => {
         setSelectedCustomer(result.customer);
@@ -182,6 +223,11 @@ export function CreateRequestModal({ customers, onClose, onSubmit, prefilled }: 
                                             className="w-full border border-border rounded-lg pr-4 pl-12 py-4 text-base focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all bg-muted/50 placeholder:text-muted-foreground/60"
                                             autoFocus
                                         />
+                                        {isSearching && (
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                                <Loader2 size={18} className="animate-spin text-primary" />
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Search Results Dropdown */}

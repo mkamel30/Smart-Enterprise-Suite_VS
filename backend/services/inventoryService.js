@@ -6,8 +6,13 @@ const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 async function getInventory(req) {
   const branchFilter = getBranchFilter(req);
+  // If admin and no specific branch filter, allow seeing all inventory items
+  if (Object.keys(branchFilter).length === 0 && ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role)) {
+    branchFilter._skipBranchEnforcer = true;
+  }
+
   const parts = await db.sparePart.findMany({
-    include: { inventoryItems: { where: branchFilter || {} } }
+    include: { inventoryItems: { where: branchFilter } }
   });
 
   return parts.map(part => ({
@@ -148,14 +153,83 @@ async function transferStock(req, { partId, quantity, fromBranchId, toBranchId, 
 }
 
 async function getMovements(req) {
-  const branchFilter = (req && req.getBranchFilter) ? req.getBranchFilter() : {};
+  const branchFilter = getBranchFilter(req);
   if (!db.stockMovement) return [];
-  const movements = await db.stockMovement.findMany(ensureBranchWhere({ where: branchFilter, orderBy: { createdAt: 'desc' }, take: 100 }, req));
+
+  const { startDate, endDate, search, requestId } = req.query || {};
+
+  // Build the where clause
+  const where = { ...branchFilter };
+  if (requestId) where.requestId = requestId;
+
+  // Date filtering
+  if (startDate || endDate) {
+    where.createdAt = {};
+    if (startDate) where.createdAt.gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      where.createdAt.lte = end;
+    }
+  }
+
+  // Fetch movements
+  const movements = await db.stockMovement.findMany(ensureBranchWhere({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: search ? undefined : 200 // Only limit if not searching/filtering extensively
+  }, req));
+
+  // Extract reference IDs
   const partIds = [...new Set(movements.map(m => m.partId))];
-  // sparePart ظ„ظٹط³ ظ„ط¯ظٹظ‡ branchIdطŒ ظ„ط°ظ„ظƒ ظ„ط§ ظ†ط·ط¨ظ‚ ensureBranchWhere ظ‡ظ†ط§
-  const parts = await db.sparePart.findMany({ where: { id: { in: partIds } }, select: { id: true, name: true, partNumber: true } });
+  const requestIds = [...new Set(movements.filter(m => m.requestId).map(m => m.requestId))];
+
+  // Fetch Parts
+  const parts = await db.sparePart.findMany({
+    where: { id: { in: partIds } },
+    select: { id: true, name: true, partNumber: true }
+  });
   const partMap = Object.fromEntries(parts.map(p => [p.id, p]));
-  return movements.map(m => ({ ...m, partName: partMap[m.partId]?.name || 'غير معروف', partNumber: partMap[m.partId]?.partNumber || '' }));
+
+  // Fetch Requests for BK code and Serials
+  const requests = await db.maintenanceRequest.findMany(ensureBranchWhere({
+    where: { id: { in: requestIds } },
+    select: {
+      id: true,
+      serialNumber: true,
+      customer: {
+        select: { bkcode: true, client_name: true }
+      }
+    }
+  }, req));
+  const requestMap = Object.fromEntries(requests.map(r => [r.id, r]));
+
+  // Combine and Apply Smart Search if provided
+  let results = movements.map(m => {
+    const reqData = m.requestId ? requestMap[m.requestId] : null;
+    return {
+      ...m,
+      partName: partMap[m.partId]?.name || 'غير معروف',
+      partNumber: partMap[m.partId]?.partNumber || '',
+      customerBkCode: reqData?.customer?.bkcode || null,
+      customerName: reqData?.customer?.client_name || null,
+      machineSerial: reqData?.serialNumber || null
+    };
+  });
+
+  if (search) {
+    const s = search.toLowerCase();
+    results = results.filter(r =>
+      r.partName.toLowerCase().includes(s) ||
+      r.partNumber.toLowerCase().includes(s) ||
+      (r.reason && r.reason.toLowerCase().includes(s)) ||
+      (r.performedBy && r.performedBy.toLowerCase().includes(s)) ||
+      (r.customerBkCode && r.customerBkCode.toLowerCase().includes(s)) ||
+      (r.machineSerial && r.machineSerial.toLowerCase().includes(s))
+    );
+  }
+
+  return results;
 }
 
 // Note: `db` is declared at top of the file; ensure single export at bottom.

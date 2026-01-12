@@ -1,0 +1,344 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id          String   @id @default(cuid())
+  uid         String?  // Optional legacy Firebase UID
+  email       String?
+  displayName String?
+  role        String?  @default("Technician")
+  password    String?  // Hashed password
+  createdAt   DateTime @default(now())
+  
+  branchId    String?
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  
+  // User Preferences
+  fontSize           String?  @default("small")
+  highlightEffect    Boolean? @default(true)
+  notificationSound  Boolean? @default(true)
+  mobilePush         Boolean? @default(false)
+  theme              String?  @default("light")
+  fontFamily         String?  @default("IBM Plex Sans Arabic")
+}
+
+model Branch {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  address     String?
+  type        String   @default("BRANCH") // BRANCH, MAINTENANCE_CENTER
+  
+  // Relations
+  parentBranchId String?
+  parentBranch   Branch?  @relation("BranchHierarchy", fields: [parentBranchId], references: [id])
+  childBranches  Branch[] @relation("BranchHierarchy")
+  
+  users          User[]
+  customers      Customer[]
+  requests       MaintenanceRequest[]
+  inventory      InventoryItem[]
+  
+  sentTransfers      TransferOrder[] @relation("SentTransfers")
+  receivedTransfers  TransferOrder[] @relation("ReceivedTransfers")
+  
+  createdAt   DateTime @default(now())
+}
+
+model Customer {
+  id              String   @id @default(cuid())
+  bkcode          String   @unique
+  client_name     String
+  supply_office   String?
+  operating_date  DateTime?
+  address         String?
+  contact_person  String?
+  scanned_id_path String?
+  national_id     String?
+  dept            String?
+  telephone_1     String?
+  telephone_2     String?
+  has_gates       Boolean? @default(false)
+  bk_type         String?
+  notes           String?
+  papers_date     DateTime?
+  isSpecial       Boolean? @default(false)
+  
+  machines        PosMachine[] @relation(fields: [], references: [])
+  simCards        SimCard[]    @relation(fields: [], references: [])
+  requests        MaintenanceRequest[]
+  
+  branchId        String?
+  branch          Branch? @relation(fields: [branchId], references: [id])
+}
+
+model PosMachine {
+  id              String   @id @default(cuid())
+  serialNumber    String   @unique
+  posId           String?
+  model           String?
+  manufacturer    String?
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [bkcode])
+  isMain          Boolean? @default(false)
+  
+  requests        MaintenanceRequest[]
+  
+  @@map("ClientPos")
+}
+
+model SimCard {
+  id              String   @id @default(cuid())
+  serialNumber    String   @unique
+  type            String?
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [bkcode])
+
+  @@map("ClientSimCard")
+}
+
+model MachineParameter {
+  id           String @id @default(cuid())
+  prefix       String @unique
+  model        String
+  manufacturer String
+}
+
+model SparePart {
+  id               String   @id @default(cuid())
+  partNumber       String?
+  name             String
+  description      String?
+  compatibleModels String? // Stored as JSON string or comma-separated
+  defaultCost      Float    @default(0)
+  isConsumable     Boolean? @default(false)
+  allowsMultiple   Boolean? @default(false)
+  
+  inventoryItems   InventoryItem[]
+}
+
+model InventoryItem {
+  id       String    @id @default(cuid())
+  partId   String
+  part     SparePart @relation(fields: [partId], references: [id])
+  quantity Int       @default(0)
+  minLevel Int       @default(0)
+  location String?
+  
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+}
+
+model MaintenanceRequest {
+  id                  String   @id @default(cuid())
+  customerId          String
+  customer            Customer @relation(fields: [customerId], references: [bkcode])
+  posMachineId        String?
+  posMachine          PosMachine? @relation(fields: [posMachineId], references: [id])
+  
+  customerName        String?
+  machineModel        String?
+  machineManufacturer String?
+  serialNumber        String?
+  
+  status              String   @default("Open") // Open, In Progress, Closed, Cancelled, PENDING_TRANSFER, AT_CENTER, WAITING_APPROVAL
+  
+  branchId            String?
+  branch              Branch?  @relation(fields: [branchId], references: [id])
+  
+  servicedByBranchId  String?  // The branch/center currently holding the machine
+
+  technician          String?
+  notes               String?
+  complaint           String?
+  actionTaken         String?
+  
+  createdAt           DateTime @default(now())
+  
+  closingUserId       String?
+  closingUserName     String?
+  closingTimestamp    DateTime?
+  
+  usedParts           String? // JSON string of used parts
+  receiptNumber       String?
+  totalCost           Float?  @default(0)
+  
+  approval            MaintenanceApproval?
+  vouchers            RepairVoucher[]
+  
+  @@index([customerId])
+  @@index([status])
+  @@index([branchId])
+  @@index([createdAt])
+}
+
+model TransferOrder {
+  id            String   @id @default(cuid())
+  waybillNumber String?  // Manual entry
+  
+  fromBranchId  String
+  fromBranch    Branch   @relation("SentTransfers", fields: [fromBranchId], references: [id])
+  
+  toBranchId    String
+  toBranch      Branch   @relation("ReceivedTransfers", fields: [toBranchId], references: [id])
+  
+  status        String   @default("PENDING") // PENDING, SHIPPED, RECEIVED, PARTIAL, REJECTED
+  type          String   // SEND_TO_CENTER, RETURN_TO_BRANCH, MACHINE, SIM
+  
+  items         TransferOrderItem[]
+  
+  driverName    String?
+  driverPhone   String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  createdByUserId String?
+  receivedByUserId String?
+  
+  notes           String?
+  receivedAt      DateTime?
+  receivedBy      String?
+  receivedByName  String?
+  rejectionReason String?
+  orderNumber     String   @unique
+  
+  @@index([fromBranchId])
+  @@index([toBranchId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TransferOrderItem {
+  id            String   @id @default(cuid())
+  transferOrderId String
+  transferOrder   TransferOrder @relation(fields: [transferOrderId], references: [id], onDelete: Cascade)
+  
+  serialNumber  String?
+  type          String? // Model/Type
+  manufacturer  String?
+  
+  isReceived    Boolean  @default(false)
+  receivedAt    DateTime?
+  
+  notes         String?
+}
+
+model PriceChangeLog {
+  id        String   @id @default(cuid())
+  partId    String
+  oldCost   Float
+  newCost   Float
+  changedAt DateTime @default(now())
+  userId    String?
+}
+
+model UsedPartLog {
+  id             String   @id @default(cuid())
+  requestId      String
+  customerId     String
+  customerName   String?
+  posMachineId   String?
+  technician     String?
+  closedByUserId String?
+  closedAt       DateTime @default(now())
+  parts          String // JSON string
+  receiptNumber  String?
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  partId      String
+  type        String   // "IN" or "OUT"
+  quantity    Int
+  reason      String?  // "تحويل من الإدارة" or "صيانة ماكينة" etc
+  requestId   String?  // Link to maintenance request if OUT
+  userId      String?
+  createdAt   DateTime @default(now())
+  branchId    String? // Nullable for now to support migration, but ideally required
+  
+  @@index([partId])
+  @@index([branchId])
+  @@index([createdAt])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  customerId    String?
+  customerName  String?
+  requestId     String?  // Link to maintenance request
+  amount        Float
+  reason        String   // سبب الدفع
+  paymentPlace  String   // بنك، ضامن، البريد
+  receiptNumber String?
+  notes         String?
+  userId        String?
+  userName      String?
+  createdAt     DateTime @default(now())
+  branchId      String?
+}
+
+model MachineMovementLog {
+  id           String   @id @default(cuid())
+  machineId    String
+  serialNumber String
+  action       String
+  details      String?
+  performedBy  String?
+  createdAt    DateTime @default(now())
+}
+
+
+model SystemLog {
+  // System-wide audit logging
+  id          String   @id @default(cuid())
+  entityType  String   // CUSTOMER, USER, REQUEST, PAYMENT, PART
+  entityId    String   // ID of the affected entity
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, STATUS_CHANGE
+  details     String?  // JSON string details (what changed)
+  performedBy String?  // Display Name
+  userId      String?  // User ID
+  createdAt   DateTime @default(now())
+}
+
+model MaintenanceApproval {
+  id          String   @id @default(cuid())
+  requestId   String   @unique
+  request     MaintenanceRequest @relation(fields: [requestId], references: [id])
+  
+  cost        Float
+  parts       String
+  
+  status      String   @default("PENDING")
+  
+  notes       String?
+  
+  createdAt   DateTime @default(now())
+  respondedAt DateTime?
+  respondedBy String?
+}
+
+model RepairVoucher {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  
+  requestId     String
+  request       MaintenanceRequest @relation(fields: [requestId], references: [id])
+  
+  type          String
+  
+  parts         String
+  totalCost     Float
+  
+  createdAt     DateTime @default(now())
+  createdBy     String?
+}

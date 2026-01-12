@@ -38,11 +38,27 @@ export function useApiMutation<TData = any, TVariables = any>(
             options.onSuccess?.(data, variables, context);
         },
         onError: (error: any, variables, context) => {
-            // Extract error message from response
-            const errorMsg = error.response?.data?.error
-                || error.response?.data?.message
-                || error.message
-                || 'حدث خطأ غير متوقع';
+            // Extract detailed error information from the backend response structure
+            const responseData = error.response?.data;
+            const errorObj = responseData?.error;
+
+            let errorMsg = 'حدث خطأ غير متوقع';
+
+            if (errorObj) {
+                if (errorObj.details && typeof errorObj.details === 'object' && !Array.isArray(errorObj.details)) {
+                    // Extract validation field errors: "Field: Error, Field2: Error2"
+                    const detailMsgs = Object.entries(errorObj.details)
+                        .map(([field, msg]) => `${msg}`) // Just show the message for cleaner UI
+                        .join(' | ');
+                    errorMsg = detailMsgs || errorObj.message;
+                } else {
+                    errorMsg = errorObj.message || errorObj;
+                }
+            } else if (responseData?.message) {
+                errorMsg = responseData.message;
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
 
             // Show error toast
             toast.error(`${options.errorMessage || 'فشلت العملية'}: ${errorMsg}`);

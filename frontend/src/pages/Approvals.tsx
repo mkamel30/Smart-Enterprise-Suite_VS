@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { CheckCircle, XCircle, Clock, DollarSign, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { translateStatus } from '../lib/translations';
 
 
 export default function Approvals() {
@@ -85,7 +86,7 @@ export default function Approvals() {
                             ? (status === 'PENDING' ? 'bg-yellow-500 text-white' : status === 'APPROVED' ? 'bg-green-600 text-white' : 'bg-red-600 text-white')
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                     >
-                        {status === 'PENDING' ? 'قيد الانتظار' : status === 'APPROVED' ? 'تمت الموافقة' : 'مرفوض'}
+                        {translateStatus(status)}
                     </button>
                 ))}
             </div>
@@ -95,7 +96,7 @@ export default function Approvals() {
             ) : approvals?.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 rounded-lg">
                     <CheckCircle size={48} className="mx-auto text-slate-400 mb-4" />
-                    <p className="text-slate-600">لا توجد طلبات {filterStatus === 'PENDING' ? 'معلقة' : 'في هذا القسم'}</p>
+                    <p className="text-slate-600">لا توجد طلبات {translateStatus(filterStatus)}</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -160,7 +161,7 @@ export default function Approvals() {
                                         <div className={`flex-1 sm:flex-none px-4 py-2 rounded-lg flex items-center justify-center gap-2 sm:w-30 ${approval.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                             }`}>
                                             {approval.status === 'APPROVED' ? <CheckCircle size={16} /> : <XCircle size={16} />}
-                                            {approval.status === 'APPROVED' ? 'تمت الموافقة' : 'مرفوض'}
+                                            {translateStatus(approval.status)}
                                         </div>
                                     )}
                                 </div>

@@ -26,7 +26,7 @@ router.get('/', authenticateToken, validateQuery(listQuerySchema), asyncHandler(
   };
 
   // Branch filter
-  const branchFilter = getBranchFilter(req.user);
+  const branchFilter = getBranchFilter(req);
   Object.assign(where, branchFilter);
 
   // Super admin override or specific branch request

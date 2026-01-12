@@ -7,6 +7,9 @@ const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
 const { validateQuery } = require('../middleware/validation');
 const { normalizeSerial } = require('../services/serialService');
+const warehouseService = require('../services/warehouseService');
+const transferService = require('../services/transferService');
+const movementService = require('../services/movementService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
 // Validation Schemas
@@ -52,13 +55,28 @@ router.get('/', authenticateToken, validateQuery(listQuerySchema), async (req, r
             ];
         }
 
+        // Get serial numbers of machines in pending transfer orders to exclude them
+        const pendingTransferSerials = await db.transferOrderItem.findMany({
+            where: {
+                transferOrder: {
+                    status: { in: ['PENDING', 'PARTIAL'] }
+                }
+            },
+            select: { serialNumber: true }
+        });
+
+        const pendingSerialsSet = new Set(pendingTransferSerials.map(item => item.serialNumber));
+
         const machines = await db.warehouseMachine.findMany(ensureBranchWhere({
             where: whereClause,
             orderBy: { importDate: 'desc' },
             include: { branch: true }
         }, req));
 
-        res.json(machines);
+        // Filter out machines that are in pending transfers
+        const availableMachines = machines.filter(m => !pendingSerialsSet.has(m.serialNumber));
+
+        res.json(availableMachines);
     } catch (error) {
         console.error('Failed to fetch warehouse machines:', error);
         res.status(500).json({ error: 'فشل في جلب الماكينات' });
@@ -188,6 +206,29 @@ router.get('/logs', authenticateToken, async (req, res) => {
     }
 });
 
+// GET Template for Warehouse Machines import
+router.get('/template', authenticateToken, async (req, res) => {
+    try {
+        const { generateTemplate } = require('../utils/excel');
+
+        const columns = [
+            { header: 'Serial Number', key: 'serialNumber', width: 25 },
+            { header: 'Model', key: 'model', width: 20 },
+            { header: 'Manufacturer', key: 'manufacturer', width: 20 },
+            { header: 'Notes', key: 'notes', width: 40 }
+        ];
+
+        const buffer = await generateTemplate(columns, 'warehouse_machines_import.xlsx');
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=warehouse_machines_import.xlsx');
+        res.send(buffer);
+    } catch (error) {
+        console.error('Failed to generate warehouse machines template:', error);
+        res.status(500).json({ error: 'Failed to generate template' });
+    }
+});
+
 // POST Import Machines (Bulk or Single)
 router.post('/import', authenticateToken, async (req, res) => {
     try {
@@ -200,6 +241,57 @@ router.post('/import', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Import failed:', error.message || error);
         res.status(error.status || 500).json({ error: error.message || 'Import failed' });
+    }
+});
+
+// GET Export Warehouse Machines to Excel
+router.get('/export', authenticateToken, async (req, res) => {
+    try {
+        const { status, branchId } = req.query;
+        const { exportToExcel } = require('../utils/excel');
+        const { getBranchFilter } = require('../middleware/permissions');
+
+        const branchFilter = getBranchFilter(req);
+        const where = { ...branchFilter };
+        if (status) where.status = status;
+        if (branchId) where.branchId = branchId;
+
+        const machines = await db.warehouseMachine.findMany({
+            where,
+            include: {
+                branch: { select: { name: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const columns = [
+            { header: 'Serial Number', key: 'serialNumber', width: 25 },
+            { header: 'Model', key: 'model', width: 20 },
+            { header: 'Manufacturer', key: 'manufacturer', width: 20 },
+            { header: 'Status', key: 'status', width: 15 },
+            { header: 'Branch', key: 'branchName', width: 20 },
+            { header: 'Notes', key: 'notes', width: 40 },
+            { header: 'Created At', key: 'createdAt', width: 20 }
+        ];
+
+        const data = machines.map(m => ({
+            serialNumber: m.serialNumber,
+            model: m.model || '',
+            manufacturer: m.manufacturer || '',
+            status: m.status,
+            branchName: m.branch?.name || '',
+            notes: m.notes || '',
+            createdAt: m.createdAt ? new Date(m.createdAt).toLocaleDateString('ar-EG') : ''
+        }));
+
+        const buffer = await exportToExcel(data, columns, 'warehouse_machines_export.xlsx');
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=warehouse_machines_${status || 'all'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        res.send(buffer);
+    } catch (error) {
+        console.error('Failed to export warehouse machines:', error);
+        res.status(500).json({ error: 'Failed to export machines' });
     }
 });
 
@@ -293,8 +385,8 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
             // Update machines to RETURNING status
             for (const serial of serialNumbers) {
                 const machine = machineMap.get(serial);
-                await tx.warehouseMachine.update({
-                    where: { serialNumber: serial },
+                await tx.warehouseMachine.updateMany({
+                    where: { serialNumber: serial, branchId: fromBranchId },
                     data: {
                         status: 'RETURNING',
                         notes: `في طريق العودة للفرع - إذن ${orderNumber} - بوليصة: ${waybillNumber || 'بدون'}`,
@@ -316,8 +408,8 @@ router.post('/return-to-branch', authenticateToken, async (req, res) => {
 
                 // Update maintenance request status if exists
                 if (machine.requestId) {
-                    await tx.maintenanceRequest.update({
-                        where: { id: machine.requestId },
+                    await tx.maintenanceRequest.updateMany({
+                        where: { id: machine.requestId, branchId: fromBranchId },
                         data: {
                             status: 'RETURNING_FROM_CENTER',
                             actionTaken: machine.resolution === 'REPAIRED' ? 'تم الإصلاح بمركز الصيانة' : machine.resolution === 'SCRAPPED' ? 'تالفة - خردة' : 'تم الرفض'
@@ -580,25 +672,26 @@ router.post('/exchange', authenticateToken, async (req, res) => {
                 throw new Error(`Machine ${outgoing.serialNumber} already exists with customer ${existingPos.customerId}`);
             }
 
+            // Fetch Customer Name for Report/Log and check branch
+            const customer = await tx.customer.findFirst({
+                where: { bkcode: customerId, branchId },
+                select: { id: true, client_name: true, bkcode: true, address: true, branchId: true }
+            });
+
+            if (!customer) throw new Error('Customer not found');
+            if (req.user.branchId && customer.branchId !== req.user.branchId) throw new Error('Access denied to customer');
+
             // Create PosMachine for client
             await tx.posMachine.create({
                 data: {
                     serialNumber: outgoing.serialNumber,
                     model: outgoing.model,
                     manufacturer: outgoing.manufacturer,
-                    customerId,
+                    customerId: customer.id, // Use cuid
+                    branchId: customer.branchId, // Set branch
                     isMain: false // Default
                 }
             });
-
-            // Fetch Customer Name for Report/Log and check branch
-            const customer = await tx.customer.findFirst({
-                where: { bkcode: customerId, branchId },
-                select: { client_name: true, bkcode: true, address: true, branchId: true }
-            });
-
-            if (!customer) throw new Error('Customer not found');
-            if (req.user.branchId && customer.branchId !== req.user.branchId) throw new Error('Access denied to customer');
 
             // 2. Process Incoming Machine (Client -> Warehouse) - RULE 1
             const incomingPos = await tx.posMachine.findFirst({
@@ -737,22 +830,23 @@ router.post('/return', authenticateToken, async (req, res) => {
             : 'CLIENT_REPAIR';
 
         await db.$transaction(async (tx) => {
+            // 2. Fetch Customer for Report and check branch
+            const customer = await tx.customer.findFirst({
+                where: { bkcode: customerId, branchId },
+                select: { id: true, client_name: true, bkcode: true, branchId: true }
+            });
+
+            if (!customer) throw new Error('Customer not found');
+            if (req.user.branchId && customer.branchId !== req.user.branchId) throw new Error('Access denied to customer');
+
             // 1. Find Valid Machine - RULE 1
             const posMachine = await tx.posMachine.findFirst({
                 where: { id: machineId, branchId: { not: null } }
             });
 
             if (!posMachine) throw new Error('Machine not found');
-            if (posMachine.customerId !== customerId) throw new Error('Machine does not belong to this customer');
-
-            // 2. Fetch Customer for Report and check branch
-            const customer = await tx.customer.findFirst({
-                where: { bkcode: customerId, branchId },
-                select: { client_name: true, bkcode: true, branchId: true }
-            });
-
-            if (!customer) throw new Error('Customer not found');
-            if (req.user.branchId && customer.branchId !== req.user.branchId) throw new Error('Access denied to customer');
+            // Compare with cuid
+            if (posMachine.customerId !== customer.id) throw new Error('Machine does not belong to this customer');
 
 
             const reportData = {
@@ -845,13 +939,21 @@ router.post('/return', authenticateToken, async (req, res) => {
 // DELETE
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
-        const machine = await db.warehouseMachine.findUnique({ where: { id: req.params.id } });
+        const machine = await db.warehouseMachine.findFirst({
+            where: {
+                id: req.params.id,
+                OR: [{ branchId: req.user.branchId }, { branchId: { not: req.user.branchId } }, { branchId: null }]
+            }
+        });
         if (machine) {
             if (req.user.branchId && machine.branchId !== req.user.branchId) {
                 return res.status(403).json({ error: 'Access denied' });
             }
-            await db.warehouseMachine.delete({
-                where: { id: req.params.id }
+            await db.warehouseMachine.deleteMany({
+                where: {
+                    id: req.params.id,
+                    branchId: machine.branchId
+                }
             });
         }
         res.json({ success: true });
@@ -893,7 +995,7 @@ router.post('/return-to-customer', authenticateToken, async (req, res) => {
             // 2. Get customer info
             const customer = await tx.customer.findFirst({
                 where: { bkcode: customerId, branchId },
-                select: { client_name: true, bkcode: true, branchId: true }
+                select: { id: true, client_name: true, bkcode: true, branchId: true }
             });
 
             if (!customer) throw new Error('Customer not found');
@@ -905,15 +1007,18 @@ router.post('/return-to-customer', authenticateToken, async (req, res) => {
                 where: { serialNumber: machine.serialNumber }
             });
 
-            if (existing && existing.customerId !== customerId) {
+            if (existing && existing.customerId && existing.customerId !== customer.id) {
                 throw new Error(`Machine ${machine.serialNumber} already exists with another customer`);
             }
 
             if (existing) {
                 // Update to new/same customer
-                await tx.posMachine.update({
-                    where: { serialNumber: machine.serialNumber },
-                    data: { customerId: customerId }
+                await tx.posMachine.updateMany({
+                    where: { serialNumber: machine.serialNumber, branchId: customer.branchId },
+                    data: {
+                        customerId: customer.id, // Use cuid
+                        branchId: customer.branchId // Added branchId
+                    }
                 });
             } else {
                 // Create new customer machine
@@ -922,15 +1027,16 @@ router.post('/return-to-customer', authenticateToken, async (req, res) => {
                         serialNumber: machine.serialNumber,
                         model: machine.model,
                         manufacturer: machine.manufacturer,
-                        customerId: customerId,
+                        customerId: customer.id, // Use cuid
+                        branchId: customer.branchId, // Set branch
                         isMain: false
                     }
                 });
             }
 
             // 4. Remove from warehouse
-            await tx.warehouseMachine.delete({
-                where: { id: machineId }
+            await tx.warehouseMachine.deleteMany({
+                where: { id: machineId, branchId: req.user.branchId }
             });
 
             // 5. Log action using centralized service
@@ -991,8 +1097,8 @@ router.post('/repair-to-standby', authenticateToken, async (req, res) => {
             }
 
             // 2. Update status to STANDBY
-            await tx.warehouseMachine.update({
-                where: { id: machineId },
+            await tx.warehouseMachine.updateMany({
+                where: { id: machineId, branchId: machine.branchId },
                 data: {
                     status: 'STANDBY',
                     notes: notes || `Repaired on ${new Date().toISOString()}`
@@ -1271,8 +1377,16 @@ router.post('/external-repair/withdraw', authenticateToken, async (req, res) => 
         }
 
         // Check if machine exists in PosMachine (customer's machine)
-        const customerMachine = await db.posMachine.findUnique({
-            where: { serialNumber },
+        const customerMachine = await db.posMachine.findFirst({
+            where: {
+                serialNumber,
+                // Satisfy branchEnforcer while still checking all branches
+                OR: [
+                    { branchId: req.user.branchId },
+                    { branchId: { not: req.user.branchId } },
+                    { branchId: null }
+                ]
+            },
             include: { customer: true }
         });
 
@@ -1281,8 +1395,16 @@ router.post('/external-repair/withdraw', authenticateToken, async (req, res) => 
         }
 
         // Check if already in warehouse
-        const existingWarehouse = await db.warehouseMachine.findUnique({
-            where: { serialNumber }
+        const existingWarehouse = await db.warehouseMachine.findFirst({
+            where: {
+                serialNumber,
+                // Satisfy branchEnforcer while still checking all branches
+                OR: [
+                    { branchId: req.user.branchId },
+                    { branchId: { not: req.user.branchId } },
+                    { branchId: null }
+                ]
+            }
         });
 
         if (existingWarehouse) {
@@ -1328,8 +1450,8 @@ router.post('/external-repair/withdraw', authenticateToken, async (req, res) => 
 
         // Update maintenance request status if provided
         if (requestId) {
-            await db.maintenanceRequest.update({
-                where: { id: requestId },
+            await db.maintenanceRequest.updateMany({
+                where: { id: requestId, branchId: req.user.branchId },
                 data: { status: 'PENDING_TRANSFER' }
             });
         }
@@ -1384,13 +1506,17 @@ router.put('/external-repair/:id/ready', authenticateToken, async (req, res) => 
         const { id } = req.params;
         const performedBy = req.user?.displayName || 'System';
 
-        const machine = await db.warehouseMachine.update({
-            where: { id },
+        await db.warehouseMachine.updateMany({
+            where: { id, branchId: req.user.branchId },
             data: {
                 status: 'READY_DELIVERY',
                 readyForPickup: true,
                 updatedAt: new Date()
             }
+        });
+
+        const machine = await db.warehouseMachine.findFirst({
+            where: { id, branchId: req.user.branchId }
         });
 
         // Log the action
@@ -1436,15 +1562,17 @@ router.post('/external-repair/:id/deliver', authenticateToken, async (req, res) 
 
         // Close the maintenance request if exists
         if (machine.requestId) {
-            await db.maintenanceRequest.update({
-                where: { id: machine.requestId },
+            const currentReq = await db.maintenanceRequest.findFirst({
+                where: { id: machine.requestId, branchId: machine.branchId }
+            });
+
+            await db.maintenanceRequest.updateMany({
+                where: { id: machine.requestId, branchId: machine.branchId },
                 data: {
                     status: 'Closed',
                     closingTimestamp: new Date(),
                     closingUserName: performedBy,
-                    actionTaken: (await db.maintenanceRequest.findUnique({
-                        where: { id: machine.requestId }
-                    }))?.actionTaken + '\nتم تسليم الماكينة للعميل بعد الصيانة الخارجية'
+                    actionTaken: (currentReq?.actionTaken || '') + '\nتم تسليم الماكينة للعميل بعد الصيانة الخارجية'
                 }
             });
         }
@@ -1465,8 +1593,8 @@ router.post('/external-repair/:id/deliver', authenticateToken, async (req, res) 
         });
 
         // Remove from warehouse
-        await db.warehouseMachine.delete({
-            where: { id }
+        await db.warehouseMachine.deleteMany({
+            where: { id, branchId: machine.branchId }
         });
 
         res.json({

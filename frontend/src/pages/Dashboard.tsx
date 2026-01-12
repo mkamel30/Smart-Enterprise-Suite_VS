@@ -12,7 +12,8 @@ import {
     Filter,
     Monitor,
     Smartphone,
-    ArrowRightLeft
+    ArrowRightLeft,
+    FileBarChart
 } from 'lucide-react';
 import {
     AreaChart,
@@ -30,6 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../lib/permissions';
+import { PerformanceReportModal } from '../components/PerformanceReportModal';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -37,6 +39,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [filterBranchId, setFilterBranchId] = useState('');
+    const [showPerformanceReport, setShowPerformanceReport] = useState(false);
     const isAdmin = !user?.branchId;
     const isAffairs = user?.role === ROLES.ADMIN_AFFAIRS;
 
@@ -129,11 +132,18 @@ export default function Dashboard() {
                             </button>
                         </>
                     )}
+                    <button
+                        onClick={() => setShowPerformanceReport(true)}
+                        className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-emerald-500/20 transition-all font-bold"
+                    >
+                        <FileBarChart size={20} />
+                        <span className="whitespace-nowrap">تقرير أداء الصيانة</span>
+                    </button>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="smart-grid lg:grid-cols-4 mb-8">
                 {isAffairs ? (
                     // Admin Affairs Widgets
                     <>

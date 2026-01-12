@@ -123,10 +123,10 @@ export function PaymentFields({
                 <div className="flex items-center gap-2 mt-1 text-xs">
                     {receiptChecking && <span className="text-blue-500">جار التحقق...</span>}
                     {receiptExists && !receiptChecking && (
-                        <span className="text-red-600 font-semibold">رقم الإيصال مستخدم بالفعل</span>
+                        <span className="text-red-600 font-semibold">⚠️ رقم الإيصال مكرر</span>
                     )}
-                    {!receiptExists && !receiptChecking && (
-                        <span className="text-gray-500">يجب أن يكون رقم الإيصال فريداً غير مستخدم من قبل</span>
+                    {!receiptExists && !receiptChecking && data.receiptNumber.length > 0 && (
+                        <span className="text-green-600">✓ رقم الإيصال متاح</span>
                     )}
                 </div>
             </div>

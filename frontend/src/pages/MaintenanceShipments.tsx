@@ -10,6 +10,7 @@ import { Progress } from '../components/ui/progress';
 import { Truck, Calendar, Archive, CheckCircle, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { translateStatus } from '../lib/translations';
 
 interface Shipment {
     id: string;
@@ -47,13 +48,7 @@ const MaintenanceShipments: React.FC = () => {
     };
 
     const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'PENDING': return 'في الطريق';
-            case 'ACCEPTED':
-            case 'RECEIVED': return 'تم الاستلام';
-            case 'COMPLETED': return 'مكتملة';
-            default: return status;
-        }
+        return translateStatus(status);
     };
 
     return (
