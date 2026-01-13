@@ -1,6 +1,7 @@
-import { ArrowLeftRight, Truck } from 'lucide-react';
+import { ArrowLeftRight, Truck, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { useState } from 'react';
 
 interface MachineExchangeModalProps {
     isOpen: boolean;
@@ -29,6 +30,18 @@ export function MachineExchangeModal({
     onConfirm,
     isPending
 }: MachineExchangeModalProps) {
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredMachines = warehouseMachines?.filter((m: any) =>
+        m.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.model && m.model.toLowerCase().includes(searchTerm.toLowerCase()))
+    ).sort((a: any, b: any) => {
+        const aIsOriginal = a.originalOwnerId === targetCustomer?.bkcode;
+        const bIsOriginal = b.originalOwnerId === targetCustomer?.bkcode;
+        if (aIsOriginal && !bIsOriginal) return -1;
+        if (!aIsOriginal && bIsOriginal) return 1;
+        return 0;
+    });
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] h-auto overflow-hidden sm:max-w-lg" dir="rtl">
@@ -47,44 +60,46 @@ export function MachineExchangeModal({
 
                     <div>
                         <label className="block text-sm font-medium mb-1.5">الماكينة البديلة (من المخزن)</label>
-                        <select
-                            value={selectedReplacement}
-                            onChange={(e) => setSelectedReplacement(e.target.value)}
-                            className="w-full border rounded-lg p-2.5 bg-background focus:ring-2 focus:ring-primary/20 outline-none"
-                        >
-                            <option value="">اختر ماكينة</option>
-                            {warehouseMachines
-                                ?.sort((a: any, b: any) => {
-                                    const aIsOriginal = a.originalOwnerId === targetCustomer?.bkcode;
-                                    const bIsOriginal = b.originalOwnerId === targetCustomer?.bkcode;
-                                    if (aIsOriginal && !bIsOriginal) return -1;
-                                    if (!aIsOriginal && bIsOriginal) return 1;
-                                    return 0;
-                                })
-                                .map((m: any) => {
-                                    const isOriginal = m.originalOwnerId === targetCustomer?.bkcode;
-                                    return (
-                                        <option
-                                            key={m.id}
-                                            value={m.id}
-                                            style={isOriginal ? {
-                                                backgroundColor: '#dcfce7',
-                                                fontWeight: 'bold',
-                                                color: '#166534'
-                                            } : {}}
-                                        >
-                                            {isOriginal ? '✅ ' : ''}{m.serialNumber} - {m.model}{isOriginal ? ' (ماكينة العميل)' : ''}
-                                        </option>
-                                    );
-                                })
-                            }
-                        </select>
-                        {warehouseMachines?.some((m: any) => m.originalOwnerId === targetCustomer?.bkcode) && (
-                            <p className="text-xs text-green-700 mt-2 flex items-center gap-1 bg-green-50 p-2 rounded-lg">
-                                <span className="font-bold">✅</span>
-                                الماكينات المعلمة بالأخضر هي ماكينات العميل الأصلية الجاهزة للإرجاع
-                            </p>
-                        )}
+                        <div className="relative">
+                            <div className="relative mb-2">
+                                <Search className="absolute right-3 top-2.5 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="بحث بالسيريال..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full border rounded-lg pr-10 pl-3 py-2.5 bg-background focus:ring-2 focus:ring-primary/20 outline-none"
+                                />
+                            </div>
+
+                            <div className="border rounded-lg max-h-[200px] overflow-y-auto bg-white">
+                                {filteredMachines?.length === 0 ? (
+                                    <div className="p-4 text-center text-slate-500 text-sm">لا توجد ماكينات مطابقة</div>
+                                ) : (
+                                    filteredMachines?.map((m: any) => {
+                                        const isOriginal = m.originalOwnerId === targetCustomer?.bkcode;
+                                        const isSelected = selectedReplacement === m.id;
+                                        return (
+                                            <div
+                                                key={m.id}
+                                                onClick={() => setSelectedReplacement(m.id)}
+                                                className={`p-3 text-sm cursor-pointer border-b last:border-0 transition-colors flex justify-between items-center ${isSelected ? 'bg-blue-50 border-blue-100' : 'hover:bg-slate-50'
+                                                    } ${isOriginal ? 'bg-green-50/50' : ''}`}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className={`font-medium ${isSelected ? 'text-blue-700' : 'text-slate-700'}`}>
+                                                        {m.serialNumber}
+                                                    </span>
+                                                    <span className="text-xs text-slate-500">{m.model} - {m.manufacturer}</span>
+                                                </div>
+                                                {isOriginal && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">ماكينة العميل</span>}
+                                                {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600"></div>}
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div>

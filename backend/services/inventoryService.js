@@ -197,6 +197,9 @@ async function getMovements(req) {
     select: {
       id: true,
       serialNumber: true,
+      posMachine: {
+        select: { serialNumber: true }
+      },
       customer: {
         select: { bkcode: true, client_name: true }
       }
@@ -213,7 +216,7 @@ async function getMovements(req) {
       partNumber: partMap[m.partId]?.partNumber || '',
       customerBkCode: reqData?.customer?.bkcode || null,
       customerName: reqData?.customer?.client_name || null,
-      machineSerial: reqData?.serialNumber || null
+      machineSerial: reqData?.serialNumber || reqData?.posMachine?.serialNumber || null
     };
   });
 

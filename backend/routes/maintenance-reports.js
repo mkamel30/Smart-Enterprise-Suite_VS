@@ -78,26 +78,29 @@ router.get('/branch-performance-report', authenticateToken, async (req, res) => 
         }
 
         // Build branch filter condition
+        // If targetBranchId is null (global report), we define skipEnforcer for enforced queries
         const branchCondition = targetBranchId ? { branchId: targetBranchId } : {};
+        const skipEnforcer = targetBranchId ? {} : { _skipBranchEnforcer: true };
         const dateCondition = { createdAt: { gte: rangeStart, lte: rangeEnd } };
 
         // === 1. REQUEST METRICS ===
-        const requestMetrics = await calculateRequestMetrics(branchCondition, dateCondition, rangeStart, rangeEnd);
+        const requestMetrics = await calculateRequestMetrics(branchCondition, dateCondition, rangeStart, rangeEnd, skipEnforcer);
 
         // === 2. TECHNICIAN METRICS ===
+        // Technician metrics only use groupBy which is not enforced, so we don't need skipEnforcer
         const technicianMetrics = await calculateTechnicianMetrics(branchCondition, dateCondition, targetBranchId);
 
         // === 3. APPROVAL METRICS ===
-        const approvalMetrics = await calculateApprovalMetrics(targetBranchId, dateCondition);
+        const approvalMetrics = await calculateApprovalMetrics(targetBranchId, dateCondition, skipEnforcer);
 
         // === 4. PARTS & COST METRICS ===
-        const partsMetrics = await calculatePartsMetrics(branchCondition, dateCondition);
+        const partsMetrics = await calculatePartsMetrics(branchCondition, dateCondition, skipEnforcer);
 
         // === 5. STATUS DISTRIBUTION ===
         const statusDistribution = await calculateStatusDistribution(branchCondition);
 
         // === 6. PAYMENT METRICS ===
-        const paymentMetrics = await calculatePaymentMetrics(branchCondition, dateCondition, targetBranchId);
+        const paymentMetrics = await calculatePaymentMetrics(branchCondition, dateCondition, targetBranchId, skipEnforcer);
 
         // === 7. PERFORMANCE INDICATORS ===
         const performanceIndicators = calculatePerformanceIndicators(
@@ -108,7 +111,7 @@ router.get('/branch-performance-report', authenticateToken, async (req, res) => 
         );
 
         // === 8. IN-BRANCH VS CENTER BREAKDOWN ===
-        const workflowBreakdown = await calculateWorkflowBreakdown(targetBranchId, dateCondition);
+        const workflowBreakdown = await calculateWorkflowBreakdown(targetBranchId, dateCondition, skipEnforcer);
 
         const report = {
             generatedAt: new Date().toISOString(),
@@ -132,7 +135,7 @@ router.get('/branch-performance-report', authenticateToken, async (req, res) => 
         setCache(cacheKey, report);
 
         // Log report generation
-        await logAction(db, {
+        await logAction({
             entityType: 'REPORT',
             entityId: 'maintenance-performance',
             action: 'GENERATE',
@@ -151,11 +154,11 @@ router.get('/branch-performance-report', authenticateToken, async (req, res) => 
 
 // === HELPER FUNCTIONS ===
 
-async function calculateRequestMetrics(branchCondition, dateCondition, rangeStart, rangeEnd) {
+async function calculateRequestMetrics(branchCondition, dateCondition, rangeStart, rangeEnd, skipEnforcer) {
     // Total requests by status
     const byStatus = await db.maintenanceRequest.groupBy({
         by: ['status'],
-        where: { ...branchCondition, ...dateCondition },
+        where: { ...branchCondition, ...dateCondition }, // groupBy is not enforced
         _count: { id: true }
     });
 
@@ -171,7 +174,8 @@ async function calculateRequestMetrics(branchCondition, dateCondition, rangeStar
         where: {
             ...branchCondition,
             status: 'Closed',
-            closingTimestamp: { gte: rangeStart, lte: rangeEnd }
+            closingTimestamp: { gte: rangeStart, lte: rangeEnd },
+            ...skipEnforcer // findMany is enforced
         },
         select: { createdAt: true, closingTimestamp: true }
     });
@@ -197,7 +201,8 @@ async function calculateRequestMetrics(branchCondition, dateCondition, rangeStar
     const pendingApproval = await db.maintenanceRequest.count({
         where: {
             ...branchCondition,
-            status: { in: ['Pending Approval', 'AWAITING_APPROVAL'] }
+            status: { in: ['Pending Approval', 'AWAITING_APPROVAL'] },
+            ...skipEnforcer // count is enforced
         }
     });
 
@@ -215,11 +220,19 @@ async function calculateRequestMetrics(branchCondition, dateCondition, rangeStar
 
 async function calculateTechnicianMetrics(branchCondition, dateCondition, targetBranchId) {
     // For service assignments (maintenance center workflow)
-    const centerCondition = targetBranchId ? { centerBranchId: targetBranchId } : {};
+    // If targetBranchId is null, we need skip enforcer for center queries too
+    const centerCondition = targetBranchId
+        ? { centerBranchId: targetBranchId }
+        : {};
+
+    // ServiceAssignment uses 'assignedAt' instead of 'createdAt'
+    const assignmentDateCondition = {
+        assignedAt: dateCondition.createdAt
+    };
 
     const assignmentsByStatus = await db.serviceAssignment.groupBy({
         by: ['status'],
-        where: { ...centerCondition, ...dateCondition },
+        where: { ...centerCondition, ...assignmentDateCondition },
         _count: { id: true }
     });
 
@@ -233,7 +246,7 @@ async function calculateTechnicianMetrics(branchCondition, dateCondition, target
     // Assignments by technician
     const byTechnician = await db.serviceAssignment.groupBy({
         by: ['technicianId', 'technicianName'],
-        where: { ...centerCondition, ...dateCondition },
+        where: { ...centerCondition, ...assignmentDateCondition },
         _count: { id: true }
     });
 
@@ -265,10 +278,15 @@ async function calculateTechnicianMetrics(branchCondition, dateCondition, target
     };
 }
 
-async function calculateApprovalMetrics(targetBranchId, dateCondition) {
+async function calculateApprovalMetrics(targetBranchId, dateCondition, skipEnforcer) {
     // MaintenanceApprovalRequest - for center workflow
-    const centerCondition = targetBranchId ? { centerBranchId: targetBranchId } : {};
-    const originCondition = targetBranchId ? { originBranchId: targetBranchId } : {};
+    const centerCondition = targetBranchId
+        ? { centerBranchId: targetBranchId }
+        : {};
+
+    const originCondition = targetBranchId
+        ? { originBranchId: targetBranchId }
+        : {};
 
     // Approvals submitted FROM this branch (when branch sends to center)
     const sentByStatus = await db.maintenanceApprovalRequest.groupBy({
@@ -290,15 +308,16 @@ async function calculateApprovalMetrics(targetBranchId, dateCondition) {
     const receivedStatusMap = {};
     receivedByStatus.forEach(s => { receivedStatusMap[s.status] = s._count.id; });
 
-    const totalSubmitted = Object.values(sentStatusMap).reduce((a, b) => a + b, 0);
-    const totalReceived = Object.values(receivedStatusMap).reduce((a, b) => a + b, 0);
+    const totalSubmitted = Object.values(sentStatusMap).reduce((a, b) => Number(a) + Number(b), 0);
+    const totalReceived = Object.values(receivedStatusMap).reduce((a, b) => Number(a) + Number(b), 0);
 
     // Average wait time for approvals
     const respondedApprovals = await db.maintenanceApprovalRequest.findMany({
         where: {
             ...originCondition,
             respondedAt: { not: null },
-            ...dateCondition
+            ...dateCondition,
+            ...skipEnforcer // findMany is enforced
         },
         select: { createdAt: true, respondedAt: true }
     });
@@ -334,13 +353,14 @@ async function calculateApprovalMetrics(targetBranchId, dateCondition) {
     };
 }
 
-async function calculatePartsMetrics(branchCondition, dateCondition) {
+async function calculatePartsMetrics(branchCondition, dateCondition, skipEnforcer) {
     // Stock movements with type OUT
     const partsUsed = await db.stockMovement.aggregate({
         where: {
             ...branchCondition,
             type: 'OUT',
-            ...dateCondition
+            ...dateCondition,
+            ...skipEnforcer // aggregate is enforced
         },
         _sum: { quantity: true },
         _count: { id: true }
@@ -386,7 +406,8 @@ async function calculatePartsMetrics(branchCondition, dateCondition) {
             ...branchCondition,
             status: 'Closed',
             usedParts: { not: null },
-            ...dateCondition
+            ...dateCondition,
+            ...skipEnforcer // count is enforced
         }
     });
 
@@ -395,9 +416,10 @@ async function calculatePartsMetrics(branchCondition, dateCondition) {
         : 0;
 
     // Free vs paid ratio (from UsedPartLog)
-    // This would require parsing the parts JSON, simplified for now
+    // UsedPartLog uses 'closedAt' instead of 'createdAt'
+    const closedAtCondition = { closedAt: dateCondition.createdAt };
     const totalUsedPartsEntries = await db.usedPartLog.count({
-        where: { ...branchCondition, ...dateCondition }
+        where: { ...branchCondition, ...closedAtCondition, ...skipEnforcer }
     });
 
     return {
@@ -414,7 +436,7 @@ async function calculateStatusDistribution(branchCondition) {
     // Warehouse machines status distribution
     const machinesByStatus = await db.warehouseMachine.groupBy({
         by: ['status'],
-        where: branchCondition,
+        where: branchCondition, // groupBy is not enforced
         _count: { id: true }
     });
 
@@ -432,19 +454,20 @@ async function calculateStatusDistribution(branchCondition) {
 
     return {
         machineStatuses: statusMap,
-        totalMachinesInWarehouse: Object.values(statusMap).reduce((a, b) => a + b, 0),
+        totalMachinesInWarehouse: Object.values(statusMap).reduce((a, b) => Number(a) + Number(b), 0),
         bottleneckCount,
         bottleneckStatuses: bottleneckStatuses.filter(s => statusMap[s] > 0)
     };
 }
 
-async function calculatePaymentMetrics(branchCondition, dateCondition, targetBranchId) {
+async function calculatePaymentMetrics(branchCondition, dateCondition, targetBranchId, skipEnforcer) {
     // Total revenue from payments
     const payments = await db.payment.aggregate({
         where: {
             ...branchCondition,
             requestId: { not: null },
-            ...dateCondition
+            ...dateCondition,
+            ...skipEnforcer // aggregate is enforced
         },
         _sum: { amount: true },
         _count: { id: true }
@@ -453,6 +476,7 @@ async function calculatePaymentMetrics(branchCondition, dateCondition, targetBra
     // Branch debt (as debtor)
     let debtAsDebtor = 0;
     let debtAsCreditor = 0;
+
     if (targetBranchId) {
         const debtorResult = await db.branchDebt.aggregate({
             where: {
@@ -471,6 +495,24 @@ async function calculatePaymentMetrics(branchCondition, dateCondition, targetBra
             _sum: { remainingAmount: true }
         });
         debtAsCreditor = creditorResult._sum.remainingAmount || 0;
+    } else {
+        const debtorResult = await db.branchDebt.aggregate({
+            where: {
+                status: 'PENDING',
+                ...skipEnforcer // aggregate is enforced
+            },
+            _sum: { remainingAmount: true }
+        });
+        debtAsDebtor = debtorResult._sum.remainingAmount || 0;
+
+        const creditorResult = await db.branchDebt.aggregate({
+            where: {
+                status: 'PENDING',
+                ...skipEnforcer // aggregate is enforced
+            },
+            _sum: { remainingAmount: true }
+        });
+        debtAsCreditor = creditorResult._sum.remainingAmount || 0;
     }
 
     // Pending payments (requests with cost but no payment)
@@ -479,7 +521,8 @@ async function calculatePaymentMetrics(branchCondition, dateCondition, targetBra
             ...branchCondition,
             totalCost: { gt: 0 },
             receiptNumber: null,
-            status: 'Closed'
+            status: 'Closed',
+            ...skipEnforcer // count is enforced
         }
     });
 
@@ -568,36 +611,44 @@ function generateRecommendations(requestMetrics, technicianMetrics, approvalMetr
     return recommendations;
 }
 
-async function calculateWorkflowBreakdown(targetBranchId, dateCondition) {
+async function calculateWorkflowBreakdown(targetBranchId, dateCondition, skipEnforcer) {
     // In-Branch Maintenance (requests handled locally)
+    // In-Branch Maintenance (requests handled locally)
+    // Note: ensure proper bypass for counting
     const inBranchWhere = targetBranchId
         ? { branchId: targetBranchId, servicedByBranchId: null, ...dateCondition }
-        : { servicedByBranchId: null, ...dateCondition };
+        : { servicedByBranchId: null, ...dateCondition, ...skipEnforcer }; // count is enforced
 
     const inBranchCount = await db.maintenanceRequest.count({ where: inBranchWhere });
 
     // Sent to Center (requests sent to maintenance center)
     const sentToCenterWhere = targetBranchId
         ? { branchId: targetBranchId, servicedByBranchId: { not: null }, ...dateCondition }
-        : { servicedByBranchId: { not: null }, ...dateCondition };
+        : { servicedByBranchId: { not: null }, ...dateCondition, ...skipEnforcer }; // count is enforced
 
     const sentToCenterCount = await db.maintenanceRequest.count({ where: sentToCenterWhere });
 
     // Received at Center (for maintenance center role)
+    // Received at Center (for maintenance center role)
+    // ServiceAssignment uses 'assignedAt' for filtering
+    const assignmentDateCondition = { assignedAt: dateCondition.createdAt };
+
     const receivedAtCenterCount = targetBranchId
         ? await db.serviceAssignment.count({
-            where: { centerBranchId: targetBranchId, ...dateCondition }
+            where: { centerBranchId: targetBranchId, ...assignmentDateCondition }
         })
-        : 0;
+        : await db.serviceAssignment.count({
+            where: { ...assignmentDateCondition, ...skipEnforcer }
+        });
 
     // Machine statuses in warehouse for this branch
-    const warehouseStats = targetBranchId
-        ? await db.warehouseMachine.groupBy({
-            by: ['status'],
-            where: { branchId: targetBranchId },
-            _count: { id: true }
-        })
-        : [];
+    const warehouseStats = await db.warehouseMachine.groupBy({
+        by: ['status'],
+        where: targetBranchId
+            ? { branchId: targetBranchId }
+            : {}, // groupBy is not enforced
+        _count: { id: true }
+    });
 
     const warehouseStatusMap = {};
     warehouseStats.forEach(s => { warehouseStatusMap[s.status] = s._count.id; });

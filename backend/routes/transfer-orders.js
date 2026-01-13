@@ -87,146 +87,6 @@ router.get('/pending-serials', authenticateToken, async (req, res) => {
     }
 });
 
-// Get single order
-router.get('/:id', authenticateToken, async (req, res) => {
-    try {
-        const order = await transferService.getTransferOrderById(req.params.id, req.user);
-        res.json(order);
-    } catch (error) {
-        console.error('Failed to fetch transfer order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في جلب الإذن' });
-    }
-});
-
-// Create transfer order
-router.post('/', authenticateToken, validateRequest(createOrderSchema), async (req, res) => {
-    try {
-        const order = await transferService.createTransferOrder(req.body, req.user);
-        res.status(201).json(order);
-    } catch (error) {
-        console.error('========== TRANSFER ORDER ERROR ==========', error.message);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في إنشاء الإذن' });
-    }
-});
-
-// Import items from Excel
-router.post('/import', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'ملف مطلوب' });
-        }
-        const result = await transferService.importTransferFromExcel(
-            req.file.buffer,
-            {
-                branchId: req.body.branchId,
-                type: req.body.type,
-                notes: req.body.notes
-            },
-            req.user
-        );
-        res.status(201).json(result);
-    } catch (error) {
-        console.error('Failed to import transfer order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في استيراد الإذن' });
-    }
-});
-
-// Download template
-router.get('/template/:type', authenticateToken, async (req, res) => {
-    try {
-        const { type } = req.params;
-
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Template');
-
-        if (type === 'SIM') {
-            worksheet.columns = [
-                { header: 'Serial Number', key: 'serialNumber', width: 25 },
-                { header: 'Type', key: 'type', width: 30 },
-                { header: 'Notes', key: 'notes', width: 30 }
-            ];
-        } else if (type === 'MACHINE') {
-            worksheet.columns = [
-                { header: 'Serial Number', key: 'serialNumber', width: 25 },
-                { header: 'Notes', key: 'notes', width: 30 }
-            ];
-        } else {
-            // Shared/Spare Parts
-            worksheet.columns = [
-                { header: 'Part Code', key: 'serialNumber', width: 25 },
-                { header: 'Quantity', key: 'quantity', width: 15 },
-                { header: 'Notes', key: 'notes', width: 30 }
-            ];
-        }
-
-        // Style header
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFE0E0E0' }
-        };
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename=transfer_order_${type.toLowerCase()}_import.xlsx`);
-
-        await workbook.xlsx.write(res);
-        res.end();
-    } catch (error) {
-        console.error('Failed to generate template:', error);
-        res.status(500).json({ error: 'فشل في إنشاء القالب' });
-    }
-});
-
-// Receive order (confirm receipt)
-router.post('/:id/receive', authenticateToken, validateRequest(receiveOrderSchema), async (req, res) => {
-    try {
-        const updated = await transferService.receiveTransferOrder(
-            req.params.id,
-            {
-                receivedBy: req.user.id,
-                receivedByName: req.user.displayName,
-                receivedItems: req.body.receivedItems
-            },
-            req.user
-        );
-        res.json(updated);
-    } catch (error) {
-        console.error('Failed to receive order:', error.message || error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في تأكيد الاستلام' });
-    }
-});
-
-// Reject order
-router.post('/:id/reject', authenticateToken, validateRequest(rejectOrderSchema), async (req, res) => {
-    try {
-        const updated = await transferService.rejectOrder(
-            req.params.id,
-            {
-                rejectionReason: req.body.rejectionReason,
-                receivedBy: req.user.id,
-                receivedByName: req.user.displayName
-            },
-            req.user
-        );
-        res.json(updated);
-    } catch (error) {
-        console.error('Reject order error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في رفض الإذن' });
-    }
-});
-
-// Cancel order
-router.post('/:id/cancel', authenticateToken, async (req, res) => {
-    try {
-        const result = await transferService.cancelOrder(req.params.id, req.user);
-        res.json(result);
-    } catch (error) {
-        console.error('Failed to cancel order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في إلغاء الإذن' });
-    }
-});
-
 // Get stats/reports
 router.get('/stats/summary', authenticateToken, async (req, res) => {
     try {
@@ -277,5 +137,149 @@ router.get('/export-data', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'فشل في تصدير أذونات الصرف' });
     }
 });
+
+// Download template
+router.get('/template/:type', authenticateToken, async (req, res) => {
+    try {
+        const { type } = req.params;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Template');
+
+        if (type === 'SIM') {
+            worksheet.columns = [
+                { header: 'Serial Number', key: 'serialNumber', width: 25 },
+                { header: 'Type', key: 'type', width: 30 },
+                { header: 'Notes', key: 'notes', width: 30 }
+            ];
+        } else if (type === 'MACHINE') {
+            worksheet.columns = [
+                { header: 'Serial Number', key: 'serialNumber', width: 25 },
+                { header: 'Notes', key: 'notes', width: 30 }
+            ];
+        } else {
+            // Shared/Spare Parts
+            worksheet.columns = [
+                { header: 'Part Code', key: 'serialNumber', width: 25 },
+                { header: 'Quantity', key: 'quantity', width: 15 },
+                { header: 'Notes', key: 'notes', width: 30 }
+            ];
+        }
+
+        // Style header
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
+        };
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=transfer_order_${type.toLowerCase()}_import.xlsx`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        console.error('Failed to generate template:', error);
+        res.status(500).json({ error: 'فشل في إنشاء القالب' });
+    }
+});
+
+// Get single order
+router.get('/:id', authenticateToken, async (req, res) => {
+    try {
+        const order = await transferService.getTransferOrderById(req.params.id, req.user);
+        res.json(order);
+    } catch (error) {
+        console.error('Failed to fetch transfer order:', error);
+        res.status(error.status || 500).json({ error: error.message || 'فشل في جلب الإذن' });
+    }
+});
+
+// Create transfer order
+router.post('/', authenticateToken, validateRequest(createOrderSchema), async (req, res) => {
+    try {
+        const order = await transferService.createTransferOrder(req.body, req.user);
+        res.status(201).json(order);
+    } catch (error) {
+        console.error('========== TRANSFER ORDER ERROR ==========', error.message);
+        res.status(error.status || 500).json({ error: error.message || 'فشل في إنشاء الإذن' });
+    }
+});
+
+// Import items from Excel
+router.post('/import', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'ملف مطلوب' });
+        }
+        const result = await transferService.importTransferFromExcel(
+            req.file.buffer,
+            {
+                branchId: req.body.branchId,
+                type: req.body.type,
+                notes: req.body.notes
+            },
+            req.user
+        );
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Failed to import transfer order:', error);
+        res.status(error.status || 500).json({ error: error.message || 'فشل في استيراد الإذن' });
+    }
+});
+
+
+
+// Receive order (confirm receipt)
+router.post('/:id/receive', authenticateToken, validateRequest(receiveOrderSchema), async (req, res) => {
+    try {
+        const updated = await transferService.receiveTransferOrder(
+            req.params.id,
+            {
+                receivedBy: req.user.id,
+                receivedByName: req.user.displayName,
+                receivedItems: req.body.receivedItems
+            },
+            req.user
+        );
+        res.json(updated);
+    } catch (error) {
+        console.error('Failed to receive order:', error.message || error);
+        res.status(error.status || 500).json({ error: error.message || 'فشل في تأكيد الاستلام' });
+    }
+});
+
+// Reject order
+router.post('/:id/reject', authenticateToken, validateRequest(rejectOrderSchema), async (req, res) => {
+    try {
+        const updated = await transferService.rejectOrder(
+            req.params.id,
+            {
+                rejectionReason: req.body.rejectionReason,
+                receivedBy: req.user.id,
+                receivedByName: req.user.displayName
+            },
+            req.user
+        );
+        res.json(updated);
+    } catch (error) {
+        console.error('Reject order error:', error);
+        res.status(error.status || 500).json({ error: error.message || 'فشل في رفض الإذن' });
+    }
+});
+
+// Cancel order
+router.post('/:id/cancel', authenticateToken, async (req, res) => {
+    try {
+        const result = await transferService.cancelOrder(req.params.id, req.user);
+        res.json(result);
+    } catch (error) {
+        console.error('Failed to cancel order:', error);
+        res.status(error.status || 500).json({ error: error.message || 'فشل في إلغاء الإذن' });
+    }
+});
+
+
 
 module.exports = router;

@@ -9,11 +9,17 @@ const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // GET monthly repair count for a machine
 router.get('/requests/machine/:serialNumber/monthly-count', authenticateToken, async (req, res) => {
     try {
+        // Get date from query or default to now
         const { serialNumber } = req.params;
+        const dateParam = req.query.date ? new Date(req.query.date) : new Date();
 
-        // Get start of current month
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        if (isNaN(dateParam.getTime())) {
+            return res.status(400).json({ error: 'Invalid date format' });
+        }
+
+        // Calculate start and end of the month
+        const startOfMonth = new Date(dateParam.getFullYear(), dateParam.getMonth(), 1);
+        const startOfNextMonth = new Date(dateParam.getFullYear(), dateParam.getMonth() + 1, 1);
 
         // Find the POS machine
         const machine = await db.posMachine.findUnique({
@@ -39,7 +45,8 @@ router.get('/requests/machine/:serialNumber/monthly-count', authenticateToken, a
                 posMachineId: machine.id,
                 status: 'Closed',
                 closingTimestamp: {
-                    gte: startOfMonth
+                    gte: startOfMonth,
+                    lt: startOfNextMonth
                 }
             }
         });

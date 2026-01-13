@@ -666,9 +666,22 @@ async function cancelOrder(id, user) {
 }
 
 async function getStatsSummary({ branchId, fromDate, toDate }, user) {
-    let where = {};
-    where = applyTransferBranchFilter(where, user, branchId);
-    if (fromDate || toDate) { where.createdAt = {}; if (fromDate) where.createdAt.gte = new Date(fromDate); if (toDate) where.createdAt.lte = new Date(toDate); }
+    // Correctly initialize queryArgs to match what applyTransferBranchFilter expects
+    let queryArgs = { where: {} };
+
+    // Apply branch filter first to the queryArgs
+    queryArgs = applyTransferBranchFilter(queryArgs, user, branchId);
+
+    // Now adding date filters to the where clause inside queryArgs
+    if (fromDate || toDate) {
+        queryArgs.where.createdAt = {};
+        if (fromDate) queryArgs.where.createdAt.gte = new Date(fromDate);
+        if (toDate) queryArgs.where.createdAt.lte = new Date(toDate);
+    }
+
+    const where = queryArgs.where;
+
+    // Use 'where' correctly in Prisma calls
     const [total, pending, received, partial, rejected] = await Promise.all([
         db.transferOrder.count({ where: { ...where, branchId: where.branchId || { not: null } } }),
         db.transferOrder.count({ where: { ...where, status: 'PENDING' } }),
@@ -677,9 +690,20 @@ async function getStatsSummary({ branchId, fromDate, toDate }, user) {
         db.transferOrder.count({ where: { ...where, status: 'REJECTED' } })
     ]);
 
-    const itemStats = await db.transferOrderItem.groupBy({ by: ['isReceived'], where: { transferOrder: where }, _count: true });
+    const itemStats = await db.transferOrderItem.groupBy({
+        by: ['isReceived'],
+        where: { transferOrder: where },
+        _count: true
+    });
 
-    return { orders: { total, pending, received, partial, rejected }, items: { total: itemStats.reduce((acc, s) => acc + s._count, 0), received: itemStats.find(s => s.isReceived)?._count || 0, pending: itemStats.find(s => !s.isReceived)?._count || 0 } };
+    return {
+        orders: { total, pending, received, partial, rejected },
+        items: {
+            total: itemStats.reduce((acc, s) => acc + s._count, 0),
+            received: itemStats.find(s => s.isReceived)?._count || 0,
+            pending: itemStats.find(s => !s.isReceived)?._count || 0
+        }
+    };
 }
 
 module.exports = { createTransferOrder, receiveTransferOrder, createBulkTransfer, listTransferOrders, getPendingOrders, getPendingSerials, getTransferOrderById, importTransferFromExcel, rejectOrder, cancelOrder, getStatsSummary };

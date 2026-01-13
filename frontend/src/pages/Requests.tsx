@@ -475,7 +475,7 @@ export default function Requests() {
             {/* Assign Technician Modal */}
             <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
                 <DialogContent className="p-0 border-0 flex flex-col max-h-[85vh] w-full max-w-md overflow-hidden" dir="rtl">
-                    <DialogHeader className="bg-slate-50 p-6 pb-4 border-b shrink-0 text-right">
+                    <DialogHeader className="bg-slate-50 p-6 pb-4 border-b shrink-0 text-right sm:text-right">
                         <DialogTitle>تعيين فني</DialogTitle>
                         <DialogDescription className="text-sm text-slate-500">
                             {selectedRequest && <>طلب: {selectedRequest.customer?.client_name}</>}

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCustomerData } from '../hooks/useCustomerData';
 import { useApiMutation } from '../hooks/useApiMutation';
 import { api } from '../api/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 // Sub-components
@@ -18,6 +18,7 @@ import AllMachinesTable from '../components/customers/AllMachinesTable';
 import AllSimCardsTable from '../components/customers/AllSimCardsTable';
 import CustomerModals from '../components/customers/CustomerModals';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import { openReplacementReport } from '../utils/reports/ReplacementReport';
 
 export default function Customers() {
     const { user } = useAuth();
@@ -94,11 +95,36 @@ export default function Customers() {
         });
     };
 
+    // Fetch available warehouse machines for exchange
+    const { data: warehouseMachines } = useQuery({
+        queryKey: ['available-warehouse-machines', user?.branchId],
+        queryFn: () => api.getAvailableWarehouseMachines(user?.branchId),
+        enabled: !!user,
+        staleTime: 5 * 60 * 1000 // 5 minutes
+    });
+
     // Mutations for modals
     const exchangeMutation = useApiMutation({
         mutationFn: (data: any) => api.exchangeWarehouseMachine(data),
         successMessage: 'تم استبدال الماكينة بنجاح',
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
+            const outgoingMachine = warehouseMachines?.find((m: any) => m.id === variables.outgoingMachineId);
+
+            if (outgoingMachine && modalData.selectedActionMachine) {
+                try {
+                    openReplacementReport({
+                        customer: modalData.targetCustomer,
+                        incomingMachine: modalData.selectedActionMachine,
+                        outgoingMachine: outgoingMachine,
+                        notes: variables.incomingNotes,
+                        status: variables.incomingStatus
+                    });
+                } catch (e) {
+                    console.error('Failed to open report', e);
+                    toast.error('فشل فتح التقرير');
+                }
+            }
+
             queryClient.invalidateQueries({ queryKey: ['customers'] });
             queryClient.invalidateQueries({ queryKey: ['warehouse-machines'] });
             setModals({ ...modals, exchange: false });
@@ -114,6 +140,8 @@ export default function Customers() {
             setModals({ ...modals, returnMachine: false });
         }
     });
+
+
 
     if (isLoading) {
         return (
@@ -201,7 +229,7 @@ export default function Customers() {
                 }}
                 data={{
                     ...modalData,
-                    warehouseMachines: [], // Should match what the modal needs
+                    warehouseMachines: warehouseMachines || [], // Should match what the modal needs
                     setSelectedReplacement: (id) => setModalData({ ...modalData, selectedReplacement: id }),
                     setActionNotes: (notes) => setModalData({ ...modalData, actionNotes: notes }),
                     setIncomingStatus: (status) => setModalData({ ...modalData, incomingStatus: status })

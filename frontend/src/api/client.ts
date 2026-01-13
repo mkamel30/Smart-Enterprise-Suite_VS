@@ -590,6 +590,11 @@ class ApiClient {
         });
     }
 
+    async getAvailableWarehouseMachines(branchId?: string): Promise<any[]> {
+        const query = branchId ? `?branchId=${branchId}` : '';
+        return this.request(`/warehouse-machines?status=NEW&status=STANDBY${branchId ? `&branchId=${branchId}` : ''}`);
+    }
+
     // Sales
     async createSale(data: any): Promise<any> {
         return this.request('/sales', {
@@ -886,23 +891,7 @@ class ApiClient {
     }
 
     // New Helpers for Transfer Orders
-    async getAvailableWarehouseMachines(branchId?: string): Promise<any[]> {
-        const query = branchId ? `&branchId=${branchId}` : '';
-        // Status: NEW = New machines, STANDBY = Repaired/Ready machines
-        return this.request(`/warehouse-machines?status=NEW&status=STANDBY${query}`).then(res => {
-            // Backend might filter by one status if passed multiple times in query string depending on array handling
-            // Let's rely on backend filtering logic or client side.
-            // Based on my review of warehouse-machines.js, it takes `status` query param.
-            // If I want multiple statues, I might need to update backend to support comma separated or array?
-            // Line 25 in warehouse-machines.js: whereClause.status = status;
-            // It doesn't seem to split by comma. 
-            // Let's fetch all and filter client side OR fetch twice?
-            // Or better: update backend to support comma separated (it supports it for CLIENT_REPAIR group).
-            // Actually, let's just fetch all machines for the branch and filter on client side for now to be safe, 
-            // OR send no status and filter client side.
-            return this.request(`/warehouse-machines?${query ? query.substring(1) : ''}`);
-        });
-    }
+
 
     async getAvailableWarehouseSims(branchId?: string): Promise<any[]> {
         const query = branchId ? `?branchId=${branchId}&status=ACTIVE` : '?status=ACTIVE';

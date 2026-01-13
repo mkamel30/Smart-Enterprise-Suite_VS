@@ -12,7 +12,7 @@ router.get('/machines/:serialNumber/history', authenticateToken, async (req, res
         const { serialNumber } = req.params;
 
         // 1. Get machine info
-        const machine = await db.posMachine.findUnique(ensureBranchWhere({
+        const machine = await db.posMachine.findFirst(ensureBranchWhere({
             where: { serialNumber },
             include: { customer: true }
         }, req));

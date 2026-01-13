@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Package, Download, Upload, ArrowDownCircle, ArrowUpCircle, History } from 'lucide-react';
+import { Package, Download, Upload, ArrowDownCircle, ArrowUpCircle, History, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 import { useAuth } from '../context/AuthContext';
@@ -20,10 +20,65 @@ export default function Warehouse() {
         search: ''
     });
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [showImportDialog, setShowImportDialog] = useState(false);
+    const [importData, setImportData] = useState<any[]>([]);
+
+    const handleConfirmImport = async () => {
+        // TODO: Implement import logic
+        setShowImportDialog(false);
+        setImportData([]);
+        toast.success('تمت الإضافة بنجاح (محاكاة)');
+    };
+
+    const handleDownloadTemplate = () => {
+        const ws = XLSX.utils.json_to_sheet([
+            {
+                'رقم القطعة': 'PART-001',
+                'اسم القطعة': 'مثال - شاشة',
+                'الموديلات المتوافقة': 'VX520, VX675',
+                'السعر': 150,
+                'الكمية': 10
+            }
+        ]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Template');
+        XLSX.writeFile(wb, 'inventory_import_template.xlsx');
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data = XLSX.utils.sheet_to_json(ws);
+                console.log('Imported Data:', data);
+                toast.success('تم قراءة الملف بنجاح. وظيفة الاستيراد قيد التطوير.');
+                // TODO: Implement actual import API call here using api.importInventory(data)
+            } catch (error) {
+                console.error('Error reading file:', error);
+                toast.error('حدث خطأ أثناء قراءة الملف');
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
     const { data: inventory, isLoading } = useQuery({
         queryKey: ['inventory', filterBranchId],
         queryFn: () => api.getInventory({ branchId: filterBranchId }),
         enabled: !!user
+    });
+
+    const { data: branches } = useQuery({
+        queryKey: ['branches'],
+        queryFn: api.getBranches,
+        enabled: isAdmin
     });
 
     const { data: movements, isLoading: isMovementsLoading } = useQuery({
@@ -35,8 +90,33 @@ export default function Warehouse() {
         enabled: !!user
     });
 
-    // Filter inventory (just use inventory directly if no filtering needed)
-    const filteredInventory = inventory || [];
+    // Model filter state
+    const [selectedModel, setSelectedModel] = useState('');
+
+    // Filter inventory logic
+    const filteredInventory = useMemo(() => {
+        let result = inventory || [];
+        if (selectedModel) {
+            result = result.filter((item: any) => {
+                const models = item.part?.compatibleModels || '';
+                return models.includes(selectedModel);
+            });
+        }
+        return result;
+    }, [inventory, selectedModel]);
+
+    // Get available models from inventory for filter dropdown (safely)
+    const availableModels = useMemo(() => {
+        if (!inventory) return [];
+        const modelsSet = new Set();
+        inventory.forEach((item: any) => {
+            const modelsStr = item.part?.compatibleModels;
+            if (modelsStr && typeof modelsStr === 'string') {
+                modelsStr.split(',').forEach(m => modelsSet.add(m.trim()));
+            }
+        });
+        return Array.from(modelsSet).sort();
+    }, [inventory]);
 
     const handleExportMovements = () => {
         if (!movements?.length) return;

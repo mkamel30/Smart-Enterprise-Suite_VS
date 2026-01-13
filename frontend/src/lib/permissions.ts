@@ -142,8 +142,8 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
     '/receipts': ALL_BRANCH_ROLES,
     '/payments': ALL_BRANCH_ROLES,
 
-    // Reports - everyone
-    '/reports': ALL_SYSTEM_ROLES,
+    // Reports - everyone except Admin Affairs
+    '/reports': ALL_SYSTEM_ROLES.filter(role => role !== ROLES.ADMIN_AFFAIRS),
 
     // Admin section - Management only
     '/technicians': [ROLES.SUPER_ADMIN],

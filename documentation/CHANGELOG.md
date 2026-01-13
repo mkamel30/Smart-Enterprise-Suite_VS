@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-01-13
+### Changed
+- **Admin Affairs Dashboard Redesign**:
+  - Implemented a specialized **3-column grid layout** (3x2) for the `ADMIN_AFFAIRS` role.
+  - Eliminated negative space by aligning 6 key widgets: Machines, SIMs, Pending Transfers, Low Stock Count, Request Status Pie Chart, and Low Stock List.
+  - Removed "Maintenance Performance Report" button and "Revenue/Activity" charts from this specific view to focus on inventory operations.
+- **Role-Based Access Control**:
+  - Restricted `ADMIN_AFFAIRS` role from accessing the `/reports` route (Reports Page).
+  - Updated `MENU_PERMISSIONS` to enforce this restriction at the application level.
+
+### Added
+- **Dashboard Widget Restoration**:
+  - Restored "Requests Status" (Pie Chart) for Admin Affairs within the new grid layout to ensure complete operational visibility.
+
 ## [3.1.0] - 2026-01-02
 ### Added
 - **🛡️ Transfer Order Validation System**: نظام حماية شامل لعمليات التحويل
