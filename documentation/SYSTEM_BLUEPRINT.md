@@ -1,7 +1,7 @@
 # 🏛️ SYSTEM BLUEPRINT (Core Logic)
 
-**Last Updated**: January 1, 2026  
-**Status**: ✅ COMPLETE (12/12 Phases) - Backend fully enhanced with security, validation, and structured logging
+**Last Updated**: January 13, 2026
+**Status**: ✅ COMPLETE (12/12 Phases) - Backend fully enhanced; Frontend Role-Based Customizations Active
 
 ## 1. البنية العامة للبناء المهني
 > For detailed technical specifications, refer to:
@@ -174,7 +174,7 @@
 |------|-----------|-------------|-----------|-----------|---------|-------|---------|
 | `SUPER_ADMIN` | ✅ All | ✅ All | ✅ All | ✅ All | ✅ All | ✅ All | 👁️ (Hidden) |
 | `MANAGEMENT` | 👁️ All | 👁️ All | 👁️ All | 👁️ All | ✅ All | ❌ | 👁️ (Hidden) |
-| `ADMIN_AFFAIRS` | ❌ | ❌ | ✅ New Machines/SIMs | ✅ To Branches | ✅ All | ❌ | ❌ |
+| `ADMIN_AFFAIRS` | ❌ | ❌ | ✅ New Machines/SIMs | ✅ To Branches | ❌ | ❌ | ❌ |
 | `CENTER_MANAGER` | ❌ | ✅ External | ✅ Spare Parts | ✅ To Branches | ✅ All | ❌ | ❌ |
 | `CENTER_TECH` | ❌ | ✅ External | 👁️ Spare Parts | ❌ | ✅ All | ❌ | ❌ |
 | `CS_SUPERVISOR` | ✅ Own | ✅ Own | ✅ Receive | 📤 To Center | ✅ All | ❌ | ✅ Own |
@@ -197,6 +197,7 @@ Operational buttons ("New Request", "Record Payment") are visible **ONLY** to fr
 - `TECHNICIAN`
 
 All other roles (`ADMIN_AFFAIRS`, `MANAGEMENT`, `CENTER_MANAGER`) see only relevant statistical widgets (Inventory, Alerts).
+**Admin Affairs Dashboard**: Features a tailored 3x2 grid layout (Machines, SIMs, Transfers, Needs, Status, Low Stock) removing negative space and hiding unrelated charts.
 
 ### Admin Affairs Workflow (المخزن الرئيسي)
 
