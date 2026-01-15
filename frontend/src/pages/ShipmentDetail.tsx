@@ -61,7 +61,7 @@ const ShipmentDetail: React.FC = () => {
                             العودة للقائمة
                         </Button>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
-                            شحنة رقم: <span className="text-blue-600" dir="ltr">{shipment.orderNumber}</span>
+                            شحنة رقم: <span className="text-primary" dir="ltr">{shipment.orderNumber}</span>
                         </h1>
                         <p className="text-gray-500 mt-1">القادمة من: <span className="font-medium text-black">{shipment.fromBranch.name}</span></p>
                     </div>
@@ -70,7 +70,7 @@ const ShipmentDetail: React.FC = () => {
                 {isPending ? (
                     <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <Box className="w-6 h-6 text-blue-600" />
+                            <Box className="w-6 h-6 text-primary" />
                             <div>
                                 <h3 className="font-bold text-blue-900">تأكيد الاستلام</h3>
                                 <p className="text-blue-700 text-sm">يرجى تأكيد استلام الشحنة لتمكين الفنيين من العمل عليها</p>
@@ -125,11 +125,11 @@ const ShipmentDetail: React.FC = () => {
                                             {
                                                 currentStatus === 'ASSIGNED' ? 'مُعين' :
                                                     currentStatus === 'RECEIVED_AT_CENTER' ? 'تم الاستلام' :
-                                                    currentStatus === 'UNDER_INSPECTION' ? 'تحت الفحص' :
-                                                        currentStatus === 'AWAITING_APPROVAL' ? 'بانتظار الموافقة' :
-                                                            currentStatus === 'IN_MAINTENANCE' ? 'قيد الصيانة' :
-                                                                currentStatus === 'REPAIRED' ? 'تم الإصلاح' :
-                                                                    currentStatus
+                                                        currentStatus === 'UNDER_INSPECTION' ? 'تحت الفحص' :
+                                                            currentStatus === 'AWAITING_APPROVAL' ? 'بانتظار الموافقة' :
+                                                                currentStatus === 'IN_MAINTENANCE' ? 'قيد الصيانة' :
+                                                                    currentStatus === 'REPAIRED' ? 'تم الإصلاح' :
+                                                                        currentStatus
                                             }
                                         </Badge>
                                     </div>

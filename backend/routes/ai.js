@@ -9,12 +9,20 @@ const { queryRawUnsafeSafe, executeRawUnsafeSafe } = require('../prisma/safeRaw'
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
-// The user already provided the key earlier, we will assume it is in the .env file now.
-// OPENROUTER_API_KEY=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
-const client = new OpenAI({
-    apiKey: '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',
-    baseURL: "https://openrouter.ai/api/v1",
-});
+// SECURITY: API key must be in .env file as OPENROUTER_API_KEY
+let client = null;
+try {
+    if (process.env.OPENROUTER_API_KEY) {
+        client = new OpenAI({
+            apiKey: process.env.OPENROUTER_API_KEY,
+            baseURL: "https://openrouter.ai/api/v1",
+        });
+    } else {
+        console.warn("[AI] OPENROUTER_API_KEY not found in environment variables. AI features will be disabled.");
+    }
+} catch (error) {
+    console.warn("[AI] Failed to initialize OpenAI client:", error.message);
+}
 
 // List of models to try in order
 // List of models to try in order
@@ -39,6 +47,9 @@ router.get('/ai/models', (req, res) => {
 
 router.post('/ai/query', authenticateToken, async (req, res) => {
     try {
+        if (!client) {
+            return res.json({ answer: "⚠️ AI features are not currently configured. Please set the OPENROUTER_API_KEY in the .env file." });
+        }
         const { prompt, model } = req.body;
         const centralRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'];
         const isCentral = req.user && centralRoles.includes(req.user.role);
@@ -108,7 +119,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
         // Try to get SQL from AI
         for (const m of SQL_MODELS) {
             try {
-                console.log(`ًں¤– Step 1: Generating SQL with ${m}...`);
+                // console.log(`ًں¤– Step 1: Generating SQL with ${m}...`);
                 const completion = await client.chat.completions.create({
                     model: m,
                     messages: [
@@ -119,7 +130,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
 
                 if (completion.choices && completion.choices[0]) {
                     let text = completion.choices[0].message.content.trim();
-                    console.log(`ًں¤– Raw output from ${m}:`, text);
+                    // console.log(`ًں¤– Raw output from ${m}:`, text);
 
                     // 1. Clean markdown
                     text = text.replace(/```sql/gi, '').replace(/```/g, '').trim();
@@ -138,7 +149,7 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
                             sqlQuery = sqlQuery.substring(0, semicolonIndex + 1);
                         }
 
-                        console.log(`âœ… Extracted SQL: ${sqlQuery}`);
+                        // console.log(`âœ… Extracted SQL: ${sqlQuery}`);
                         break;
                     }
                 }

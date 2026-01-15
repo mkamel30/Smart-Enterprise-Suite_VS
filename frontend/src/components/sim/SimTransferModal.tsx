@@ -34,7 +34,7 @@ export function SimTransferModal({
                 <div className="p-6 pb-4 shrink-0">
                     <h2 className="text-xl font-black mb-2 flex items-center gap-3 text-slate-900">
                         <div className="p-2 bg-blue-100 rounded-xl">
-                            <Send className="text-blue-600" size={24} />
+                            <Send className="text-primary" size={24} />
                         </div>
                         إنشاء إذن نقل شرائح
                     </h2>
@@ -74,7 +74,7 @@ export function SimTransferModal({
                     <button
                         onClick={onTransfer}
                         disabled={!transferTargetBranch || isPending}
-                        className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-95 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed"
+                        className="flex-1 bg-primary text-white py-3 rounded-xl font-black hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed"
                     >
                         {isPending ? 'جاري التحويل...' : 'تأكيد النقل'}
                     </button>

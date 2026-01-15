@@ -121,7 +121,7 @@ export default function BranchesSettings() {
         <div className="p-6 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h1 className="text-2xl font-black text-[#0A2472] flex items-center gap-2">
-                    <Building2 className="text-blue-600" />
+                    <Building2 className="text-primary" />
                     إدارة الفروع
                 </h1>
                 <button
@@ -141,7 +141,7 @@ export default function BranchesSettings() {
                     <p className="text-slate-600">لا توجد فروع</p>
                     <button
                         onClick={() => openModal()}
-                        className="mt-4 text-blue-600 hover:underline"
+                        className="mt-4 text-primary hover:underline"
                     >
                         إضافة فرع جديد
                     </button>
@@ -325,7 +325,7 @@ export default function BranchesSettings() {
                                 <button
                                     type="submit"
                                     disabled={createMutation.isPending || updateMutation.isPending}
-                                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 bg-primary text-white py-2 rounded-lg font-bold hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     <Check size={18} />
                                     {editingBranch ? 'تحديث' : 'إضافة'}

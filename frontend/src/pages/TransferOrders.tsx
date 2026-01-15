@@ -162,7 +162,7 @@ export default function TransferOrders() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <h1 className="text-3xl font-black text-foreground flex items-center gap-3">
                     <div className="p-2 bg-blue-500/10 rounded-2xl">
-                        <FileText className="text-blue-600" size={28} />
+                        <FileText className="text-primary" size={28} />
                     </div>
                     أذونات الصرف
                 </h1>
@@ -191,7 +191,7 @@ export default function TransferOrders() {
                 <button
                     onClick={() => setActiveTab('create')}
                     className={`px-6 py-2.5 rounded-2xl font-black text-sm flex items-center gap-2 transition-all ${activeTab === 'create'
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                         }`}
                 >

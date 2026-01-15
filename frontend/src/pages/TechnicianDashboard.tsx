@@ -307,7 +307,7 @@ export default function TechnicianDashboard() {
 
                                             {/* Step 1: Assigned -> Start Inspection */}
                                             {machine.status === 'ASSIGNED' && isMyTask && (
-                                                <Button size="sm" onClick={() => handleStartWork(machine)} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-bold">
+                                                <Button size="sm" onClick={() => handleStartWork(machine)} className="bg-primary hover:bg-primary/90 text-white shadow-sm font-bold">
                                                     <Play size={16} className="ml-2" />
                                                     بدء الفحص
                                                 </Button>

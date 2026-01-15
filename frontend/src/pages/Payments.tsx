@@ -20,6 +20,24 @@ export default function Payments() {
 
     // Use shared payment form hook
     const paymentForm = usePaymentForm();
+    const [receiptChecking, setReceiptChecking] = useState(false);
+    const [receiptExists, setReceiptExists] = useState(false);
+
+    const checkReceiptNumber = async (value: string) => {
+        if (!value.trim()) {
+            setReceiptExists(false);
+            return;
+        }
+        setReceiptChecking(true);
+        try {
+            const res = await api.checkReceipt(value);
+            setReceiptExists(res.exists);
+        } catch {
+            setReceiptExists(false);
+        } finally {
+            setReceiptChecking(false);
+        }
+    };
 
     const queryClient = useQueryClient();
 
@@ -265,6 +283,9 @@ export default function Payments() {
                             <PaymentFields
                                 data={paymentForm.data}
                                 onChange={paymentForm.updateField}
+                                onReceiptBlur={(val) => checkReceiptNumber(val)}
+                                receiptExists={receiptExists}
+                                receiptChecking={receiptChecking}
                             />
 
                             <div>
@@ -281,7 +302,7 @@ export default function Payments() {
                                 <button
                                     type="submit"
                                     className="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold disabled:bg-slate-300 disabled:cursor-not-allowed"
-                                    disabled={!paymentForm.isValid || !infoForm.reason}
+                                    disabled={!paymentForm.isValid || !infoForm.reason || receiptExists}
                                 >
                                     {createMutation.isPending ? 'جاري التسجيل...' : 'حفظ'}
                                 </button>

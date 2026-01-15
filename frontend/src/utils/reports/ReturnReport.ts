@@ -1,3 +1,5 @@
+import { getReportStyles, getReportSidebar, getReportScripts } from './SharedReportUtils';
+
 interface ReturnReportProps {
     customer: any;
     machine: any;
@@ -18,14 +20,14 @@ export function generateReturnReport(props: ReturnReportProps): string {
     <meta charset="UTF-8">
     <title>${filename}</title>
     <style>
+        ${getReportStyles()}
+
         @page { size: A5 landscape; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, Tahoma, sans-serif; font-size: 11pt; line-height: 1.5; background: #fff; padding: 20px; }
         .sheet { margin: 0 auto; width: 100%; max-width: 210mm; min-height: 148mm; border: 2px solid #333; padding: 15px; position: relative; }
-        .toolbar { position: fixed; top: 0; left: 0; right: 0; background: #333; padding: 10px; text-align: center; z-index: 1000; }
-        .btn { background: #fff; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 0 5px; font-weight: bold; }
-        .btn:hover { background: #f0f0f0; }
-        @media print { .toolbar { display: none !important; } .sheet { border: none; padding: 0; } }
+        
+        @media print { .sheet { border: none; padding: 0; } }
 
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
         .logo img { width: 80px; }
@@ -45,11 +47,9 @@ export function generateReturnReport(props: ReturnReportProps): string {
     </style>
 </head>
 <body>
-    <div class="toolbar">
-        <button onclick="window.print()" class="btn">طباعة</button>
-    </div>
+    ${getReportSidebar()}
 
-    <div class="sheet">
+    <div class="sheet" id="report-content">
         <div class="header">
             <div class="date">التاريخ: ${dateStr}</div>
             <div class="header-center">
@@ -102,6 +102,7 @@ export function generateReturnReport(props: ReturnReportProps): string {
             </div>
         </div>
     </div>
+    ${getReportScripts(filename)}
 </body>
 </html>
     `;

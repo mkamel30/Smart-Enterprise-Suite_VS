@@ -33,7 +33,22 @@ import {
 } from 'lucide-react';
 import { Menu } from 'lucide-react';
 
-const allNavItems = [
+interface BaseNavItem {
+    label: string;
+    icon: React.ElementType;
+}
+
+interface NavGroup extends BaseNavItem {
+    children: { path: string; label: string; icon: React.ElementType }[];
+}
+
+interface SingleNavItem extends BaseNavItem {
+    path: string;
+}
+
+type NavItem = NavGroup | SingleNavItem;
+
+const allNavItems: NavItem[] = [
     // 1. لوحات التحكم
     {
         label: 'لوحات التحكم',
@@ -108,9 +123,9 @@ export default function Layout({ children }: LayoutProps) {
 
     // Filter nav items based on user role
     const navItems = useMemo(() => {
-        const userRole = user?.role;
+        const userRole = user?.role || null;
         return allNavItems.map(item => {
-            if ('children' in item && item.children) {
+            if ('children' in item) {
                 const filteredChildren = item.children.filter(child =>
                     canAccessRoute(userRole, child.path)
                 );
@@ -121,7 +136,7 @@ export default function Layout({ children }: LayoutProps) {
                 return canAccessRoute(userRole, item.path) ? item : null;
             }
             return null;
-        }).filter((item): item is NonNullable<typeof item> => item !== null);
+        }).filter((item): item is NavItem => item !== null);
     }, [user?.role]);
 
     // State for expanded groups
@@ -155,7 +170,7 @@ export default function Layout({ children }: LayoutProps) {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     return (
-        <div className="flex h-screen bg-background text-foreground overflow-hidden pb-12" dir="rtl">
+        <div className="flex bg-background text-foreground overflow-hidden h-screen" dir="rtl">
             {/* Mobile Sidebar Overlay */}
             {isSidebarOpen && (
                 <div
@@ -166,27 +181,35 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Navigation Drawer (Sidebar) */}
             <aside className={`
-                fixed top-0 bottom-12 right-0 z-50 w-72 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 lg:bottom-0 lg:h-full lg:z-auto p-4
-                ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
+                fixed top-0 bottom-0 right-0 z-50 h-full
+                transition-all duration-300 ease-in-out
+                bg-card border-l border-border shadow-2xl
+                group
+                /* Mobile: Drawer style */
+                ${isSidebarOpen ? 'translate-x-0 w-72' : 'translate-x-full w-72'}
+                /* Desktop: Fixed Auto-Expanding */
+                lg:translate-x-0 lg:w-20 lg:hover:w-72
             `}>
-                <div className="h-full bg-card rounded-xl shadow-md flex flex-col overflow-hidden border border-border">
+                <div className="h-full flex flex-col overflow-hidden">
                     {/* Brand Molecule */}
-                    <div className="p-8 pb-4 flex flex-col items-center">
+                    <div className="p-4 flex flex-col items-center justify-center border-b border-border/50 min-h-[80px]">
                         <img
                             src="/logo.png"
                             alt="Brand Logo"
-                            className="h-12 w-auto object-contain transition-transform hover:scale-105"
+                            className="h-10 w-auto object-contain transition-transform group-hover:scale-110"
                         />
-                        <p className="mt-3 text-[10px] font-black text-primary/60 tracking-[0.2em] uppercase font-inter">SMART ENTERPRISE SUITE</p>
+                        <p className="mt-2 text-[10px] font-black text-primary/60 tracking-[0.2em] uppercase font-inter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute bottom-2">
+                            SMART ENTERPRISE
+                        </p>
                     </div>
 
                     {/* Navigation Items */}
-                    <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto custom-scroll min-h-0">
+                    <nav className="flex-1 px-2 py-2 space-y-2 overflow-y-auto custom-scroll overflow-x-hidden">
                         {navItems.map((item, index) => {
                             const Icon = item.icon;
 
                             // Handle M3 Group Item
-                            if (item.children) {
+                            if ('children' in item) {
                                 const isExpanded = expandedGroups.includes(item.label);
                                 const hasActiveChild = item.children.some(child => location.pathname === child.path);
 
@@ -194,18 +217,22 @@ export default function Layout({ children }: LayoutProps) {
                                     <div key={index} className="space-y-1">
                                         <button
                                             onClick={() => toggleGroup(item.label)}
-                                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${hasActiveChild
+                                            className={`w-full flex items-center px-3 py-3 rounded-xl transition-all relative overflow-hidden whitespace-nowrap ${hasActiveChild
                                                 ? 'bg-primary/5 text-primary'
                                                 : 'text-foreground/70 hover:bg-muted font-bold'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <Icon size={20} className={hasActiveChild ? 'text-primary' : 'opacity-50 group-hover:opacity-100'} />
-                                                <span className="text-sm font-bold">{item.label}</span>
+                                            <div className="flex items-center justify-center min-w-[24px]">
+                                                <Icon size={22} className={hasActiveChild ? 'text-primary' : 'opacity-50 group-hover/btn:opacity-100'} />
                                             </div>
-                                            <div className="flex items-center gap-2">
+
+                                            <span className="mr-3 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-1 text-right">
+                                                {item.label}
+                                            </span>
+
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-2">
                                                 {item.label === 'أذونات الصرف' && pendingOrdersCount > 0 && (
-                                                    <span className="bg-brand-orange text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-brand-orange/20 animate-pulse">
+                                                    <span className="bg-brand-orange text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg animate-pulse">
                                                         {pendingOrdersCount}
                                                     </span>
                                                 )}
@@ -213,9 +240,14 @@ export default function Layout({ children }: LayoutProps) {
                                             </div>
                                         </button>
 
-                                        {/* Submenu Drawer Items */}
-                                        <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                            <div className="pr-4 space-y-1 mt-1 mb-2">
+                                        {/* Submenu Drawer Items (Only visible when fully expanded) */}
+                                        <div className={`
+                                            overflow-hidden transition-all duration-300
+                                            ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                                            /* Hide submenu when sidebar is collapsed (desktop) unless hovered */
+                                            lg:max-h-0 lg:opacity-0 lg:group-hover:max-h-96 lg:group-hover:opacity-100
+                                        `}>
+                                            <div className="pr-10 pl-2 space-y-1 mt-1 mb-2 border-r-2 border-primary/10 mr-4">
                                                 {item.children.map((child) => {
                                                     const ChildIcon = child.icon;
                                                     const isChildActive = location.pathname === child.path;
@@ -226,17 +258,17 @@ export default function Layout({ children }: LayoutProps) {
                                                             key={child.path}
                                                             to={child.path}
                                                             onClick={() => setIsSidebarOpen(false)}
-                                                            className={`flex items-center justify-between px-4 py-2.5 rounded-lg text-xs font-bold transition-all ${isChildActive
+                                                            className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${isChildActive
                                                                 ? 'bg-primary/10 text-primary'
                                                                 : 'text-muted-foreground hover:bg-muted hover:text-primary'
                                                                 }`}
                                                         >
-                                                            <div className="flex items-center gap-3">
+                                                            <div className="flex items-center gap-2">
                                                                 <ChildIcon size={14} className="opacity-50" />
                                                                 <span>{child.label}</span>
                                                             </div>
                                                             {showChildBadge && (
-                                                                <span className="bg-brand-orange text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                                                                <span className="bg-brand-orange text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
                                                                     {pendingOrdersCount}
                                                                 </span>
                                                             )}
@@ -250,6 +282,9 @@ export default function Layout({ children }: LayoutProps) {
                             }
 
                             // Handle Single Item
+                            // Explicitly check for 'path' property to satisfy TypeScript
+                            if (!('path' in item)) return null;
+
                             const isActive = location.pathname === item.path;
                             const activeReqCount = (stats as any)?.requests ? ((stats as any).requests.open + (stats as any).requests.inProgress) : 0;
                             const showBadge = item.path === '/requests' && activeReqCount > 0;
@@ -259,30 +294,56 @@ export default function Layout({ children }: LayoutProps) {
                                     key={item.path}
                                     to={item.path}
                                     onClick={() => setIsSidebarOpen(false)}
-                                    className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition-all group ${isActive
+                                    className={`flex items-center px-3 py-3 rounded-xl transition-all relative overflow-hidden whitespace-nowrap ${isActive
                                         ? 'bg-primary text-white shadow-lg ring-1 ring-primary/20'
                                         : 'text-foreground/70 hover:bg-muted hover:text-primary'
                                         }`}
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <Icon size={20} className={isActive ? 'text-white' : 'opacity-50 group-hover:opacity-100'} />
-                                        <span className={`text-sm ${isActive ? 'font-black' : 'font-bold'}`}>{item.label}</span>
+                                    <div className="flex items-center justify-center min-w-[24px]">
+                                        <Icon size={22} className={isActive ? 'text-white' : 'opacity-50'} />
                                     </div>
+
+                                    <span className={`mr-3 text-sm ${isActive ? 'font-black' : 'font-bold'} opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-1`}>
+                                        {item.label}
+                                    </span>
+
                                     {showBadge && (
-                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-rose-500/50 ${isActive ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'}`}>
-                                            {activeReqCount}
-                                        </span>
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg ${isActive ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'}`}>
+                                                {activeReqCount}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {/* Mini Badge for Collapsed State */}
+                                    {showBadge && (
+                                        <div className="absolute top-2 left-2 w-2 h-2 bg-rose-500 rounded-full lg:group-hover:hidden animate-pulse ring-2 ring-card" />
                                     )}
                                 </Link>
                             );
                         })}
                     </nav>
 
+                    {/* Footer / User Info (Collapsed vs Expanded) */}
+                    <div className="p-4 border-t border-border/50 bg-muted/20">
+                        <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20">
+                                <UserCircle size={20} />
+                            </div>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <p className="text-[11px] font-black leading-tight truncate max-w-[140px]">{user?.displayName}</p>
+                                <p className="text-[9px] font-bold text-muted-foreground opacity-60 uppercase">{user?.role}</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </aside>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 relative transition-all duration-300">
+            <div className={`
+                flex-1 flex flex-col min-w-0 relative transition-all duration-300
+                /* Add right margin to accommodate fixed sidebar */
+                lg:mr-20
+            `}>
                 {/* Top App Bar (M3) */}
                 <header className="h-16 lg:h-14 flex items-center justify-between px-4 lg:px-8 shrink-0 relative z-30 bg-card border-b">
 
@@ -298,7 +359,7 @@ export default function Layout({ children }: LayoutProps) {
                         <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
                     </div>
 
-                    <div className="flex items-center gap-2 lg:gap-3">
+                    <div className="flex items-center gap-2 lg:gap-3 ml-auto lg:ml-0">
                         <NotificationBell />
 
                         {/* User Profile Dropdown */}
@@ -352,7 +413,7 @@ export default function Layout({ children }: LayoutProps) {
                 {/* Content Body with Zoom */}
                 <main className="flex-1 overflow-y-auto bg-transparent p-4 lg:p-8 lg:pt-4 custom-scroll relative">
                     <div
-                        className="max-w-400 mx-auto animate-fade-in pb-20 lg:pb-0"
+                        className="max-w-full mx-auto animate-fade-in pb-20 lg:pb-0"
                         style={{ zoom: zoomLevel / 100 }}
                     >
                         {children}

@@ -157,7 +157,7 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
             <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] sm:max-h-[90vh] h-auto overflow-hidden sm:max-w-xl" dir="rtl">
                 <DialogHeader className="bg-slate-50 p-6 pb-4 border-b shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-xl">
-                        <Upload className="text-blue-600" />
+                        <Upload className="text-primary" />
                         {title}
                     </DialogTitle>
                     <DialogDescription>
@@ -171,7 +171,7 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
                             <Upload className="mx-auto text-slate-300 mb-4" size={64} />
                             <h3 className="text-lg font-bold mb-2">اختر ملف Excel للاستيراد</h3>
                             <p className="text-slate-500 mb-6">سيتم عرض معاينة للبيانات قبل الاستيراد</p>
-                            <label className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 cursor-pointer transition-colors font-bold shadow-sm hover:translate-y-[-1px] active:translate-y-[1px]">
+                            <label className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 cursor-pointer transition-colors font-bold shadow-sm hover:translate-y-[-1px] active:translate-y-[1px]">
                                 <Upload size={20} />
                                 اختيار ملف
                                 <input
@@ -194,12 +194,12 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
                             {/* Total count badge */}
                             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
                                         <span className="text-white font-black text-lg">{totalRows}</span>
                                     </div>
                                     <div>
                                         <div className="font-bold text-blue-800">إجمالي السجلات للاستيراد</div>
-                                        <div className="text-sm text-blue-600">سيتم استيراد {totalRows} سجل من الملف</div>
+                                        <div className="text-sm text-primary">سيتم استيراد {totalRows} سجل من الملف</div>
                                     </div>
                                 </div>
                             </div>
@@ -239,7 +239,7 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
 
                     {step === 'importing' && (
                         <div className="text-center py-12">
-                            <Loader className="mx-auto animate-spin text-blue-600 mb-4" size={48} />
+                            <Loader className="mx-auto animate-spin text-primary mb-4" size={48} />
                             <h3 className="text-lg font-bold mb-4">جاري الاستيراد...</h3>
                             <Progress value={progress} className="max-w-md mx-auto h-3" />
                             <p className="text-slate-500 mt-2 font-mono font-bold">{progress}%</p>
@@ -273,7 +273,7 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
                                 )}
                                 {result.updated !== undefined && result.updated > 0 && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center transform hover:scale-105 transition-transform">
-                                        <div className="text-3xl font-black text-blue-600 mb-1">{result.updated}</div>
+                                        <div className="text-3xl font-black text-primary mb-1">{result.updated}</div>
                                         <div className="text-xs font-bold text-blue-700 uppercase tracking-wide">تم التحديث</div>
                                     </div>
                                 )}

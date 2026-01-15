@@ -51,16 +51,15 @@ export function SimExchangeModal({ isOpen, onClose, customer, currentSim, onSucc
         }
     }, [currentSim]);
 
-    // Check receipt number duplicate
+    // Check receipt number duplicate using API
     const checkReceiptNumber = async (value: string) => {
-        if (!value) {
+        if (!value.trim()) {
             setReceiptError('');
             return;
         }
         try {
-            const payments = await api.getPayments();
-            const exists = payments?.some((p: any) => p.receiptNumber === value);
-            setReceiptError(exists ? 'رقم الإيصال مستخدم من قبل' : '');
+            const res = await api.checkReceipt(value);
+            setReceiptError(res.exists ? 'رقم الإيصال مستخدم من قبل' : '');
         } catch {
             setReceiptError('');
         }
@@ -259,7 +258,7 @@ export function SimExchangeModal({ isOpen, onClose, customer, currentSim, onSucc
                     <Button
                         form="sim-exchange-form"
                         type="submit"
-                        disabled={isSubmitting || !selectedNewSim}
+                        disabled={isSubmitting || !selectedNewSim || !!receiptError}
                         className="flex-[2] h-12 bg-orange-600 hover:bg-orange-700 text-white gap-2 font-bold shadow-sm"
                     >
                         <RefreshCw size={18} />

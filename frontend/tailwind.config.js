@@ -25,12 +25,12 @@ export default {
                 background: "hsl(var(--background))",
                 foreground: "hsl(var(--foreground))",
                 primary: {
-                    DEFAULT: "hsl(var(--primary))",
-                    foreground: "hsl(var(--primary-foreground))",
+                    DEFAULT: '#0A2472',      // Deep Navy Blue (The Source of Truth)
+                    foreground: '#ffffff',
                 },
                 secondary: {
-                    DEFAULT: "hsl(var(--secondary))",
-                    foreground: "hsl(var(--secondary-foreground))",
+                    DEFAULT: '#ffffff',
+                    foreground: '#0A2472',
                 },
                 destructive: {
                     DEFAULT: "hsl(var(--destructive))",

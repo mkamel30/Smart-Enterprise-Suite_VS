@@ -49,6 +49,82 @@ const salesService = {
     },
 
     /**
+     * Get Dashboard Stats
+     */
+    async getDashboardStats(req) {
+        const branchFilter = getBranchFilter(req);
+        const today = new Date();
+
+        // 1. Active Installment Sales Stats
+        const activeSales = await db.machineSale.findMany(ensureBranchWhere({
+            where: {
+                ...branchFilter,
+                type: 'INSTALLMENT',
+                status: 'ONGOING'
+            },
+            select: {
+                customerId: true,
+                _count: {
+                    select: { installments: true }
+                }
+            }
+        }, req));
+
+        const customersCount = new Set(activeSales.map(s => s.customerId)).size;
+
+        // Calculate average months (total installments across active sales / number of sales)
+        const totalInstallmentsInActiveSales = activeSales.reduce((acc, s) => acc + s._count.installments, 0);
+        const avgMonths = activeSales.length > 0
+            ? Math.round(totalInstallmentsInActiveSales / activeSales.length)
+            : 0;
+
+        // 2. Financials (Total Unpaid Value)
+        // We get sum of all unpaid installments for active sales
+        const unpaidStats = await db.installment.aggregate({
+            _sum: { amount: true },
+            _count: { id: true },
+            where: ensureBranchWhere({
+                where: {
+                    ...branchFilter,
+                    isPaid: false,
+                    // Optional: link to active sales only? Usually unpaid installment implies debt exists.
+                    sale: { status: { not: 'COMPLETED' } }
+                }
+            }, req).where
+        });
+
+        // 3. Overdue Stats
+        const overdueInstallments = await db.installment.findMany(ensureBranchWhere({
+            where: {
+                ...branchFilter,
+                isPaid: false,
+                dueDate: { lt: today }
+            },
+            select: {
+                id: true,
+                amount: true,
+                sale: {
+                    select: { customerId: true }
+                }
+            }
+        }, req));
+
+        const overdueCount = overdueInstallments.length;
+        const overdueValue = overdueInstallments.reduce((sum, i) => sum + i.amount, 0);
+        const overdueCustomersCount = new Set(overdueInstallments.map(i => i.sale?.customerId)).size;
+
+        return {
+            customersCount,
+            totalInstallments: unpaidStats._count.id || 0, // Pending installments count
+            totalValue: unpaidStats._sum.amount || 0,
+            avgMonths,
+            overdueCount,
+            overdueValue,
+            overdueCustomersCount
+        };
+    },
+
+    /**
      * Create a new machine sale (CASH or INSTALLMENT)
      */
     async createSale(saleData, user, req) {
@@ -177,7 +253,21 @@ const salesService = {
                     machineId: machine.id,
                     serialNumber: machine.serialNumber,
                     action: 'SELL',
-                    details: `Sold to customer ${customer.client_name} (${type})`,
+                    details: JSON.stringify({
+                        sale: {
+                            id: sale.id,
+                            type: type,
+                            totalPrice: roundedTotalPrice,
+                            paidAmount: roundedPaidAmount
+                        },
+                        customer: {
+                            id: actualCustomerId,
+                            client_name: customer.client_name,
+                            bkcode: customer.bkcode
+                        },
+                        price: roundedTotalPrice,
+                        paymentMethod: paymentPlace || paymentMethod || 'ضامن'
+                    }),
                     performedBy
                 }
             });
@@ -226,9 +316,9 @@ const salesService = {
         if (!receiptNumber || receiptNumber.trim() === '') throw new AppError('يجب إدخال رقم الإيصال', 400);
 
         // 1. Receipt Duplication Checks
-        const existingPayment = await db.payment.findFirst({
+        const existingPayment = await db.payment.findFirst(ensureBranchWhere({
             where: { receiptNumber: receiptNumber.trim() }
-        });
+        }, req));
         if (existingPayment) throw new AppError('رقم الإيصال مستخدم من قبل', 400);
 
         const existingInstallment = await db.installment.findFirst(ensureBranchWhere({

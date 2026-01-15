@@ -49,7 +49,7 @@ export const getMachineColumns = (
                         });
                     }}
                     aria-label="Select all"
-                    className="border-slate-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 ml-2 h-5 w-5"
+                    className="border-slate-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary ml-2 h-5 w-5"
                 />
             ),
             cell: ({ row }: { row: any }) => {
@@ -63,7 +63,7 @@ export const getMachineColumns = (
                         onCheckedChange={(value) => row.toggleSelected(!!value)}
                         aria-label="Select row"
                         disabled={isPending || isMaintenance}
-                        className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 ml-2 h-5 w-5"
+                        className="border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary ml-2 h-5 w-5"
                     />
                 );
             },

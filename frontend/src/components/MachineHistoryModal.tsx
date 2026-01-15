@@ -31,7 +31,7 @@ export default function MachineHistoryModal({ serialNumber, onClose }: MachineHi
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'maintenance': return <Wrench size={20} className="text-blue-600" />;
+            case 'maintenance': return <Wrench size={20} className="text-primary" />;
             case 'payment': return <DollarSign size={20} className="text-green-600" />;
             case 'movement': return <ArrowRightLeft size={20} className="text-purple-600" />;
             default: return <Package size={20} className="text-gray-600" />;
@@ -77,7 +77,7 @@ export default function MachineHistoryModal({ serialNumber, onClose }: MachineHi
                         {history.stats && (
                             <div className="px-6 py-4 bg-gray-50 border-b grid grid-cols-3 gap-4">
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-600">{history.stats.totalMaintenance || 0}</div>
+                                    <div className="text-2xl font-bold text-primary">{history.stats.totalMaintenance || 0}</div>
                                     <div className="text-sm text-gray-600">طلبات صيانة</div>
                                 </div>
                                 <div className="text-center">
@@ -175,12 +175,41 @@ export default function MachineHistoryModal({ serialNumber, onClose }: MachineHi
                                                     {/* Movement Details */}
                                                     {item.type === 'movement' && (
                                                         <div className="space-y-1 text-sm">
-                                                            <p className="text-gray-700">{item.details.details}</p>
+                                                            <div className="text-gray-700">
+                                                                {(() => {
+                                                                    try {
+                                                                        const data = JSON.parse(item.details.details);
+                                                                        if (data.sale) {
+                                                                            return (
+                                                                                <div>
+                                                                                    <span className="font-bold text-emerald-600">بيع: </span>
+                                                                                    {data.customer?.client_name} ({data.sale.type === 'CASH' ? 'كاش' : 'قسط'})
+                                                                                    <div className="text-xs text-gray-500 mt-1">
+                                                                                        السعر: {data.sale.totalPrice} ج.م | المدفوع: {data.sale.paidAmount} ج.م
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        }
+                                                                        if (data.outgoingMachine) {
+                                                                            return (
+                                                                                <div>
+                                                                                    <span className="font-bold text-blue-600">استبدال: </span>
+                                                                                    مع العميل {data.customer?.client_name}
+                                                                                </div>
+                                                                            );
+                                                                        }
+                                                                        return item.details.details;
+                                                                    } catch (e) {
+                                                                        return item.details.details; // Fallback for old string logs
+                                                                    }
+                                                                })()}
+                                                            </div>
                                                             <p className="text-xs text-gray-500">
                                                                 بواسطة: {item.details.performedBy}
                                                             </p>
                                                         </div>
                                                     )}
+
                                                 </div>
                                             </div>
                                         </div>
@@ -193,7 +222,7 @@ export default function MachineHistoryModal({ serialNumber, onClose }: MachineHi
 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                    <Button onClick={onClose} className="w-full bg-blue-600 hover:bg-blue-700">
+                    <Button onClick={onClose} className="w-full bg-primary hover:bg-primary/90">
                         إغلاق
                     </Button>
                 </div>

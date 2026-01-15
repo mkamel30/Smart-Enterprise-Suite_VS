@@ -136,7 +136,7 @@ export default function ReceiveOrders() {
         <div className="px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-black text-[#0A2472] flex items-center gap-2">
+                <h1 className="text-2xl font-black text-primary flex items-center gap-2">
                     <Package className="text-green-600" />
                     استلام الأذونات
                 </h1>
@@ -156,8 +156,8 @@ export default function ReceiveOrders() {
                 <button
                     onClick={() => setActiveTab('pending')}
                     className={`px-6 py-3 rounded-xl font-black flex items-center gap-2 transition-all shadow-md ${activeTab === 'pending'
-                        ? 'bg-gradient-to-r from-[#F5C451] to-[#F5C451]/90 text-[#0A2472]'
-                        : 'bg-white text-[#0A2472] border-2 border-[#0A2472]/10 hover:bg-[#0A2472]/5'
+                        ? 'bg-gradient-to-r from-[#F5C451] to-[#F5C451]/90 text-primary'
+                        : 'bg-white text-primary border-2 border-primary/10 hover:bg-primary/5'
                         }`}
                 >
                     <Clock size={18} />
@@ -171,8 +171,8 @@ export default function ReceiveOrders() {
                 <button
                     onClick={() => setActiveTab('history')}
                     className={`px-6 py-3 rounded-xl font-black transition-all shadow-md ${activeTab === 'history'
-                        ? 'bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white'
-                        : 'bg-white text-[#0A2472] border-2 border-[#0A2472]/10 hover:bg-[#0A2472]/5'
+                        ? 'bg-gradient-to-r from-primary to-primary/90 text-white'
+                        : 'bg-white text-primary border-2 border-primary/10 hover:bg-primary/5'
                         }`}
                 >
                     السجل

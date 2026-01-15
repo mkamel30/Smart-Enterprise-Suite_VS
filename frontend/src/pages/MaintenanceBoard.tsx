@@ -150,7 +150,7 @@ export default function MaintenanceBoard() {
                                         <div className="flex gap-2">
                                             <Button
                                                 onClick={() => handleReceive(order)}
-                                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-xl"
+                                                className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold h-11 rounded-xl"
                                                 disabled={receiveMutation.isPending}
                                             >
                                                 استلام الكل
@@ -177,7 +177,7 @@ export default function MaintenanceBoard() {
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b flex justify-between items-center bg-slate-50/50">
                             <h2 className="text-xl font-bold flex items-center gap-3 text-slate-800">
-                                <Package className="text-blue-600" />
+                                <Package className="text-primary" />
                                 تفاصيل الإذن {selectedOrder.orderNumber}
                             </h2>
                             <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-slate-600">
@@ -231,7 +231,7 @@ export default function MaintenanceBoard() {
                             <Button
                                 onClick={() => handleReceive(selectedOrder)}
                                 disabled={receiveMutation.isPending}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-2xl shadow-lg shadow-blue-200"
+                                className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-2xl shadow-lg shadow-primary/20"
                             >
                                 <CheckCircle size={18} className="ml-2" />
                                 تأكيد الاستلام بالكامل

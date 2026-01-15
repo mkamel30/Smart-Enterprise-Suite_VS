@@ -45,7 +45,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
         });
 
         newSocket.on('connect', () => {
-            console.log('✅ Socket.IO connected:', newSocket.id);
+            // Connected to Socket.IO
             setIsConnected(true);
 
             // Join user's branch room

@@ -40,16 +40,15 @@ export function SimPurchaseModal({ isOpen, onClose, customer, onSuccess }: SimPu
         s.type?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Check receipt number duplicate
+    // Check receipt number duplicate using API
     const checkReceiptNumber = async (value: string) => {
-        if (!value) {
+        if (!value.trim()) {
             setReceiptError('');
             return;
         }
         try {
-            const payments = await api.getPayments();
-            const exists = payments?.some((p: any) => p.receiptNumber === value);
-            setReceiptError(exists ? 'رقم الإيصال مستخدم من قبل' : '');
+            const res = await api.checkReceipt(value);
+            setReceiptError(res.exists ? 'رقم الإيصال مستخدم من قبل' : '');
         } catch {
             setReceiptError('');
         }
@@ -185,7 +184,7 @@ export function SimPurchaseModal({ isOpen, onClose, customer, onSuccess }: SimPu
                     <Button
                         form="sim-purchase-form"
                         type="submit"
-                        disabled={isSubmitting || !selectedSim}
+                        disabled={isSubmitting || !selectedSim || !!receiptError}
                         className="flex-[2] h-12 bg-purple-600 hover:bg-purple-700 text-white gap-2 font-bold shadow-sm"
                     >
                         <Plus size={18} />

@@ -1127,7 +1127,7 @@ router.post('/repair-to-standby', authenticateToken, async (req, res) => {
 // GET Check for duplicate machines (diagnostic endpoint)
 router.get('/check-duplicates', authenticateToken, async (req, res) => {
     try {
-        console.log('ًں”چ Checking for duplicates...');
+        // console.log('ًں”چ Checking for duplicates...');
 
         const branchFilter = getBranchFilter(req);
 
@@ -1140,7 +1140,7 @@ router.get('/check-duplicates', authenticateToken, async (req, res) => {
                 originalOwnerId: true
             }
         });
-        console.log(`Found ${warehouseMachines.length} warehouse machines`);
+        // console.log(`Found ${warehouseMachines.length} warehouse machines`);
 
         // Get all customer machines (filtering by customer branch is harder here efficiently without join)
         // With prisma we can do:
@@ -1155,7 +1155,7 @@ router.get('/check-duplicates', authenticateToken, async (req, res) => {
                 customerId: true
             }
         });
-        console.log(`Found ${customerMachines.length} customer machines`);
+        // console.log(`Found ${customerMachines.length} customer machines`);
 
         // Find duplicates
         const customerSerials = new Set(customerMachines.map(m => m.serialNumber));
@@ -1217,7 +1217,7 @@ router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
             }
         });
 
-        console.log(`Found ${warehouseMachines.length} warehouse machines`);
+        // console.log(`Found ${warehouseMachines.length} warehouse machines`);
         console.log(`Found ${customerMachines.length} customer machines`);
 
         // Combine all machines with their source
@@ -1274,7 +1274,7 @@ router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
 // POST Clean up duplicate machines (remove from warehouse, keep with customer)
 router.post('/cleanup-duplicates', authenticateToken, async (req, res) => {
     try {
-        console.log('ًں§¹ Starting duplicate cleanup...');
+        // console.log('ًں§¹ Starting duplicate cleanup...');
         const branchFilter = getBranchFilter(req);
 
         // Get all warehouse machines

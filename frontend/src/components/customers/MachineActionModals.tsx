@@ -93,7 +93,7 @@ export function MachineExchangeModal({
                                                     <span className="text-xs text-slate-500">{m.model} - {m.manufacturer}</span>
                                                 </div>
                                                 {isOriginal && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">ماكينة العميل</span>}
-                                                {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600"></div>}
+                                                {isSelected && <div className="w-2 h-2 rounded-full bg-primary"></div>}
                                             </div>
                                         );
                                     })

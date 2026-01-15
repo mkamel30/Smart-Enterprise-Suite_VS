@@ -3,6 +3,7 @@
 /**
  * Helper to round money values (2 decimal places) - CRITICAL for financial precision
  * Prevents floating point errors like 3000 becoming 2999.98
+ * Using toFixed + parseFloat for reliable currency rounding
  * @param {number|string} value - The value to round
  * @returns {number} Rounded value to 2 decimal places
  */
@@ -10,7 +11,8 @@ const roundMoney = (value) => {
     if (value === null || value === undefined) return 0;
     const num = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(num)) return 0;
-    return Math.round((num + Number.EPSILON) * 100) / 100;
+    // Use toFixed for reliable rounding, then convert back to number
+    return parseFloat(num.toFixed(2));
 };
 
 /**

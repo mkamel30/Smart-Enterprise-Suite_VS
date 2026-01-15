@@ -223,3 +223,14 @@ export type PaymentStats = {
     _count: number;
   }[];
 };
+
+export type InstallmentStats = {
+  customersCount: number;
+  totalInstallments: number;
+  totalValue: number;
+  avgMonths: number;
+  overdueCount: number;
+  overdueValue: number;
+  overdueCustomersCount: number;
+};
+

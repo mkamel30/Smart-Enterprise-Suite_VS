@@ -225,7 +225,7 @@ const MaintenanceKanban: React.FC = () => {
                                                                     {machine.currentTechnicianId === user?.id ? (
                                                                         <Button
                                                                             size="sm"
-                                                                            className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-bold shadow-sm shadow-blue-200"
+                                                                            className="w-full mt-2 bg-primary hover:bg-primary/90 text-white h-8 text-xs font-bold shadow-sm shadow-primary/20"
                                                                             onClick={() => {
                                                                                 // Start Work -> Move to UNDER_INSPECTION immediately
                                                                                 setPropPending({

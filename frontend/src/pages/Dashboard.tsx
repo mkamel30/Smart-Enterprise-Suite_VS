@@ -151,7 +151,7 @@ export default function Dashboard() {
                     <StatCard
                         title="مخزون الماكينات"
                         value={stats?.inventory?.machines || 0}
-                        icon={<Monitor size={24} className="text-blue-600" />}
+                        icon={<Monitor size={24} className="text-primary" />}
                         subtext="ماكينة في المخزن"
                         color="blue"
                         onClick={() => navigate('/warehouse-machines')}
@@ -271,7 +271,7 @@ export default function Dashboard() {
                                 <StatCard
                                     title="قطع غيار مدفوعة"
                                     value={stats?.maintenanceStats?.paidCount || 0}
-                                    icon={<CheckCircle2 size={24} className="text-blue-600" />}
+                                    icon={<CheckCircle2 size={24} className="text-primary" />}
                                     subtext="تم تغييرها بمقابل"
                                     color="blue"
                                     className="animate-slide-up delay-100"
@@ -381,7 +381,7 @@ export default function Dashboard() {
                             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="font-bold text-lg text-slate-800">آخر العمليات</h3>
-                                    <button onClick={() => navigate('/payments')} className="text-sm text-blue-600 hover:underline">عرض الكل</button>
+                                    <button onClick={() => navigate('/payments')} className="text-sm text-primary hover:underline">عرض الكل</button>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
@@ -517,7 +517,7 @@ function StatCard({ title, value, icon, subtext, trend, color, onClick, classNam
         orange: 'bg-orange-50 text-orange-600',
         red: 'bg-rose-50 text-rose-600',
         purple: 'bg-violet-50 text-violet-600',
-        blue: 'bg-blue-50 text-blue-600',
+        blue: 'bg-primary/10 text-primary',
     };
 
     return (

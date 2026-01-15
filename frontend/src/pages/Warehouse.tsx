@@ -2,11 +2,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useState, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Package, Download, Upload, ArrowDownCircle, ArrowUpCircle, History, Search } from 'lucide-react';
+import { Package, Download, Upload, ArrowDownCircle, ArrowUpCircle, History, Search, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 import { useAuth } from '../context/AuthContext';
 import { Filter } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 
 export default function Warehouse() {
     const { user } = useAuth();
@@ -58,7 +64,7 @@ export default function Warehouse() {
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_json(ws);
-                console.log('Imported Data:', data);
+
                 toast.success('تم قراءة الملف بنجاح. وظيفة الاستيراد قيد التطوير.');
                 // TODO: Implement actual import API call here using api.importInventory(data)
             } catch (error) {
@@ -90,33 +96,61 @@ export default function Warehouse() {
         enabled: !!user
     });
 
+    const { data: machineParams } = useQuery({
+        queryKey: ['machine-parameters'],
+        queryFn: api.getMachineParameters
+    });
+
     // Model filter state
     const [selectedModel, setSelectedModel] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Filter inventory logic
     const filteredInventory = useMemo(() => {
         let result = inventory || [];
+
+        // Filter by Model
         if (selectedModel) {
             result = result.filter((item: any) => {
                 const models = item.part?.compatibleModels || '';
                 return models.includes(selectedModel);
             });
         }
-        return result;
-    }, [inventory, selectedModel]);
 
-    // Get available models from inventory for filter dropdown (safely)
+        // Filter by Search Query
+        if (searchQuery) {
+            const lowerQuery = searchQuery.toLowerCase();
+            result = result.filter((item: any) =>
+                item.name?.toLowerCase().includes(lowerQuery) ||
+                item.partNumber?.toLowerCase().includes(lowerQuery) ||
+                item.part?.compatibleModels?.toLowerCase().includes(lowerQuery)
+            );
+        }
+
+        return result;
+    }, [inventory, selectedModel, searchQuery]);
+
+    // Get available models from parameters AND inventory
     const availableModels = useMemo(() => {
-        if (!inventory) return [];
-        const modelsSet = new Set();
-        inventory.forEach((item: any) => {
-            const modelsStr = item.part?.compatibleModels;
-            if (modelsStr && typeof modelsStr === 'string') {
-                modelsStr.split(',').forEach(m => modelsSet.add(m.trim()));
-            }
-        });
+        const modelsSet = new Set<string>();
+
+        // 1. From Machine Parameters (The Master List)
+        if (machineParams) {
+            machineParams.forEach(p => modelsSet.add(p.model));
+        }
+
+        // 2. From Inventory (Legacy/Existing usage)
+        if (inventory) {
+            inventory.forEach((item: any) => {
+                const modelsStr = item.part?.compatibleModels;
+                if (modelsStr && typeof modelsStr === 'string') {
+                    modelsStr.split(',').forEach(m => modelsSet.add(m.trim()));
+                }
+            });
+        }
+
         return Array.from(modelsSet).sort();
-    }, [inventory]);
+    }, [inventory, machineParams]);
 
     const handleExportMovements = () => {
         if (!movements?.length) return;
@@ -165,20 +199,20 @@ export default function Warehouse() {
 
     return (
         <div className="px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
-            <h1 className="text-3xl font-black text-[#0A2472] mb-6">مخزن قطع الغيار</h1>
+            <h1 className="text-3xl font-black text-primary mb-6">مخزن قطع الغيار</h1>
 
             {/* Tabs */}
             <div className="flex gap-2 mb-6">
                 <button
                     onClick={() => setActiveTab('inventory')}
-                    className={`px-6 py-3 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'inventory' ? 'bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white shadow-lg' : 'bg-white border-2 border-[#0A2472]/10 text-[#0A2472] hover:bg-[#0A2472]/5'}`}
+                    className={`px-6 py-3 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'inventory' ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg' : 'bg-white border-2 border-primary/10 text-primary hover:bg-primary/5'}`}
                 >
                     <Package size={18} />
                     المخزون الحالي
                 </button>
                 <button
                     onClick={() => setActiveTab('movements')}
-                    className={`px-6 py-3 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'movements' ? 'bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white shadow-lg' : 'bg-white border-2 border-[#0A2472]/10 text-[#0A2472] hover:bg-[#0A2472]/5'}`}
+                    className={`px-6 py-3 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'movements' ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg' : 'bg-white border-2 border-primary/10 text-primary hover:bg-primary/5'}`}
                 >
                     <History size={18} />
                     سجل الحركة
@@ -186,11 +220,23 @@ export default function Warehouse() {
             </div>
 
             {activeTab === 'inventory' && (
-                <div className="bg-white rounded-2xl border-2 border-[#0A2472]/10 shadow-xl overflow-hidden">
+                <div className="bg-white rounded-2xl border-2 border-primary/10 shadow-xl overflow-hidden">
                     <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
                         <div className="flex items-center gap-4">
                             <div>
-                                <p className="font-bold text-[#0A2472]">إجمالي الأصناف: {filteredInventory?.length || 0}</p>
+                                <p className="font-bold text-primary">إجمالي الأصناف: {filteredInventory?.length || 0}</p>
+                            </div>
+
+                            {/* Search */}
+                            <div className="relative group mr-2">
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+                                <input
+                                    type="text"
+                                    placeholder="بحث (اسم، كود...)"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pr-10 pl-4 py-1.5 border-2 border-primary/10 rounded-lg outline-none focus:border-primary/30 font-bold text-sm w-40 transition-all focus:w-64"
+                                />
                             </div>
 
                             {/* Branch Filter */}
@@ -200,7 +246,7 @@ export default function Warehouse() {
                                     <select
                                         value={filterBranchId}
                                         onChange={(e) => setFilterBranchId(e.target.value)}
-                                        className="border-2 border-[#0A2472]/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-[#0A2472]/30"
+                                        className="border-2 border-primary/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-primary/30"
                                     >
                                         <option value="">كل الفروع</option>
                                         {(branches as any[])?.map((branch: any) => (
@@ -216,7 +262,7 @@ export default function Warehouse() {
                                 <select
                                     value={selectedModel}
                                     onChange={(e) => setSelectedModel(e.target.value)}
-                                    className="border-2 border-[#0A2472]/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-[#0A2472]/30"
+                                    className="border-2 border-primary/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-primary/30"
                                 >
                                     <option value="">(الكل)</option>
                                     {availableModels.map((model: any) => (
@@ -227,21 +273,37 @@ export default function Warehouse() {
                         </div>
 
                         <div className="flex gap-2">
-                            <button onClick={handleDownloadTemplate} className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm">
-                                <Download size={16} />تمبليت إضافة
-                            </button>
-                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm">
-                                <Upload size={16} />استيراد Excel
-                            </button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm outline-none">
+                                    <FileSpreadsheet size={16} className="text-emerald-600" />
+                                    عمليات Excel
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-white rounded-xl p-2 shadow-xl border-2 border-slate-100 min-w-[200px] z-[100]">
+                                    <DropdownMenuItem onClick={handleDownloadTemplate} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
+                                        <Download size={16} className="text-slate-500" />
+                                        تحميل قالب الاستيراد
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
+                                        <Upload size={16} className="text-blue-500" />
+                                        استيراد من Excel
+                                    </DropdownMenuItem>
+
+                                    <div className="h-px bg-slate-100 my-1" />
+
+                                    <DropdownMenuItem onClick={handleExport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-emerald-700">
+                                        <Download size={16} />
+                                        تصدير المخزون الحالي
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
                             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-                            <button onClick={handleExport} className="flex items-center gap-2 bg-[#80C646] text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-[#80C646]/20 transition-all font-bold text-sm">
-                                <Download size={16} />تصدير المخزون
-                            </button>
                         </div>
                     </div>
 
                     <table className="w-full">
-                        <thead className="bg-[#0A2472] text-white">
+                        <thead className="bg-primary text-white">
                             <tr>
                                 <th className="text-center p-4 font-black">الكود</th>
                                 <th className="text-center p-4 font-black">اسم القطعة</th>
@@ -261,17 +323,17 @@ export default function Warehouse() {
             )}
 
             {activeTab === 'movements' && (
-                <div className="bg-white rounded-2xl border-2 border-[#0A2472]/10 shadow-xl overflow-hidden">
+                <div className="bg-white rounded-2xl border-2 border-primary/10 shadow-xl overflow-hidden">
                     <div className="p-4 border-b bg-slate-50/50 flex flex-col md:flex-row justify-between gap-4">
                         <div className="flex flex-wrap items-center gap-4">
                             <div className="relative group">
-                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[#0A2472] transition-colors" />
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
                                 <input
                                     type="text"
                                     placeholder="بحث ذكي..."
                                     value={movementFilters.search}
                                     onChange={(e) => setMovementFilters(prev => ({ ...prev, search: e.target.value }))}
-                                    className="pr-10 pl-4 py-2 border-2 border-[#0A2472]/10 rounded-xl outline-none focus:border-[#0A2472]/30 font-bold text-sm w-full md:w-64"
+                                    className="pr-10 pl-4 py-2 border-2 border-primary/10 rounded-xl outline-none focus:border-primary/30 font-bold text-sm w-full md:w-64"
                                 />
                             </div>
 
@@ -281,21 +343,21 @@ export default function Warehouse() {
                                     type="date"
                                     value={movementFilters.startDate}
                                     onChange={(e) => setMovementFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                                    className="border-2 border-[#0A2472]/10 rounded-lg px-2 py-1 text-xs font-bold outline-none"
+                                    className="border-2 border-primary/10 rounded-lg px-2 py-1 text-xs font-bold outline-none"
                                 />
                                 <label className="text-xs font-bold text-slate-500">إلى:</label>
                                 <input
                                     type="date"
                                     value={movementFilters.endDate}
                                     onChange={(e) => setMovementFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                                    className="border-2 border-[#0A2472]/10 rounded-lg px-2 py-1 text-xs font-bold outline-none"
+                                    className="border-2 border-primary/10 rounded-lg px-2 py-1 text-xs font-bold outline-none"
                                 />
                             </div>
                         </div>
 
                         <button
                             onClick={handleExportMovements}
-                            className="bg-[#0A2472] text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-[#0A2472]/20 transition-all font-bold text-sm flex items-center justify-center gap-2"
+                            className="bg-primary text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-primary/20 transition-all font-bold text-sm flex items-center justify-center gap-2"
                         >
                             <Download size={16} />
                             تصدير السجل
@@ -307,7 +369,7 @@ export default function Warehouse() {
                             <div className="p-12 text-center text-slate-500 font-bold">جاري تحميل السجل...</div>
                         ) : (
                             <table className="w-full">
-                                <thead className="bg-[#0A2472] text-white">
+                                <thead className="bg-primary text-white">
                                     <tr>
                                         <th className="text-right p-4 font-black">النوع</th>
                                         <th className="text-right p-4 font-black">القطعة</th>
@@ -343,7 +405,7 @@ export default function Warehouse() {
                                                 <div className="text-sm font-medium text-slate-700">{mov.reason || '-'}</div>
                                                 {(mov.customerBkCode || mov.machineSerial) && (
                                                     <div className="flex flex-col mt-1 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-                                                        <div className="flex items-center gap-1.5 text-[11px] text-[#0A2472] font-black">
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-primary font-black">
                                                             <span>كود العميل: {mov.customerBkCode}</span>
                                                             <span className="text-slate-300">|</span>
                                                             <span>ماكينة: {mov.machineSerial}</span>

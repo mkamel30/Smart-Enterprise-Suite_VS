@@ -117,7 +117,10 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
                 orderNumber,
                 fromBranchId: sourceBranchId,
                 toBranchId: destinationBranchId,
-                branchId: destinationBranchId,
+                branchId: destinationBranchId, // Ownership moves to destination immediately? Or stays? 
+                // Usually ownership stays until received, but we need visibility. 
+                // Model says branchId points to owner. 
+                // Let's keep existing logic: branchId = destinationBranchId (as per existing code)
                 type,
                 createdBy: createdBy || user.displayName || user.name || 'system',
                 createdByName: createdByName || user.displayName || user.name || 'النظام',
@@ -133,6 +136,14 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
 
         // Update statuses within transaction - FREEZE items by setting IN_TRANSIT
         if (type === 'MACHINE' || type === 'MAINTENANCE') {
+            const machines = await tx.warehouseMachine.findMany({
+                where: {
+                    serialNumber: { in: serialsToTransfer },
+                    branchId: sourceBranchId
+                },
+                select: { id: true, serialNumber: true }
+            });
+
             await tx.warehouseMachine.updateMany({
                 where: {
                     serialNumber: { in: serialsToTransfer },
@@ -140,6 +151,24 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
                 },
                 data: { status: 'IN_TRANSIT' }
             });
+
+            // LOG TRANSFER OUT
+            for (const machine of machines) {
+                await movementService.logMachineMovement(tx, {
+                    machineId: machine.id,
+                    serialNumber: machine.serialNumber,
+                    action: 'TRANSFER_OUT',
+                    details: {
+                        reason: 'Transfer Order Created',
+                        orderNumber,
+                        toBranchId: destinationBranchId,
+                        toBranchName: created.toBranch?.name // Might not be available if not included, but we included it
+                    },
+                    performedBy: createdByName || user.displayName,
+                    branchId: sourceBranchId // Log belongs to source branch
+                });
+            }
+
         } else if (type === 'SIM') {
             await tx.warehouseSim.updateMany({
                 where: {
@@ -148,6 +177,7 @@ async function createTransferOrder({ fromBranchId, toBranchId, type, items, note
                 },
                 data: { status: 'IN_TRANSIT' }
             });
+            // TODO: Log SIM movement if needed
         }
 
         // Update maintenance requests if any

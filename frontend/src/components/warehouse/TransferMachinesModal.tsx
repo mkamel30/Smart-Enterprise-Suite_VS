@@ -51,7 +51,7 @@ export const TransferMachinesModal: React.FC<TransferMachinesModalProps> = ({
                 >
                     <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                            <Send className="text-blue-600" size={24} />
+                            <Send className="text-primary" size={24} />
                             تحويل الماكينات للفرع
                         </h2>
                         <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -62,7 +62,7 @@ export const TransferMachinesModal: React.FC<TransferMachinesModalProps> = ({
                     <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                         <div className="flex-1 overflow-y-auto p-6 space-y-6">
                             <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-center gap-3">
-                                <div className="p-2 bg-blue-600 text-white rounded-lg">
+                                <div className="p-2 bg-primary text-white rounded-lg">
                                     <ClipboardList size={20} />
                                 </div>
                                 <div>
@@ -104,7 +104,7 @@ export const TransferMachinesModal: React.FC<TransferMachinesModalProps> = ({
                         <div className="p-6 border-t bg-slate-50/50 shrink-0 flex gap-3">
                             <Button
                                 type="submit"
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 font-bold shadow-lg shadow-blue-500/20 transition-all font-bold"
+                                className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold shadow-lg shadow-primary/20 transition-all font-bold"
                                 disabled={isLoading || !targetBranchId}
                             >
                                 {isLoading ? 'جاري إنشاء الطلب...' : 'تأكيد إرسال التحويل'}

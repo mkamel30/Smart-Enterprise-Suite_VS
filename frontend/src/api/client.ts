@@ -641,6 +641,10 @@ class ApiClient {
         return this.request(`/dashboard${query}`);
     }
 
+    async getInstallmentStats(): Promise<any> {
+        return this.request('/sales/stats');
+    }
+
     // Executive Dashboard (High Management)
     async getExecutiveDashboard(params?: { startDate?: string; endDate?: string; branchId?: string }): Promise<any> {
         const query = new URLSearchParams();

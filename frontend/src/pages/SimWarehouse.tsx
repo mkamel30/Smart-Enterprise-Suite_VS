@@ -6,6 +6,12 @@ import { useAuth } from '../context/AuthContext';
 import { useApiMutation } from '../hooks/useApiMutation';
 import toast from 'react-hot-toast';
 import ImportModal from '../components/ImportModal';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 
 // Modular Components
 import { SimStatsCards } from '../components/sim/SimStatsCards';
@@ -210,7 +216,7 @@ export default function SimWarehouse() {
     return (
         <div className="px-4 lg:px-8 pt-4 pb-8 animate-fade-in bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
-                <h1 className="text-3xl font-black text-[#0A2472] flex items-center gap-3">
+                <h1 className="text-3xl font-black text-primary flex items-center gap-3">
                     <div className="p-2 bg-purple-500/10 rounded-2xl">
                         <Smartphone className="text-purple-600" size={28} />
                     </div>
@@ -221,7 +227,7 @@ export default function SimWarehouse() {
                     {selectedSims.size > 0 && isAffairs ? (
                         <button
                             onClick={() => setShowTransferModal(true)}
-                            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#6CE4F0] to-[#6CE4F0]/90 text-[#0A2472] rounded-xl font-black shadow-lg hover:opacity-90 transition-all active:scale-95"
+                            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#6CE4F0] to-[#6CE4F0]/90 text-primary rounded-xl font-black shadow-lg hover:opacity-90 transition-all active:scale-95"
                         >
                             <Plus size={18} />
                             <span>إنشاء إذن نقل ({selectedSims.size})</span>
@@ -236,27 +242,30 @@ export default function SimWarehouse() {
                                 <span className="hidden sm:inline">إضافة شريحة</span>
                                 <span className="sm:hidden">إضافة</span>
                             </button>
-                            <button
-                                onClick={handleDownloadTemplate}
-                                className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all"
-                            >
-                                <Download size={18} />
-                                <span className="hidden sm:inline">القالب</span>
-                            </button>
-                            <button
-                                onClick={() => setShowImportModal(true)}
-                                className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white rounded-xl font-bold hover:opacity-90 transition-all"
-                            >
-                                <Upload size={18} />
-                                <span className="hidden sm:inline">استيراد</span>
-                            </button>
-                            <button
-                                onClick={handleExport}
-                                className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20"
-                            >
-                                <FileSpreadsheet size={18} />
-                                <span className="hidden sm:inline">تصدير</span>
-                            </button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all outline-none">
+                                    <FileSpreadsheet size={18} className="text-emerald-600" />
+                                    <span className="hidden sm:inline">عمليات Excel</span>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-white rounded-xl p-2 shadow-xl border-2 border-slate-100 min-w-[200px] z-[100]">
+                                    <DropdownMenuItem onClick={handleDownloadTemplate} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
+                                        <Download size={16} className="text-slate-500" />
+                                        تحميل القالب
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem onClick={() => setShowImportModal(true)} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
+                                        <Upload size={16} className="text-blue-500" />
+                                        استيراد
+                                    </DropdownMenuItem>
+
+                                    <div className="h-px bg-slate-100 my-1" />
+
+                                    <DropdownMenuItem onClick={handleExport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-emerald-700">
+                                        <Download size={16} />
+                                        تصدير
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </>
                     )}
                 </div>

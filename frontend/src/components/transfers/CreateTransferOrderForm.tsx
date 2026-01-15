@@ -238,7 +238,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                             <button
                                 type="button"
                                 onClick={addItem}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                                className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90"
                             >
                                 <Plus size={18} />
                             </button>
@@ -373,7 +373,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                             type="button"
                             onClick={handleSubmit}
                             disabled={isPending || !selectedBranch || !selectedType || items.length === 0}
-                            className="w-full bg-blue-600 text-white py-3 rounded-xl font-black hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 transform active:scale-95 transition-all"
+                            className="w-full bg-primary text-white py-3 rounded-xl font-black hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2 transform active:scale-95 transition-all"
                         >
                             <Check size={20} />
                             {isPending ? 'جاري الإنشاء...' : 'إرسال الإذن'}

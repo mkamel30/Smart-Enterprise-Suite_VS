@@ -29,7 +29,7 @@ export const MachineImportExport: React.FC<MachineImportExportProps> = ({
                         عمليات Excel
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-xl p-2 shadow-xl border-slate-200">
+                <DropdownMenuContent align="end" className="bg-white rounded-xl p-2 shadow-xl border-slate-200 z-[100]">
                     <DropdownMenuItem
                         onClick={onDownloadTemplate}
                         className="rounded-lg gap-2 cursor-pointer py-2 focus:bg-emerald-50"

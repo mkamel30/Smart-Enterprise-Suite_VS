@@ -34,6 +34,14 @@ const recalculateSchema = z.object({
 });
 
 /**
+ * GET Dashboard Stats
+ */
+router.get('/stats', authenticateToken, asyncHandler(async (req, res) => {
+    const stats = await salesService.getDashboardStats(req);
+    res.json(stats);
+}));
+
+/**
  * GET All Sales
  */
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {

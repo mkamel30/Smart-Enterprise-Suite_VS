@@ -63,6 +63,15 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   }, [preferences?.fontSize]);
 
+  // Apply font family to CSS variable
+  useEffect(() => {
+    if (preferences?.fontFamily) {
+      document.documentElement.style.setProperty('--font-arabic', preferences.fontFamily);
+      // Also store in localStorage for immediate load on next visit to prevent FOUC (Flash of Unstyled Content)
+      localStorage.setItem('arabic-font', preferences.fontFamily);
+    }
+  }, [preferences?.fontFamily]);
+
   const fetchPreferences = async () => {
     const token = localStorage.getItem('token');
     if (!token) {

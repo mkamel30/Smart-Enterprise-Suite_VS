@@ -40,7 +40,7 @@ export const MachineRepairModal: React.FC<MachineRepairModalProps> = ({
                 >
                     <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                            <CheckCircle className="text-blue-600" size={24} />
+                            <CheckCircle className="text-primary" size={24} />
                             إصلاح وإرجاع للمخزن
                         </h2>
                         <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -60,7 +60,7 @@ export const MachineRepairModal: React.FC<MachineRepairModalProps> = ({
                             </div>
 
                             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3">
-                                <AlertCircle className="text-blue-600 shrink-0" size={20} />
+                                <AlertCircle className="text-primary shrink-0" size={20} />
                                 <p className="text-sm text-blue-800 italic">
                                     سيتم نقل هذه الماكينة من قسم التالف إلى قسم <strong>الاستبدال (STANDBY)</strong> لتكون جاهزة للصرف مرة أخرى.
                                 </p>
@@ -81,7 +81,7 @@ export const MachineRepairModal: React.FC<MachineRepairModalProps> = ({
                         <div className="p-6 border-t bg-slate-50/50 shrink-0 flex gap-3">
                             <Button
                                 type="submit"
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 font-bold shadow-lg shadow-blue-500/20 transition-all"
+                                className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold shadow-lg shadow-primary/20 transition-all"
                                 disabled={isLoading}
                             >
                                 {isLoading ? 'جاري الحفظ...' : 'تأكيد عملية الإصلاح'}

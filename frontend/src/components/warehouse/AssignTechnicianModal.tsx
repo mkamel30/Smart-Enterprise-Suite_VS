@@ -62,11 +62,11 @@ export function AssignTechnicianModal({ isOpen, onClose, machineId, serialNumber
                 <div className="flex justify-between items-center p-6 pb-4 shrink-0 border-b border-slate-50">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-blue-50 rounded-xl">
-                            <UserPlus className="text-blue-600" size={20} />
+                            <UserPlus className="text-primary" size={20} />
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-slate-800">تعيين فني صيانة</h2>
-                            <p className="text-slate-500 text-sm font-medium">للماكينة: <span className="font-mono text-blue-600">{serialNumber}</span></p>
+                            <p className="text-slate-500 text-sm font-medium">للماكينة: <span className="font-mono text-primary">{serialNumber}</span></p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
@@ -99,7 +99,7 @@ export function AssignTechnicianModal({ isOpen, onClose, machineId, serialNumber
                         <Button
                             type="submit"
                             disabled={isLoading || !selectedTechId}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 font-bold shadow-lg shadow-blue-200 transition-all"
+                            className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold shadow-lg shadow-primary/20 transition-all"
                         >
                             {isLoading ? 'جاري التعيين...' : 'تأكيد التعيين'}
                         </Button>

@@ -276,7 +276,7 @@ export default function Assignments() {
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleStartWork(assignment)}
-                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                    className="bg-primary hover:bg-primary/90"
                                                 >
                                                     <Play size={14} className="ml-1" />
                                                     بدء العمل

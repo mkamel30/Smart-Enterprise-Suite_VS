@@ -107,7 +107,7 @@ export default function AllMachinesTable({ customers, onCreateRequest, onExchang
                         </button>
                         <button
                             onClick={handleExport}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors shadow-sm"
+                            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 flex items-center gap-2 transition-colors shadow-sm"
                             title="تصدير كل الماكينات"
                         >
                             <Download size={18} />

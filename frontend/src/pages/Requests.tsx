@@ -212,7 +212,7 @@ export default function Requests() {
         const colors: Record<string, string> = {
             'Open': 'bg-[#F5C451]/20 text-[#F5C451] border-2 border-[#F5C451]/30',
             'Pending': 'bg-orange-500/20 text-orange-600 border-2 border-orange-500/30',
-            'In Progress': 'bg-[#6CE4F0]/20 text-[#0A2472] border-2 border-[#6CE4F0]/50',
+            'In Progress': 'bg-[#6CE4F0]/20 text-primary border-2 border-[#6CE4F0]/50',
             'Closed': 'bg-[#80C646]/20 text-[#80C646] border-2 border-[#80C646]/30',
         };
         return colors[status] || 'bg-slate-100 text-slate-800 border-2 border-slate-200';
@@ -236,10 +236,10 @@ export default function Requests() {
         <div className="px-4 lg:px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30" dir="rtl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div className="flex flex-wrap items-center gap-4">
-                    <h1 className="text-2xl lg:text-3xl font-black text-[#0A2472]">طلبات الصيانة</h1>
+                    <h1 className="text-2xl lg:text-3xl font-black text-primary">طلبات الصيانة</h1>
                     {isAdmin && (
-                        <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-[#0A2472]/10 px-4 py-2 shadow-sm hover:shadow-md transition-shadow">
-                            <Filter size={16} className="text-[#0A2472]/60" />
+                        <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-primary/10 px-4 py-2 shadow-sm hover:shadow-md transition-shadow">
+                            <Filter size={16} className="text-primary/60" />
                             <select
                                 value={filterBranchId}
                                 onChange={(e) => setFilterBranchId(e.target.value)}
@@ -254,25 +254,25 @@ export default function Requests() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="relative group">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0A2472] transition-colors" size={18} />
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
                         <input
                             type="text"
                             placeholder="بحث بـ (العميل، السيريال، الشكوى)..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-white border-2 border-[#0A2472]/10 rounded-xl pr-10 pl-4 py-2.5 outline-none focus:border-[#0A2472]/30 focus:shadow-lg focus:shadow-[#0A2472]/5 transition-all w-full md:w-[300px] text-sm font-bold"
+                            className="bg-white border-2 border-primary/10 rounded-xl pr-10 pl-4 py-2.5 outline-none focus:border-primary/30 focus:shadow-lg focus:shadow-primary/5 transition-all w-full md:w-[300px] text-sm font-bold"
                         />
                     </div>
                     <button
                         onClick={handleExport}
-                        className="flex items-center gap-2 bg-white text-[#0A2472] border-2 border-[#0A2472]/10 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm"
+                        className="flex items-center gap-2 bg-white text-primary border-2 border-primary/10 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm"
                     >
                         <FileDown size={18} />
                         تصدير
                     </button>
                     <button
                         onClick={() => setShowCreateForm(true)}
-                        className="flex items-center gap-2 bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-[#0A2472]/20 transition-all font-black text-sm active:scale-95 shadow-md"
+                        className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary/90 text-white px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-primary/20 transition-all font-black text-sm active:scale-95 shadow-md"
                     >
                         <Plus size={20} strokeWidth={3} />
                         طلب جديد
@@ -288,14 +288,14 @@ export default function Requests() {
                     const Icon = period === 'day' ? Clock : period === 'week' ? Calendar : CheckCheck;
 
                     return (
-                        <div key={period} className="bg-white rounded-2xl p-4 border-2 border-[#0A2472]/10 shadow-sm flex items-center justify-between">
+                        <div key={period} className="bg-white rounded-2xl p-4 border-2 border-primary/10 shadow-sm flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className={`p-3 rounded-xl ${period === 'day' ? 'bg-amber-50 text-amber-600' : period === 'week' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
                                     <Icon size={24} />
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-black text-slate-500">{periodLabel}</h3>
-                                    <p className="text-xl font-black text-[#0A2472]">{periodStats.total}</p>
+                                    <p className="text-xl font-black text-primary">{periodStats.total}</p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
@@ -321,11 +321,11 @@ export default function Requests() {
             <div className="flex gap-2 mb-6">
                 <button
                     onClick={() => setActiveTab('open')}
-                    className={`px-6 py-3 rounded-xl font-black transition-all flex items-center gap-2 ${activeTab === 'open' ? 'bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white shadow-lg' : 'bg-white border-2 border-[#0A2472]/10 text-[#0A2472] hover:bg-[#0A2472]/5'}`}
+                    className={`px-6 py-3 rounded-xl font-black transition-all flex items-center gap-2 ${activeTab === 'open' ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg' : 'bg-white border-2 border-primary/10 text-primary hover:bg-primary/5'}`}
                 >
                     <Clock size={18} />
                     الطلبات المفتوحة
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'open' ? 'bg-white/20' : 'bg-[#0A2472]/10'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'open' ? 'bg-white/20' : 'bg-primary/10'}`}>
                         {requests?.filter((r: any) => r.status !== 'Closed').length || 0}
                     </span>
                 </button>
@@ -341,16 +341,16 @@ export default function Requests() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-2xl border-2 border-[#0A2472]/10 shadow-xl shadow-[#0A2472]/5 overflow-hidden">
-                <div className="p-4 border-b border-[#0A2472]/10 bg-gradient-to-r from-[#0A2472]/5 to-transparent">
-                    <p className="text-[#0A2472] font-black">
+            <div className="bg-white rounded-2xl border-2 border-primary/10 shadow-xl shadow-primary/5 overflow-hidden">
+                <div className="p-4 border-b border-primary/10 bg-gradient-to-r from-primary/5 to-transparent">
+                    <p className="text-primary font-black">
                         {activeTab === 'open' ? 'الطلبات المفتوحة' : 'الطلبات المغلقة'}: {requests?.filter((r: any) => activeTab === 'open' ? r.status !== 'Closed' : r.status === 'Closed').length || 0}
                     </p>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full whitespace-nowrap">
-                        <thead className="bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white">
+                        <thead className="bg-gradient-to-r from-primary to-primary/90 text-white">
                             <tr>
                                 <th className="text-center p-4 font-black">العميل / الكود</th>
                                 <th className="text-center p-4 font-black">الماكينة</th>
@@ -363,14 +363,14 @@ export default function Requests() {
                         </thead>
                         <tbody>
                             {requests?.filter((r: any) => activeTab === 'open' ? r.status !== 'Closed' : r.status === 'Closed').map((request: any) => (
-                                <tr key={request.id} className="border-t border-slate-100 hover:bg-[#0A2472]/5 transition-colors">
+                                <tr key={request.id} className="border-t border-slate-100 hover:bg-primary/5 transition-colors">
                                     <td className="p-4 text-center">
                                         <div className="flex flex-col items-center">
-                                            <span className="font-bold text-sm text-[#0A2472]">{request.customer?.client_name || '-'}</span>
+                                            <span className="font-bold text-sm text-primary">{request.customer?.client_name || '-'}</span>
                                             <span className="text-[10px] text-slate-400 font-mono mt-0.5">{request.customer?.bkcode || '-'}</span>
                                         </div>
                                     </td>
-                                    <td className="p-4 font-mono font-medium text-[#0A2472] text-center">{request.posMachine?.serialNumber || '-'}</td>
+                                    <td className="p-4 font-mono font-medium text-primary text-center">{request.posMachine?.serialNumber || '-'}</td>
                                     <td className="p-4 max-w-xs truncate text-center">{request.complaint || '-'}</td>
                                     <td className="p-4 text-center">
                                         <span className={`px-3 py-1.5 rounded-xl text-sm font-black ${getStatusBadge(request.status)}`}>
@@ -442,7 +442,7 @@ export default function Requests() {
                                 <tr>
                                     <td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-slate-500">
                                         <div className="flex items-center justify-center gap-2">
-                                            <div className="w-5 h-5 border-2 border-[#0A2472] border-t-transparent rounded-full animate-spin"></div>
+                                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                                             جاري التحميل...
                                         </div>
                                     </td>

@@ -57,8 +57,8 @@ export default function NotificationBell() {
         if (!socket) return;
 
         const handleNewNotification = (notification: any) => {
-            console.log('🔔 New notification received:', notification);
-            
+
+
             // Play sound if enabled
             if (preferences?.notificationSound && audioRef.current) {
                 audioRef.current.play().catch(err => console.log('Sound play failed:', err));

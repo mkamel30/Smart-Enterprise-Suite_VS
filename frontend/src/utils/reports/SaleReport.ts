@@ -1,3 +1,5 @@
+import { getReportStyles, getReportSidebar, getReportScripts } from './SharedReportUtils';
+
 interface SaleReportProps {
     sale: any;
     installments: any[];
@@ -17,14 +19,14 @@ export function generateSaleReport(props: SaleReportProps): string {
     <meta charset="UTF-8">
     <title>${filename}</title>
     <style>
+        ${getReportStyles()}
+        
         @page { size: A4; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, Tahoma, sans-serif; font-size: 10pt; line-height: 1.4; background: #fff; }
         .sheet { margin: 0 auto; width: 210mm; min-height: 297mm; padding: 10mm; position: relative; }
-        .toolbar { position: fixed; top: 0; left: 0; right: 0; background: #333; padding: 10px; text-align: center; z-index: 1000; }
-        .btn { background: #fff; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 0 5px; font-weight: bold; }
-        .btn:hover { background: #f0f0f0; }
-        @media print { .toolbar { display: none !important; } .sheet { width: 100%; margin: 0; padding: 0.5cm; } }
+        
+        @media print { .sheet { width: 100%; margin: 0; padding: 0.5cm; } }
         
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a237e; padding-bottom: 8px; margin-bottom: 20px; }
         .logo img { width: 120px; }
@@ -49,11 +51,9 @@ export function generateSaleReport(props: SaleReportProps): string {
     </style>
 </head>
 <body>
-    <div class="toolbar">
-        <button onclick="window.print()" class="btn">طباعة</button>
-    </div>
+    ${getReportSidebar()}
 
-    <div class="sheet">
+    <div class="sheet" id="report-content">
         <div class="header">
             <div class="header-info">
                 <div>التاريخ: ${dateStr}</div>
@@ -169,6 +169,7 @@ export function generateSaleReport(props: SaleReportProps): string {
             </div>
         </div>
     </div>
+    ${getReportScripts(filename)}
 </body>
 </html>
     `;

@@ -41,6 +41,7 @@ export default function MachineWarehouse() {
     const [activeTab, setActiveTab] = useState<'NEW' | 'STANDBY' | 'DEFECTIVE' | 'CLIENT_REPAIR' | 'LOGS' | 'WORKFLOW'>('NEW');
     const [filterBranchId, setFilterBranchId] = useState('');
     const [selectedMachines, setSelectedMachines] = useState<string[]>([]);
+    const [logSearchTerm, setLogSearchTerm] = useState('');
 
     // Modal visibility handlers
     const [modals, setModals] = useState({
@@ -134,7 +135,7 @@ export default function MachineWarehouse() {
                 });
             } else if (res) {
                 // Sale succeeded but without full data for report
-                console.log('Sale completed but report data incomplete:', res);
+                // console.log('Sale completed but report data incomplete:', res);
             }
         }
     });
@@ -167,7 +168,7 @@ export default function MachineWarehouse() {
 
     // Tab Configuration
     const tabs = [
-        { id: 'NEW', label: 'ماكينات جديدة', icon: <Monitor size={18} />, color: 'text-blue-600', border: 'bg-blue-600', badge: 'bg-blue-100 text-blue-700' },
+        { id: 'NEW', label: 'ماكينات جديدة', icon: <Monitor size={18} />, color: 'text-primary', border: 'bg-primary', badge: 'bg-primary/10 text-primary' },
         { id: 'STANDBY', label: 'ماكينات استبدال', icon: <RotateCcw size={18} />, color: 'text-emerald-600', border: 'bg-emerald-600', badge: 'bg-emerald-100 text-emerald-700' },
         { id: 'DEFECTIVE', label: 'ماكينات تالفة', icon: <AlertTriangle size={18} />, color: 'text-red-600', border: 'bg-red-600', badge: 'bg-red-100 text-red-700' },
         { id: 'CLIENT_REPAIR', label: 'صيانة عملاء', icon: <Wrench size={18} />, color: 'text-amber-600', border: 'bg-amber-600', badge: 'bg-amber-100 text-amber-700' },
@@ -282,7 +283,7 @@ export default function MachineWarehouse() {
                             <Button
                                 onClick={() => setModals(prev => ({ ...prev, transfer: true }))}
                                 disabled={selectedMachines.length === 0}
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2 font-bold shadow-sm shadow-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed gap-2 whitespace-nowrap h-10"
+                                className="bg-primary hover:bg-primary/90 text-white rounded-xl px-4 py-2 font-bold shadow-sm shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed gap-2 whitespace-nowrap h-10"
                             >
                                 تحويل {selectedMachines.length > 0 && `(${selectedMachines.length})`}
                             </Button>
@@ -301,6 +302,8 @@ export default function MachineWarehouse() {
                             openReturnReport={openReturnReport}
                             openSaleReport={openSaleReport}
                             branches={(branches as any) || []}
+                            searchTerm={logSearchTerm}
+                            onSearchChange={setLogSearchTerm}
                         />
                     ) : (
                         <DataTable

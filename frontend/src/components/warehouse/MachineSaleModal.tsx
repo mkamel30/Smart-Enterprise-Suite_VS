@@ -58,7 +58,7 @@ export const MachineSaleModal: React.FC<MachineSaleModalProps> = ({
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            console.log('🔍 LIVE SEARCH ACTIVE - Searching for:', clientSearch);
+
             setDebouncedSearch(clientSearch);
         }, 300); // 300ms debounce
 
@@ -68,14 +68,14 @@ export const MachineSaleModal: React.FC<MachineSaleModalProps> = ({
     const { data: searchResults, isLoading: isSearching } = useQuery({
         queryKey: ['customer-search', debouncedSearch],
         queryFn: () => {
-            console.log('🌐 API Call - Searching for:', debouncedSearch);
+
             return api.getCustomersLite(debouncedSearch);
         },
         enabled: debouncedSearch.length > 0 && !selectedClient,
         staleTime: 30000 // Cache for 30 seconds
     });
 
-    console.log('📊 Search Results:', searchResults ? searchResults.length : 0, 'results for:', debouncedSearch);
+
 
     const filteredClients = searchResults || [];
 
@@ -98,13 +98,13 @@ export const MachineSaleModal: React.FC<MachineSaleModalProps> = ({
 
         onSubmit({
             type: saleForm.type,
-            totalPrice: Math.round((parseFloat(String(saleForm.totalPrice)) + Number.EPSILON) * 100) / 100,
+            totalPrice: Math.round(parseFloat(String(saleForm.totalPrice)) * 100) / 100,
             installmentCount: saleForm.installmentCount,
             notes: saleForm.notes,
             customerId: selectedClient.bkcode,
             serialNumber: selectedMachine.serialNumber,
             branchId,
-            paidAmount: Math.round((parseFloat(String(paymentForm.data.amount)) + Number.EPSILON) * 100) / 100,
+            paidAmount: Math.round(parseFloat(String(paymentForm.data.amount)) * 100) / 100,
             receiptNumber: paymentForm.data.receiptNumber,
             paymentMethod: paymentForm.data.paymentPlace,
             paymentPlace: paymentForm.data.paymentPlace,
