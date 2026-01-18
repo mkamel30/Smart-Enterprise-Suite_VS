@@ -16,6 +16,7 @@ import { RequestApprovalModal } from '../components/RequestApprovalModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { translateStatus } from '../lib/translations';
+import PageHeader from '../components/PageHeader';
 
 export default function Requests() {
     const location = useLocation();
@@ -232,53 +233,63 @@ export default function Requests() {
 
     // Note: Removed early return on isLoading to prevent search input from losing focus
 
-    return (
-        <div className="px-4 lg:px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30" dir="rtl">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <div className="flex flex-wrap items-center gap-4">
-                    <h1 className="text-2xl lg:text-3xl font-black text-primary">طلبات الصيانة</h1>
-                    {isAdmin && (
-                        <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-primary/10 px-4 py-2 shadow-sm hover:shadow-md transition-shadow">
-                            <Filter size={16} className="text-primary/60" />
-                            <select
-                                value={filterBranchId}
-                                onChange={(e) => setFilterBranchId(e.target.value)}
-                                className="bg-transparent outline-none text-sm text-slate-700 font-bold min-w-[120px]">
-                                <option value="">كل الفروع</option>
-                                {(branches as any[])?.map((branch: any) => (
-                                    <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+
+    const filterElement = (
+        <div className="flex flex-wrap items-center gap-4">
+            {isAdmin && (
+                <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-primary/10 px-4 py-2 shadow-sm hover:shadow-md transition-shadow">
+                    <Filter size={16} className="text-primary/60" />
+                    <select
+                        value={filterBranchId}
+                        onChange={(e) => setFilterBranchId(e.target.value)}
+                        className="bg-transparent outline-none text-sm text-slate-700 font-bold min-w-[120px]">
+                        <option value="">كل الفروع</option>
+                        {(branches as any[])?.map((branch: any) => (
+                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                        ))}
+                    </select>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="relative group">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
-                        <input
-                            type="text"
-                            placeholder="بحث بـ (العميل، السيريال، الشكوى)..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-white border-2 border-primary/10 rounded-xl pr-10 pl-4 py-2.5 outline-none focus:border-primary/30 focus:shadow-lg focus:shadow-primary/5 transition-all w-full md:w-[300px] text-sm font-bold"
-                        />
-                    </div>
-                    <button
-                        onClick={handleExport}
-                        className="flex items-center gap-2 bg-white text-primary border-2 border-primary/10 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm"
-                    >
-                        <FileDown size={18} />
-                        تصدير
-                    </button>
-                    <button
-                        onClick={() => setShowCreateForm(true)}
-                        className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary/90 text-white px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-primary/20 transition-all font-black text-sm active:scale-95 shadow-md"
-                    >
-                        <Plus size={20} strokeWidth={3} />
-                        طلب جديد
-                    </button>
-                </div>
+            )}
+            <div className="relative group">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
+                <input
+                    type="text"
+                    placeholder="بحث بـ (العميل، السيريال، الشكوى)..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-white border-2 border-primary/10 rounded-xl pr-10 pl-4 py-2.5 outline-none focus:border-primary/30 focus:shadow-lg focus:shadow-primary/5 transition-all w-full md:w-[300px] text-sm font-bold"
+                />
             </div>
+        </div>
+    );
+
+    const actionElements = (
+        <div className="flex flex-wrap items-center gap-3">
+            <button
+                onClick={handleExport}
+                className="flex items-center gap-2 bg-white text-primary border-2 border-primary/10 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm"
+            >
+                <FileDown size={18} />
+                تصدير
+            </button>
+            <button
+                onClick={() => setShowCreateForm(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary/90 text-white px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-primary/20 transition-all font-black text-sm active:scale-95 shadow-md"
+            >
+                <Plus size={20} strokeWidth={3} />
+                طلب جديد
+            </button>
+        </div>
+    );
+
+    return (
+        <div className="px-4 lg:px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
+            <PageHeader
+                title="طلبات الصيانة"
+                subtitle="إدارة طلبات الصيانة، متابعة الحالة، وإصدار التقارير"
+                filter={filterElement}
+                actions={actionElements}
+            />
 
             {/* Quick Report Bar */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

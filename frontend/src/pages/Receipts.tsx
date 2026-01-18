@@ -7,6 +7,7 @@ import { useApiMutation } from '../hooks/useApiMutation';
 import { PaymentFields, usePaymentForm } from '../components/PaymentFields';
 import { openSaleReport } from '../utils/reports/SaleReport';
 import { exportSales } from '../utils/exportUtils';
+import PageHeader from '../components/PageHeader';
 
 export default function Receipts() {
     const [activeTab, setActiveTab] = useState<'SALES' | 'INSTALLMENTS' | 'DASHBOARD'>('DASHBOARD');
@@ -146,18 +147,23 @@ export default function Receipts() {
         return groups;
     }, [filteredInstallments, groupBy]);
 
+    const actionElements = (
+        <button
+            onClick={exportSales}
+            className="flex items-center gap-2 bg-white text-emerald-600 border-2 border-primary/10 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm"
+        >
+            <Download size={18} />
+            تصدير Excel
+        </button>
+    );
+
     return (
-        <div className="px-8 pt-4 pb-8" dir="rtl">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold">متابعة المبيعات والأقساط</h1>
-                <button
-                    onClick={exportSales}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-                >
-                    <Download size={18} />
-                    تصدير Excel
-                </button>
-            </div>
+        <div className="px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
+            <PageHeader
+                title="متابعة المبيعات والأقساط"
+                subtitle="إدارة عمليات البيع، جدولة الأقساط ومتابعة التحصيل"
+                actions={actionElements}
+            />
 
 
             {/* Tabs */}

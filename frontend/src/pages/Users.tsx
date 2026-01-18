@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useApiMutation } from '../hooks/useApiMutation';
 import { ROLES, BRANCH_TYPES, getRoleDisplayName, getAvailableRoles } from '../lib/permissions';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PageHeader from '../components/PageHeader';
 
 export default function Users() {
     const { user } = useAuth();
@@ -215,26 +216,48 @@ export default function Users() {
         );
     };
 
+    const filterElement = isAdmin ? (
+        <div className="flex items-center gap-3 bg-white border-2 border-primary/10 px-5 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all focus-within:ring-4 focus-within:ring-primary/5">
+            <Filter size={18} className="text-primary/40" />
+            <select
+                value={filterBranchId}
+                onChange={(e) => setFilterBranchId(e.target.value)}
+                className="bg-transparent outline-none text-sm font-black text-primary min-w-48 appearance-none cursor-pointer"
+            >
+                <option value="">كل الفروع والمراكز</option>
+                {allBranches?.map((b: any) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+            </select>
+        </div>
+    ) : null;
+
+    const actionElements = (
+        <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-flex bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-black border border-blue-200">
+                {users?.length || 0} مستخدم
+            </span>
+            <button
+                onClick={() => setShowAddForm(true)}
+                className="smart-btn-primary flex items-center gap-2"
+            >
+                <UserPlus size={20} />
+                إضافة مستخدم
+            </button>
+        </div>
+    );
+
     return (
         <div className="p-6 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-black text-primary">إدارة المستخدمين</h1>
-                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                        {users?.length || 0} مستخدم
-                    </span>
-                </div>
-                <button
-                    onClick={() => setShowAddForm(true)}
-                    className="smart-btn-primary"
-                >
-                    <UserPlus size={20} />
-                    إضافة مستخدم
-                </button>
-            </div>
+            <PageHeader
+                title="إدارة المستخدمين"
+                subtitle="إدارة صلاحيات الموظفين، الفنيين وحسابات النظام"
+                filter={filterElement}
+                actions={actionElements}
+            />
 
             {/* Helper Alert */}
-            <div className="smart-alert smart-alert-info mb-6">
+            <div className="smart-alert smart-alert-info mb-8 shadow-sm">
                 <div className="shrink-0 pt-1">
                     <Building size={20} className="text-primary" />
                 </div>
@@ -244,26 +267,6 @@ export default function Users() {
                     </p>
                 </div>
             </div>
-
-            {/* Filter */}
-            {isAdmin && (
-                <div className="bg-white p-4 rounded-2xl shadow-md border-2 border-primary/10 mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                    <div className="flex items-center gap-2 text-slate-400">
-                        <Filter size={20} />
-                        <span className="text-sm font-black uppercase tracking-widest sm:hidden">تصفية:</span>
-                    </div>
-                    <select
-                        value={filterBranchId}
-                        onChange={(e) => setFilterBranchId(e.target.value)}
-                        className="smart-select w-full sm:w-64"
-                    >
-                        <option value="">كل الفروع والمراكز</option>
-                        {allBranches?.map((b: any) => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                    </select>
-                </div>
-            )}
 
             {/* Users Table */}
             <div className="bg-white rounded-2xl shadow-xl border-2 border-primary/10 overflow-hidden">

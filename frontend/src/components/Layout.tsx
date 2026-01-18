@@ -184,7 +184,7 @@ export default function Layout({ children }: LayoutProps) {
                 fixed top-0 bottom-0 right-0 z-50 h-full
                 transition-all duration-300 ease-in-out
                 bg-card border-l border-border shadow-2xl
-                group
+                group peer
                 /* Mobile: Drawer style */
                 ${isSidebarOpen ? 'translate-x-0 w-72' : 'translate-x-full w-72'}
                 /* Desktop: Fixed Auto-Expanding */
@@ -342,7 +342,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className={`
                 flex-1 flex flex-col min-w-0 relative transition-all duration-300
                 /* Add right margin to accommodate fixed sidebar */
-                lg:mr-20
+                lg:mr-20 lg:peer-hover:mr-72 transition-all duration-300
             `}>
                 {/* Top App Bar (M3) */}
                 <header className="h-16 lg:h-14 flex items-center justify-between px-4 lg:px-8 shrink-0 relative z-30 bg-card border-b">
@@ -359,7 +359,7 @@ export default function Layout({ children }: LayoutProps) {
                         <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
                     </div>
 
-                    <div className="flex items-center gap-2 lg:gap-3 ml-auto lg:ml-0">
+                    <div className="flex items-center gap-2 lg:gap-3 ml-auto">
                         <NotificationBell />
 
                         {/* User Profile Dropdown */}

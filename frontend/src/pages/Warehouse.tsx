@@ -13,6 +13,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import PageHeader from '../components/PageHeader';
 
 export default function Warehouse() {
     const { user } = useAuth();
@@ -197,22 +198,102 @@ export default function Warehouse() {
         return <div className="flex h-full items-center justify-center p-8">جاري التحميل...</div>;
     }
 
+    const filterElement = (
+        <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="relative group">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+                <input
+                    type="text"
+                    placeholder="بحث (اسم، كود...)"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pr-10 pl-4 py-2 border-2 border-primary/10 rounded-xl outline-none focus:border-primary/30 font-bold text-sm w-full md:w-48 transition-all focus:md:w-64 bg-white"
+                />
+            </div>
+
+            {/* Branch Filter */}
+            {isAdmin && (
+                <div className="flex items-center gap-2 bg-white border-2 border-primary/10 px-3 py-2 rounded-xl shadow-sm">
+                    <Filter size={18} className="text-slate-400" />
+                    <select
+                        value={filterBranchId}
+                        onChange={(e) => setFilterBranchId(e.target.value)}
+                        className="bg-transparent outline-none text-sm font-bold min-w-[120px]"
+                    >
+                        <option value="">كل الفروع</option>
+                        {(branches as any[])?.map((branch: any) => (
+                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {/* Model Filter */}
+            <div className="flex items-center gap-2 bg-white border-2 border-primary/10 px-3 py-2 rounded-xl shadow-sm">
+                <label className="text-xs font-black text-primary/60">الموديل:</label>
+                <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="bg-transparent outline-none text-sm font-bold min-w-[100px]"
+                >
+                    <option value="">(الكل)</option>
+                    {availableModels.map((model: any) => (
+                        <option key={model} value={model}>{model}</option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
+
+    const actionElements = (
+        <div className="flex items-center gap-3">
+            <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-2 bg-white border-2 border-primary/10 px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm outline-none shadow-sm h-full">
+                    <FileSpreadsheet size={18} className="text-emerald-600" />
+                    عمليات Excel
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white rounded-xl p-2 shadow-xl border-2 border-slate-100 min-w-[200px] z-[100]">
+                    <DropdownMenuItem onClick={handleDownloadTemplate} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
+                        <Download size={16} className="text-slate-500" />
+                        تحميل قالب الاستيراد
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
+                        <Upload size={16} className="text-blue-500" />
+                        استيراد من Excel
+                    </DropdownMenuItem>
+                    <div className="h-px bg-slate-100 my-1" />
+                    <DropdownMenuItem onClick={handleExport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-emerald-700">
+                        <Download size={16} />
+                        تصدير المخزون الحالي
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
+        </div>
+    );
+
     return (
         <div className="px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
-            <h1 className="text-3xl font-black text-primary mb-6">مخزن قطع الغيار</h1>
+            <PageHeader
+                title="مخزن قطع الغيار"
+                subtitle="إدارة المخزون، سجل الحركة، وعمليات التوريد والاستهلاك"
+                filter={filterElement}
+                actions={actionElements}
+            />
 
             {/* Tabs */}
-            <div className="flex gap-2 mb-6">
+            <div className="flex gap-2 mb-8">
                 <button
                     onClick={() => setActiveTab('inventory')}
-                    className={`px-6 py-3 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'inventory' ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg' : 'bg-white border-2 border-primary/10 text-primary hover:bg-primary/5'}`}
+                    className={`px-8 py-3.5 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'inventory' ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg' : 'bg-white border-2 border-primary/10 text-primary hover:bg-primary/5 shadow-sm'}`}
                 >
                     <Package size={18} />
                     المخزون الحالي
                 </button>
                 <button
                     onClick={() => setActiveTab('movements')}
-                    className={`px-6 py-3 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'movements' ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg' : 'bg-white border-2 border-primary/10 text-primary hover:bg-primary/5'}`}
+                    className={`px-8 py-3.5 rounded-xl flex items-center gap-2 font-black transition-all ${activeTab === 'movements' ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg' : 'bg-white border-2 border-primary/10 text-primary hover:bg-primary/5 shadow-sm'}`}
                 >
                     <History size={18} />
                     سجل الحركة
@@ -221,104 +302,32 @@ export default function Warehouse() {
 
             {activeTab === 'inventory' && (
                 <div className="bg-white rounded-2xl border-2 border-primary/10 shadow-xl overflow-hidden">
-                    <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
-                        <div className="flex items-center gap-4">
-                            <div>
-                                <p className="font-bold text-primary">إجمالي الأصناف: {filteredInventory?.length || 0}</p>
-                            </div>
-
-                            {/* Search */}
-                            <div className="relative group mr-2">
-                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                                <input
-                                    type="text"
-                                    placeholder="بحث (اسم، كود...)"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pr-10 pl-4 py-1.5 border-2 border-primary/10 rounded-lg outline-none focus:border-primary/30 font-bold text-sm w-40 transition-all focus:w-64"
-                                />
-                            </div>
-
-                            {/* Branch Filter */}
-                            {isAdmin && (
-                                <div className="mr-8 flex items-center gap-2">
-                                    <Filter size={18} className="text-slate-400" />
-                                    <select
-                                        value={filterBranchId}
-                                        onChange={(e) => setFilterBranchId(e.target.value)}
-                                        className="border-2 border-primary/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-primary/30"
-                                    >
-                                        <option value="">كل الفروع</option>
-                                        {(branches as any[])?.map((branch: any) => (
-                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-
-                            {/* Model Filter */}
-                            <div className="mr-4 flex items-center gap-2">
-                                <label className="text-sm font-bold text-slate-600">الموديل:</label>
-                                <select
-                                    value={selectedModel}
-                                    onChange={(e) => setSelectedModel(e.target.value)}
-                                    className="border-2 border-primary/10 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-primary/30"
-                                >
-                                    <option value="">(الكل)</option>
-                                    {availableModels.map((model: any) => (
-                                        <option key={model} value={model}>{model}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm outline-none">
-                                    <FileSpreadsheet size={16} className="text-emerald-600" />
-                                    عمليات Excel
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-white rounded-xl p-2 shadow-xl border-2 border-slate-100 min-w-[200px] z-[100]">
-                                    <DropdownMenuItem onClick={handleDownloadTemplate} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
-                                        <Download size={16} className="text-slate-500" />
-                                        تحميل قالب الاستيراد
-                                    </DropdownMenuItem>
-
-                                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
-                                        <Upload size={16} className="text-blue-500" />
-                                        استيراد من Excel
-                                    </DropdownMenuItem>
-
-                                    <div className="h-px bg-slate-100 my-1" />
-
-                                    <DropdownMenuItem onClick={handleExport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-emerald-700">
-                                        <Download size={16} />
-                                        تصدير المخزون الحالي
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-                        </div>
+                    <div className="p-4 border-b flex justify-between items-center bg-slate-50/5">
+                        <p className="font-black text-primary flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            إجمالي الأصناف المتوفرة: {filteredInventory?.length || 0}
+                        </p>
                     </div>
 
-                    <table className="w-full">
-                        <thead className="bg-primary text-white">
-                            <tr>
-                                <th className="text-center p-4 font-black">الكود</th>
-                                <th className="text-center p-4 font-black">اسم القطعة</th>
-                                <th className="text-center p-4 font-black">الموديلات</th>
-                                <th className="text-right p-4 font-black">السعر</th>
-                                <th className="text-right p-4 font-black">الكمية</th>
-                                <th className="text-right p-4 font-black">تعديل</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredInventory?.map((item: any) => (
-                                <InventoryRow key={item.id} item={item} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['inventory'] })} />
-                            ))}
-                        </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                        <table className="w-full whitespace-nowrap">
+                            <thead className="bg-gradient-to-r from-primary to-primary/90 text-white">
+                                <tr>
+                                    <th className="text-center p-4 font-black">الكود</th>
+                                    <th className="text-center p-4 font-black">اسم القطعة</th>
+                                    <th className="text-center p-4 font-black">الموديلات</th>
+                                    <th className="text-right p-4 font-black">السعر</th>
+                                    <th className="text-right p-4 font-black">الكمية</th>
+                                    <th className="text-right p-4 font-black">تعديل</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredInventory?.map((item: any) => (
+                                    <InventoryRow key={item.id} item={item} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['inventory'] })} />
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 

@@ -10,6 +10,7 @@ import { FinancialOverview } from '../components/reports/FinancialOverview';
 import { BranchRankings } from '../components/reports/BranchRankings';
 import { InventoryAnalytics } from '../components/reports/InventoryAnalytics';
 import { AiStrategicAssistant } from '../components/reports/AiStrategicAssistant';
+import PageHeader from '../components/PageHeader';
 
 export default function Reports() {
     const { user } = useAuth();
@@ -76,31 +77,26 @@ export default function Reports() {
         });
     };
 
-    return (
-        <div className="page-container space-y-8 animate-fade-in" dir="rtl">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-2 flex items-center gap-4">
-                        <BarChart3 className="text-primary hidden sm:block" size={40} />
-                        {isCenter ? 'تقرير أداء المركز' : 'مركز التحليلات الاستراتيجية'}
-                    </h1>
-                    <p className="text-muted-foreground font-medium">
-                        {isCenter ? 'مخطط بياني للأداء المالي وحركة المخزون بمركز الصيانة' : 'نظرة شمولية على مؤشرات الأداء المالي والتشغيلي للمؤسسة'}
-                    </p>
-                </div>
+    const actionElements = (
+        <ReportsTabs
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            permissions={{
+                financial: canViewExecutive,
+                branches: canViewRankings,
+                inventory: canViewInventory,
+                ai: true
+            }}
+        />
+    );
 
-                <ReportsTabs
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    permissions={{
-                        financial: canViewExecutive,
-                        branches: canViewRankings,
-                        inventory: canViewInventory,
-                        ai: true // Always visible or add permission if needed
-                    }}
-                />
-            </div>
+    return (
+        <div className="page-container space-y-8 animate-fade-in bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
+            <PageHeader
+                title={isCenter ? 'تقرير أداء المركز' : 'مركز التحليلات الاستراتيجية'}
+                subtitle={isCenter ? 'مخطط بياني للأداء المالي وحركة المخزون بمركز الصيانة' : 'نظرة شمولية على مؤشرات الأداء المالي والتشغيلي للمؤسسة'}
+                actions={actionElements}
+            />
 
             {/* Filter Bar */}
             <ReportsFilters

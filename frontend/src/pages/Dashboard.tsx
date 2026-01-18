@@ -35,6 +35,8 @@ import { PerformanceReportModal } from '../components/PerformanceReportModal';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
+import PageHeader from '../components/PageHeader';
+
 export default function Dashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -89,60 +91,62 @@ export default function Dashboard() {
         { name: 'W4', value: 0 },
     ];
 
+    const filterElement = isAdmin ? (
+        <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-[#0A2472]/10 px-4 py-2 shadow-sm hover:shadow-md transition-shadow flex-1 lg:flex-none">
+            <Filter size={18} className="text-[#0A2472]/60" />
+            <select
+                value={filterBranchId}
+                onChange={(e) => setFilterBranchId(e.target.value)}
+                className="bg-transparent outline-none text-sm text-slate-700 font-bold min-w-[120px] w-full"
+            >
+                <option value="">كل الفروع</option>
+                {(branches as any[])?.map((branch: any) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                ))}
+            </select>
+        </div>
+    ) : null;
+
+    const actionElements = (
+        <>
+            {showOperationalButtons && (
+                <>
+                    <button
+                        onClick={() => navigate('/requests', { state: { createRequest: true } })}
+                        className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:shadow-[#0A2472]/20 transition-all font-black active:scale-95"
+                    >
+                        <Plus size={20} strokeWidth={3} />
+                        <span className="whitespace-nowrap">طلب صيانة</span>
+                    </button>
+                    <button
+                        onClick={() => navigate('/payments')}
+                        className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-white text-slate-700 border-2 border-slate-100 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all font-bold h-full"
+                    >
+                        <Banknote size={20} />
+                        <span className="whitespace-nowrap">تسجيل دفعة</span>
+                    </button>
+                </>
+            )}
+            {!isAffairs && (
+                <button
+                    onClick={() => setShowPerformanceReport(true)}
+                    className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-emerald-500/20 transition-all font-bold h-full"
+                >
+                    <FileBarChart size={20} />
+                    <span className="whitespace-nowrap">تقرير أداء الصيانة</span>
+                </button>
+            )}
+        </>
+    );
+
     return (
         <div className="px-4 lg:px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen animate-fade-in" dir="rtl">
-            {/* Header */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8 animate-slide-up">
-                <div>
-                    <h1 className="text-2xl lg:text-3xl font-black text-[#0A2472] mb-1">لوحة التحكم</h1>
-                    <p className="text-slate-500 flex items-center gap-2">
-                    </p>
-                </div>
-                <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                    {isAdmin && (
-                        <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-[#0A2472]/10 px-4 py-2 shadow-sm hover:shadow-md transition-shadow flex-1 lg:flex-none">
-                            <Filter size={18} className="text-[#0A2472]/60" />
-                            <select
-                                value={filterBranchId}
-                                onChange={(e) => setFilterBranchId(e.target.value)}
-                                className="bg-transparent outline-none text-sm text-slate-700 font-bold min-w-[120px] w-full"
-                            >
-                                <option value="">كل الفروع</option>
-                                {(branches as any[])?.map((branch: any) => (
-                                    <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-                    {showOperationalButtons && (
-                        <>
-                            <button
-                                onClick={() => navigate('/requests', { state: { createRequest: true } })}
-                                className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:shadow-[#0A2472]/20 transition-all font-black active:scale-95"
-                            >
-                                <Plus size={20} strokeWidth={3} />
-                                <span className="whitespace-nowrap">طلب صيانة</span>
-                            </button>
-                            <button
-                                onClick={() => navigate('/payments')}
-                                className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-white text-slate-700 border px-4 py-2 rounded-xl hover:bg-slate-50 transition-all"
-                            >
-                                <Banknote size={20} />
-                                <span className="whitespace-nowrap">تسجيل دفعة</span>
-                            </button>
-                        </>
-                    )}
-                    {!isAffairs && (
-                        <button
-                            onClick={() => setShowPerformanceReport(true)}
-                            className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-emerald-500/20 transition-all font-bold"
-                        >
-                            <FileBarChart size={20} />
-                            <span className="whitespace-nowrap">تقرير أداء الصيانة</span>
-                        </button>
-                    )}
-                </div>
-            </div>
+            <PageHeader
+                title="لوحة التحكم"
+                subtitle="ملخص احصائيات النظام والعمليات الحالية"
+                filter={filterElement}
+                actions={actionElements}
+            />
 
             {isAffairs ? (
                 // Admin Affairs Layout (3x2 Grid)

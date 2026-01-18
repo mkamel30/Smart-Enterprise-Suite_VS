@@ -6,6 +6,7 @@ import { Plus, Trash2, Search, X, Download } from 'lucide-react';
 import { useApiMutation } from '../hooks/useApiMutation';
 import { PaymentFields, usePaymentForm } from '../components/PaymentFields';
 import { exportPayments } from '../utils/exportUtils';
+import PageHeader from '../components/PageHeader';
 
 export default function Payments() {
     const [showAddForm, setShowAddForm] = useState(false);
@@ -117,28 +118,46 @@ export default function Payments() {
         return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
     }
 
+    const filterElement = (
+        <div className="relative group">
+            <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
+            <input
+                type="text"
+                placeholder="بحث..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-white border-2 border-primary/10 rounded-xl pr-10 pl-4 py-2.5 outline-none focus:border-primary/30 focus:shadow-lg transition-all w-full md:w-[250px] text-sm font-bold"
+            />
+        </div>
+    );
+
+    const actionElements = (
+        <div className="flex items-center gap-3">
+            <button
+                onClick={exportPayments}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white text-emerald-600 border-2 border-primary/10 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm"
+            >
+                <Download size={18} />
+                تصدير Excel
+            </button>
+            <button
+                onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary/90 text-white px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-primary/20 transition-all font-black text-sm active:scale-95 shadow-md"
+            >
+                <Plus size={20} />
+                تسجيل دفعة
+            </button>
+        </div>
+    );
+
     return (
-        <div className="px-8 pt-4 pb-8" dir="rtl">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h1 className="text-3xl font-bold">المدفوعات</h1>
-                <div className="flex gap-2">
-                    <button
-                        onClick={exportPayments}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-                    >
-                        <Download size={18} />
-                        تصدير Excel
-                    </button>
-                    <button
-                        onClick={() => setShowAddForm(true)}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg"
-                        title="تسجيل دفعة جديدة"
-                    >
-                        <Plus size={20} />
-                        تسجيل دفعة
-                    </button>
-                </div>
-            </div>
+        <div className="px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
+            <PageHeader
+                title="المدفوعات"
+                subtitle="تسجيل وتحصيل دفعات الصيانة والاشتراكات"
+                filter={filterElement}
+                actions={actionElements}
+            />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
