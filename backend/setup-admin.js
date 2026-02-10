@@ -18,7 +18,7 @@ async function main() {
         console.log('Current User count:', count);
 
         const adminEmail = 'm.kamel@egyptsmartcards.com';
-        const hashedPassword = await require('bcryptjs').hash('123456', 10);
+        const hashedPassword = await require('bcryptjs').hash('Admin@12345678', 10);
 
         console.log('Upserting admin user...');
         const user = await db.user.upsert({

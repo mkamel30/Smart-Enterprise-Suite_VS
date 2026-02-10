@@ -6,26 +6,26 @@ async function createAdmin() {
     try {
         console.log('🔧 Creating admin user...\n');
 
-        // First, ensure Admin Affairs branch exists
+        // First, ensure IT branch exists
         let adminBranch = await prisma.branch.findFirst({
-            where: { type: 'ADMIN_AFFAIRS' }
+            where: { code: 'IT001' }
         });
 
         if (!adminBranch) {
             adminBranch = await prisma.branch.create({
                 data: {
-                    code: 'AA001',
-                    name: 'شؤون الإدارة',
-                    type: 'ADMIN_AFFAIRS',
+                    code: 'IT001',
+                    name: 'إدارة نظم المعلومات (IT)',
+                    type: 'CENTRAL',
                     isActive: true,
-                    address: 'Main Office'
+                    address: 'Main Office - IT Dept'
                 }
             });
-            console.log('✅ Admin Affairs branch created');
+            console.log('✅ IT branch created');
         }
 
         // Hash the password
-        const hashedPassword = await bcrypt.hash('admin123', 10);
+        const hashedPassword = await bcrypt.hash('Admin@12345678', 10);
 
         // Check if user exists
         const existingUser = await prisma.user.findFirst({
@@ -61,9 +61,9 @@ async function createAdmin() {
 
         console.log('\n📋 Admin Credentials:');
         console.log('   Email:    admin@csdept.com');
-        console.log('   Password: admin123');
+        console.log('   Password: Admin@12345678');
         console.log('   Role:     SUPER_ADMIN');
-        console.log('   Branch:   Admin Affairs\n');
+        console.log('   Branch:   IT Department\n');
 
     } catch (error) {
         console.error('❌ Error:', error.message);

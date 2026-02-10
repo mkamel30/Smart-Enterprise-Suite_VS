@@ -27,7 +27,7 @@ import { MachineWarehouseStats } from '../components/warehouse/MachineWarehouseS
 import { MachineImportModal } from '../components/warehouse/MachineImportModal';
 
 export default function MachineWarehouse() {
-    const { user } = useAuth();
+    const { user, activeBranchId } = useAuth();
     const queryClient = useQueryClient();
 
     // Auth & Permissions
@@ -64,20 +64,20 @@ export default function MachineWarehouse() {
 
     // Queries
     const { data: machines, isLoading: machinesLoading } = useQuery({
-        queryKey: ['warehouse-machines', activeTab, filterBranchId],
-        queryFn: () => api.getWarehouseMachines(activeTab, filterBranchId),
+        queryKey: ['warehouse-machines', activeTab, activeBranchId, filterBranchId],
+        queryFn: () => api.getWarehouseMachines(activeTab, activeBranchId || filterBranchId),
         enabled: !isLogsTab && !isWorkflowTab
     });
 
     const { data: logs, isLoading: logsLoading } = useQuery({
-        queryKey: ['warehouse-logs', filterBranchId],
-        queryFn: () => api.getWarehouseLogs(filterBranchId),
+        queryKey: ['warehouse-logs', activeBranchId, filterBranchId],
+        queryFn: () => api.getWarehouseLogs(activeBranchId || filterBranchId),
         enabled: isLogsTab
     });
 
     const { data: counts } = useQuery({
-        queryKey: ['warehouse-counts', filterBranchId],
-        queryFn: () => api.getWarehouseMachineCounts(filterBranchId),
+        queryKey: ['warehouse-counts', activeBranchId, filterBranchId],
+        queryFn: () => api.getWarehouseMachineCounts(activeBranchId || filterBranchId),
         refetchInterval: 60000
     });
 

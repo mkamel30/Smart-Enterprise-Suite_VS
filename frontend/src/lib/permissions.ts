@@ -75,8 +75,11 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
         ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ROLES.CENTER_TECH
     ],
 
-    // Maintenance Board - Center only
-    '/maintenance-board': [
+    // Maintenance Center - Center only (replaces maintenance-board)
+    '/maintenance-center': [
+        ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ROLES.CENTER_TECH
+    ],
+    '/maintenance-center/machine/:id': [
         ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ROLES.CENTER_TECH
     ],
 

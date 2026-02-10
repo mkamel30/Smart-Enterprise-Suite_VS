@@ -15,9 +15,13 @@ const getBranchFilter = (req) => {
         return {};
     }
 
-    // For other roles (including ADMIN_AFFAIRS and CENTER_MANAGER), strictly filter by their assigned branch
-    if (req.user.branchId) {
-        return { branchId: req.user.branchId };
+    // Support hierarchy
+    const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+
+    if (authorizedIds.length > 0) {
+        return {
+            branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds }
+        };
     }
 
     return {};
@@ -30,11 +34,14 @@ const getBranchFilter = (req) => {
  * @returns {Boolean}
  */
 const canAccessBranch = (req, targetBranchId) => {
-    const centralRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'];
+    const centralRoles = ['SUPER_ADMIN', 'MANAGEMENT'];
     if (centralRoles.includes(req.user.role)) {
         return true;
     }
-    return req.user.branchId === targetBranchId;
+
+    // Support hierarchy
+    const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+    return authorizedIds.includes(targetBranchId);
 };
 
 module.exports = {

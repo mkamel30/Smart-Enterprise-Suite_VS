@@ -1,6 +1,7 @@
 ﻿const db = require('../db');
 const inventoryService = require('./inventoryService');
 const paymentService = require('./paymentService');
+const socketManager = require('../utils/socketManager');
 
 /**
  * Create new maintenance request
@@ -58,6 +59,21 @@ async function createRequest(data, user) {
             }
         });
 
+        // Real-time notification: New Request Created
+        socketManager.emitToBranch(request.branchId, 'request-created', {
+            id: request.id,
+            customerName: customer.client_name,
+            serialNumber: request.serialNumber,
+            timestamp: new Date()
+        });
+
+        // Global notification for Admins
+        socketManager.emitToRole('SUPER_ADMIN', 'admin-alert', {
+            type: 'NEW_REQUEST',
+            message: `طلب صيانة جديد من فرع ${request.branchId}: ${customer.client_name}`,
+            requestId: request.id
+        });
+
         // If taking machine to warehouse
         if (data.takeMachine && data.posMachineId) {
             const machine = await tx.posMachine.findFirst({
@@ -90,9 +106,13 @@ async function createRequest(data, user) {
  */
 async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumber = null) {
     return await db.$transaction(async (tx) => {
-        // 1. Get request with customer - RULE 1: MUST include branchId
+        // 1. Get request with customer - RULE 1: MUST check authorization
+        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
         const request = await tx.maintenanceRequest.findFirst({
-            where: { id: requestId, branchId: user.branchId },
+            where: {
+                id: requestId,
+                branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds }
+            },
             include: { customer: true }
         });
         console.log('DEBUG: closeRequest fetched:', request);
@@ -124,10 +144,11 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
                     parts: partsWithCosts,
                     totalCost: totalCost
                 }),
+                totalCost: totalCost, // Ensure column is updated too
                 closingTimestamp: new Date(),
                 receiptNumber: receiptNumber,
                 closingUserId: user.id,
-                closingUserName: user.name
+                closingUserName: user.name || user.displayName
             }
         });
 
@@ -206,11 +227,19 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
                 entityType: 'REQUEST',
                 entityId: requestId,
                 action: 'CLOSE',
-                details: `Closed with ${usedParts.length} parts. Total: ${totalCost} ج.م`,
+                details: `Closed with ${usedParts.length} parts. Total: ${totalCost} ج.م. Receipt: ${receiptNumber || 'N/A'}`,
                 userId: user.id,
-                performedBy: user.name,
+                performedBy: user.name || user.displayName,
                 branchId: request.branchId
             }
+        });
+
+        // Real-time notification: Request Closed
+        socketManager.emitToBranch(request.branchId, 'request-closed', {
+            id: requestId,
+            customerName: request.customer.client_name,
+            totalCost: totalCost,
+            receiptNumber: receiptNumber
         });
 
         return { ...updatedRequest, vouchers };
@@ -227,12 +256,20 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
  */
 async function updateStatus(requestId, status, user) {
     return await db.$transaction(async (tx) => {
-        await tx.maintenanceRequest.updateMany({
-            where: { id: requestId, branchId: user.branchId },
-            data: { status }
+        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+        const request = await tx.maintenanceRequest.findFirst({
+            where: {
+                id: requestId,
+                branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds }
+            }
         });
 
-        const request = await tx.maintenanceRequest.findFirst({ where: { id: requestId, branchId: user.branchId } });
+        if (!request) throw new Error('Request not found or access denied');
+
+        await tx.maintenanceRequest.updateMany({
+            where: { id: requestId, branchId: request.branchId }, // Use request's actual branch
+            data: { status }
+        });
 
         await tx.systemLog.create({
             data: {

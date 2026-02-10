@@ -6,6 +6,7 @@ import type { DashboardStats } from '../lib/types';
 import { useState, useMemo } from 'react';
 import StatusBar from './StatusBar';
 import NotificationBell from './NotificationBell';
+import BranchSwitcher from './BranchSwitcher';
 import { canAccessRoute } from '../lib/permissions';
 import {
     LayoutDashboard,
@@ -65,6 +66,7 @@ const allNavItems: NavItem[] = [
         children: [
             { path: '/requests', label: 'طلبات الصيانة', icon: ClipboardList },
             { path: '/maintenance/shipments', label: 'الشحنات الواردة', icon: Truck },
+            { path: '/maintenance-center', label: 'مركز الصيانة', icon: Wrench },
             { path: '/maintenance-approvals', label: 'موافقات الصيانة', icon: CheckCircle },
             { path: '/track-machines', label: 'متابعة الماكينات', icon: Eye },
             { path: '/pending-payments', label: 'المستحقات المعلقة', icon: Wallet },
@@ -113,7 +115,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
+    const { user, logout, activeBranchId } = useAuth();
 
     // Zoom state (100 = 100%, min 70%, max 150%)
     const [zoomLevel, setZoomLevel] = useState(100);
@@ -150,8 +152,8 @@ export default function Layout({ children }: LayoutProps) {
 
     // Fetch stats for the sidebar badge
     const { data: stats } = useQuery<DashboardStats>({
-        queryKey: ['dashboard-stats'],
-        queryFn: () => api.getDashboardStats(),
+        queryKey: ['dashboard-stats', activeBranchId],
+        queryFn: () => api.getDashboardStats({ branchId: activeBranchId || undefined }),
         refetchInterval: 30000, // Refresh every 30 seconds
         enabled: !!user // Only fetch if user is logged in
     });
@@ -360,6 +362,7 @@ export default function Layout({ children }: LayoutProps) {
                     </div>
 
                     <div className="flex items-center gap-2 lg:gap-3 ml-auto">
+                        <BranchSwitcher />
                         <NotificationBell />
 
                         {/* User Profile Dropdown */}

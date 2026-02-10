@@ -4,11 +4,20 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter, requirePermission, PERMISSIONS } = require('../middleware/permissions');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const { isGlobalRole } = require('../utils/constants');
 
 // GET Current Inventory Report
 router.get('/reports/inventory', authenticateToken, requirePermission(PERMISSIONS.INVENTORY_VIEW_ALL, PERMISSIONS.INVENTORY_VIEW_BRANCH), async (req, res) => {
     try {
-        const branchFilter = getBranchFilter(req);
+        let { branchId } = req.query;
+        const isAdmin = isGlobalRole(req.user.role);
+
+        // If not admin, force their branch
+        if (!isAdmin) {
+            branchId = req.user.branchId;
+        }
+
+        const branchFilter = branchId ? { branchId } : getBranchFilter(req);
         const parts = await db.sparePart.findMany({
             include: {
                 inventoryItems: {
@@ -50,11 +59,17 @@ router.get('/reports/movements', authenticateToken, requirePermission(PERMISSION
         }
 
         // Get OUT movements
+        let { branchId } = req.query;
+        const isAdmin = isGlobalRole(req.user.role);
+        if (!isAdmin) branchId = req.user.branchId;
+
+        const branchFilter = branchId ? { branchId } : getBranchFilter(req);
+
         const movements = await db.stockMovement.findMany(ensureBranchWhere({
             where: {
                 type: 'OUT',
                 createdAt: dateFilter,
-                ...getBranchFilter(req)
+                ...branchFilter
             },
             orderBy: { createdAt: 'desc' }
         }, req));
@@ -214,9 +229,13 @@ router.get('/reports/movements', authenticateToken, requirePermission(PERMISSION
 // GET Performance Analysis Report
 router.get('/reports/performance', authenticateToken, requirePermission(PERMISSIONS.REPORTS_ALL, PERMISSIONS.REPORTS_BRANCH), async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
+        let { startDate, endDate, branchId } = req.query;
+        const isAdmin = isGlobalRole(req.user.role);
+        if (!isAdmin) branchId = req.user.branchId;
 
-        const whereClause = { status: 'Closed', ...getBranchFilter(req) };
+        const branchFilter = branchId ? { branchId } : getBranchFilter(req);
+
+        const whereClause = { status: 'Closed', ...branchFilter };
         if (startDate || endDate) {
             whereClause.closingTimestamp = {};
             if (startDate) whereClause.closingTimestamp.gte = new Date(startDate);
@@ -379,7 +398,7 @@ const executiveHandler = async (req, res) => {
 
         // Get pending maintenance debts
         // Use _skipBranchEnforcer marker for admin all-branches view
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
+        const isAdmin = isGlobalRole(req.user.role);
         const pendingDebts = await db.branchDebt.findMany({
             where: {
                 ...(branchId ? { debtorBranchId: branchId } : (isAdmin ? { _skipBranchEnforcer: true } : {})),

@@ -102,26 +102,24 @@ interface ExecutiveData {
     outOfStock: number;
     total: number;
   };
-  branchPerformance: {
+  branchSummary: {
     id: string;
     name: string;
     code: string;
     revenue: number;
-    previousRevenue: number;
-    change: number;
-    closureRate: number;
-    totalRequests: number;
+    activeRequests: number;
     closedRequests: number;
+    closureRate: number;
   }[];
   monthlyTrend: { name: string; total: number; maintenance: number; sales: number; parts: number }[];
-  topPerformers: { name: string; closedCount: number; revenue: number }[];
+  technicianProductivity: { name: string; closedRequests: number; revenue: number }[];
   alerts: { type: string; severity: string; message: string; count?: number; amount?: number }[];
   pendingActions: { approvals: number; transfers: number };
-  quickStats: {
+  quickCounts: {
     totalMachines: number;
-    machinesWithCustomers: number;
-    machineUtilization: number;
     totalCustomers: number;
+    pendingApprovals: number;
+    pendingTransfers: number;
     totalRequests: number;
     closedRequests: number;
   };
@@ -222,7 +220,7 @@ const AlertCard: React.FC<{
 };
 
 const BranchRankingTable: React.FC<{
-  branches: ExecutiveData['branchPerformance'];
+  branches: ExecutiveData['branchSummary'];
   onBranchClick?: (branchId: string) => void;
 }> = ({ branches, onBranchClick }) => {
   if (!branches || branches.length === 0) return null;
@@ -240,7 +238,8 @@ const BranchRankingTable: React.FC<{
             <th>#</th>
             <th>الفرع</th>
             <th>الإيراد</th>
-            <th>التغير</th>
+            <th>نشط</th>
+            <th>مغلق</th>
             <th>نسبة الإغلاق</th>
           </tr>
         </thead>
@@ -259,9 +258,8 @@ const BranchRankingTable: React.FC<{
               </td>
               <td className="branch-name">{branch.name}</td>
               <td className="revenue">{(branch.revenue / 1000).toFixed(0)}ألف ج.م</td>
-              <td className={`change ${branch.change >= 0 ? 'positive' : 'negative'}`}>
-                {branch.change >= 0 ? '▲' : '▼'} {Math.abs(branch.change)}%
-              </td>
+              <td className="active-reqs">{branch.activeRequests}</td>
+              <td className="closed-reqs">{branch.closedRequests}</td>
               <td className="closure-rate">
                 <div className="progress-bar-mini">
                   <div
@@ -665,27 +663,27 @@ const ExecutiveDashboard: React.FC = () => {
       {/* Quick Stats */}
       <section className="quick-stats">
         <div className="stat-item">
-          <span className="stat-value">{data.quickStats.totalCustomers.toLocaleString()}</span>
+          <span className="stat-value">{data.quickCounts.totalCustomers.toLocaleString()}</span>
           <span className="stat-label">عميل</span>
         </div>
         <div className="stat-divider" />
         <div className="stat-item">
-          <span className="stat-value">{data.quickStats.totalMachines.toLocaleString()}</span>
+          <span className="stat-value">{data.quickCounts.totalMachines.toLocaleString()}</span>
           <span className="stat-label">ماكينة</span>
         </div>
         <div className="stat-divider" />
         <div className="stat-item">
-          <span className="stat-value">{data.quickStats.machineUtilization}%</span>
-          <span className="stat-label">نسبة الاستخدام</span>
+          <span className="stat-value">{data.quickCounts.totalRequests.toLocaleString()}</span>
+          <span className="stat-label">إجمالي الطلبات</span>
         </div>
         <div className="stat-divider" />
         <div className="stat-item">
-          <span className="stat-value">{data.quickStats.closedRequests}</span>
+          <span className="stat-value">{data.quickCounts.closedRequests.toLocaleString()}</span>
           <span className="stat-label">طلب مغلق</span>
         </div>
         <div className="stat-divider" />
         <div className="stat-item pending">
-          <span className="stat-value">{data.pendingActions.approvals + data.pendingActions.transfers}</span>
+          <span className="stat-value">{data.quickCounts.pendingApprovals + data.quickCounts.pendingTransfers}</span>
           <span className="stat-label">إجراء معلق</span>
         </div>
       </section>
@@ -745,6 +743,28 @@ const ExecutiveDashboard: React.FC = () => {
           </ResponsiveContainer>
         </div>
 
+        {/* Branch Comparison */}
+        <div className="chart-card large">
+          <h3 className="chart-title">
+            <Building2 size={20} />
+            مقارنة أداء الفروع
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data.branchSummary.slice(0, 8)}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+              <XAxis dataKey="name" stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
+                contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#fff' }}
+              />
+              <Legend verticalAlign="top" align="right" />
+              <Bar dataKey="revenue" name="الإيرادات" fill={COLORS.primary} radius={[4, 4, 0, 0]} barSize={20} />
+              <Bar dataKey="closedRequests" name="الطلبات المغلقة" fill={COLORS.success} radius={[4, 4, 0, 0]} barSize={20} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
         {/* Revenue Breakdown */}
         <div className="chart-card">
           <h3 className="chart-title">
@@ -765,7 +785,7 @@ const ExecutiveDashboard: React.FC = () => {
                 label={({ name, percent }) => `${revenueTypeLabels[name] || name}: ${(percent * 100).toFixed(0)}%`}
                 labelLine={false}
               >
-                {data.revenueBreakdown.map((entry, index) => (
+                {data.revenueBreakdown.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
@@ -778,7 +798,7 @@ const ExecutiveDashboard: React.FC = () => {
       {/* Branch Performance & Inventory */}
       <section className="split-section">
         <BranchRankingTable
-          branches={data.branchPerformance}
+          branches={data.branchSummary}
           onBranchClick={handleBranchClick}
         />
 
@@ -834,20 +854,20 @@ const ExecutiveDashboard: React.FC = () => {
       </section>
 
       {/* Top Performers */}
-      {data.topPerformers && data.topPerformers.length > 0 && (
+      {data.technicianProductivity && data.technicianProductivity.length > 0 && (
         <section className="top-performers-section">
           <h3 className="section-title">
             <Users size={20} />
-            أفضل الفنيين أداءً
+            إنتاجية الفنيين (هذا الشهر)
           </h3>
           <div className="performers-grid">
-            {data.topPerformers.slice(0, 5).map((performer, index) => (
+            {data.technicianProductivity.slice(0, 5).map((performer, index) => (
               <div key={index} className="performer-card">
                 <div className="performer-rank">{index + 1}</div>
                 <div className="performer-info">
                   <span className="performer-name">{performer.name}</span>
                   <span className="performer-stats">
-                    {performer.closedCount} طلب مغلق • {(performer.revenue / 1000).toFixed(1)}ألف ج.م
+                    {performer.closedRequests} طلب مغلق • {(performer.revenue / 1000).toFixed(1)}ألف ج.م
                   </span>
                 </div>
               </div>

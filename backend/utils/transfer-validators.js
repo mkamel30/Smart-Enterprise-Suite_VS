@@ -241,9 +241,11 @@ function validateUserPermission(user, fromBranchId) {
         return { valid: true, errors };
     }
 
-    // Regular users can only transfer from their own branch
-    if (user.branchId !== fromBranchId) {
-        errors.push('ليس لديك صلاحية التحويل من هذا الفرع');
+    // Support hierarchy: Users can transfer from their own branch OR any child branch
+    const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+
+    if (!authorizedIds.includes(fromBranchId)) {
+        errors.push('ليس لديك صلاحية التحويل من هذا الفرع أو الفروع التابعة له');
         return { valid: false, errors };
     }
 

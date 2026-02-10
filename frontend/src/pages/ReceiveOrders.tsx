@@ -101,6 +101,19 @@ export default function ReceiveOrders() {
         }
     });
 
+    const cancelMutation = useMutation({
+        mutationFn: (id: string) => api.cancelTransferOrder(id),
+        onSuccess: () => {
+            toast.success('تم إلغاء الإذن بنجاح');
+            queryClient.invalidateQueries({ queryKey: ['pending-orders'] });
+            queryClient.invalidateQueries({ queryKey: ['all-orders'] });
+            setSelectedOrder(null);
+        },
+        onError: (error: any) => {
+            toast.error(error.message || 'فشل في إلغاء الإذن');
+        }
+    });
+
     const handleReceive = (order: any) => {
         receiveMutation.mutate({
             id: order.id,
@@ -236,21 +249,44 @@ export default function ReceiveOrders() {
                                                     <Eye size={16} />
                                                     عرض
                                                 </button>
-                                                <button
-                                                    onClick={() => openRejectModal(order)}
-                                                    className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-1"
-                                                >
-                                                    <XCircle size={16} />
-                                                    رفض
-                                                </button>
-                                                <button
-                                                    onClick={() => handleReceive(order)}
-                                                    disabled={receiveMutation.isPending}
-                                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1 disabled:opacity-50"
-                                                >
-                                                    <CheckCircle size={16} />
-                                                    تأكيد الاستلام
-                                                </button>
+                                                {(() => {
+                                                    const isReceiver = order.toBranchId === user?.branchId;
+                                                    const isSender = order.fromBranchId === user?.branchId;
+                                                    
+                                                    if (isReceiver) {
+                                                        return (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => openRejectModal(order)}
+                                                                    className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-1"
+                                                                >
+                                                                    <XCircle size={16} />
+                                                                    رفض
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleReceive(order)}
+                                                                    disabled={receiveMutation.isPending}
+                                                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1 disabled:opacity-50"
+                                                                >
+                                                                    <CheckCircle size={16} />
+                                                                    تأكيد الاستلام
+                                                                </button>
+                                                            </>
+                                                        );
+                                                    } else if (isSender) {
+                                                        return (
+                                                            <button
+                                                                onClick={() => cancelMutation.mutate(order.id)}
+                                                                disabled={cancelMutation.isPending}
+                                                                className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 flex items-center gap-1 disabled:opacity-50"
+                                                            >
+                                                                <XCircle size={16} />
+                                                                إلغاء
+                                                            </button>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
@@ -362,6 +398,9 @@ export default function ReceiveOrders() {
                                                 {selectedOrder.type === 'SIM' ? 'النوع' : 'الموديل'}
                                             </th>
                                             <th className="text-right px-3 py-2 text-sm">المصنع</th>
+                                            {['MAINTENANCE', 'SEND_TO_CENTER'].includes(selectedOrder.type) && (
+                                                <th className="text-right px-3 py-2 text-sm">الشكوى/المشكلة</th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -373,6 +412,17 @@ export default function ReceiveOrders() {
                                                     {(selectedOrder.type === 'SIM' ? item.type : item.model) || '-'}
                                                 </td>
                                                 <td className="px-3 py-2 text-sm">{item.manufacturer || '-'}</td>
+                                                {['MAINTENANCE', 'SEND_TO_CENTER'].includes(selectedOrder.type) && (
+                                                    <td className="px-3 py-2 text-sm">
+                                                        {item.complaint ? (
+                                                            <span className="text-red-600 bg-red-50 px-2 py-1 rounded text-xs" title={item.complaint}>
+                                                                {item.complaint.length > 30 ? item.complaint.substring(0, 30) + '...' : item.complaint}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-slate-400">-</span>
+                                                        )}
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -381,27 +431,46 @@ export default function ReceiveOrders() {
                         </div>
 
                         <div className="p-4 border-t flex gap-2">
-                            {selectedOrder.status === 'PENDING' && (
-                                <>
-                                    <button
-                                        onClick={() => handleReceive(selectedOrder)}
-                                        disabled={receiveMutation.isPending}
-                                        className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                                    >
-                                        <Check size={18} />
-                                        تأكيد الاستلام
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setShowRejectModal(true);
-                                        }}
-                                        className="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2"
-                                    >
-                                        <XCircle size={18} />
-                                        رفض
-                                    </button>
-                                </>
-                            )}
+                            {selectedOrder.status === 'PENDING' && (() => {
+                                const isReceiver = selectedOrder.toBranchId === user?.branchId;
+                                const isSender = selectedOrder.fromBranchId === user?.branchId;
+                                
+                                if (isReceiver) {
+                                    return (
+                                        <>
+                                            <button
+                                                onClick={() => handleReceive(selectedOrder)}
+                                                disabled={receiveMutation.isPending}
+                                                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                            >
+                                                <Check size={18} />
+                                                تأكيد الاستلام
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setShowRejectModal(true);
+                                                }}
+                                                className="flex-1 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2"
+                                            >
+                                                <XCircle size={18} />
+                                                رفض
+                                            </button>
+                                        </>
+                                    );
+                                } else if (isSender) {
+                                    return (
+                                        <button
+                                            onClick={() => cancelMutation.mutate(selectedOrder.id)}
+                                            disabled={cancelMutation.isPending}
+                                            className="flex-1 bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200 flex items-center justify-center gap-2"
+                                        >
+                                            <XCircle size={18} />
+                                            إلغاء الإذن
+                                        </button>
+                                    );
+                                }
+                                return null;
+                            })()}
                             <button
                                 onClick={() => setSelectedOrder(null)}
                                 className="flex-1 border py-2 rounded-lg hover:bg-slate-50"

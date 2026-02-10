@@ -140,23 +140,80 @@ async function calculateAllMetrics() {
         });
 
         const branchSummary = await Promise.all(branches.map(async (branch) => {
-            const revenue = await db.payment.aggregate({
-                where: {
-                    branchId: branch.id,
-                    createdAt: { gte: currentMonthStart, lte: currentMonthEnd }
-                },
-                _sum: { amount: true }
-            });
+            const [revenue, activeReqs, closedReqs] = await Promise.all([
+                db.payment.aggregate({
+                    where: {
+                        branchId: branch.id,
+                        createdAt: { gte: currentMonthStart, lte: currentMonthEnd }
+                    },
+                    _sum: { amount: true }
+                }),
+                db.maintenanceRequest.count({
+                    where: {
+                        branchId: branch.id,
+                        status: { in: ['Open', 'In Progress'] }
+                    }
+                }),
+                db.maintenanceRequest.count({
+                    where: {
+                        branchId: branch.id,
+                        status: 'Closed',
+                        closingTimestamp: { gte: currentMonthStart, lte: currentMonthEnd }
+                    }
+                })
+            ]);
 
             return {
                 id: branch.id,
                 name: branch.name,
                 code: branch.code,
-                revenue: revenue._sum.amount || 0
+                revenue: revenue._sum.amount || 0,
+                activeRequests: activeReqs,
+                closedRequests: closedReqs,
+                closureRate: (activeReqs + closedReqs) > 0
+                    ? Math.round((closedReqs / (activeReqs + closedReqs)) * 100)
+                    : 0
             };
         }));
 
         branchSummary.sort((a, b) => b.revenue - a.revenue);
+
+        // ===================== TECHNICIAN PRODUCTIVITY =====================
+        const technicians = await db.user.findMany({
+            where: {
+                role: { in: ['CENTER_TECH', 'BRANCH_MANAGER'] },
+                isActive: true
+            },
+            select: { id: true, displayName: true, branchId: true }
+        });
+
+        const technicianProductivity = await Promise.all(technicians.map(async (tech) => {
+            const [closedCount, totalRevenue] = await Promise.all([
+                db.maintenanceRequest.count({
+                    where: {
+                        technicianId: tech.id,
+                        status: 'Closed',
+                        closingTimestamp: { gte: currentMonthStart, lte: currentMonthEnd }
+                    }
+                }),
+                db.payment.aggregate({
+                    where: {
+                        userId: tech.id,
+                        createdAt: { gte: currentMonthStart, lte: currentMonthEnd }
+                    },
+                    _sum: { amount: true }
+                })
+            ]);
+
+            return {
+                id: tech.id,
+                name: tech.displayName,
+                closedRequests: closedCount,
+                revenue: totalRevenue._sum.amount || 0
+            };
+        }));
+
+        technicianProductivity.sort((a, b) => b.closedRequests - a.closedRequests);
 
         // ===================== QUICK COUNTS =====================
 
@@ -208,6 +265,7 @@ async function calculateAllMetrics() {
                 total: inventoryItems.length
             },
             branchSummary: branchSummary.slice(0, 10),
+            technicianProductivity: technicianProductivity.slice(0, 5),
             quickCounts: {
                 totalMachines,
                 totalCustomers,

@@ -142,98 +142,98 @@ export function generateMaintenanceReport(props: PrintReportProps): string {
 <body>
     ${getReportSidebar()}
 
-<div class="sheet" id = "report-content" >
-    <div class="header" >
-        <div class="header-info" >
-            <div><strong>رقم الطلب: </strong> ${request.id?.slice(-5) || '00000'}</div >
-                <div>${entryExitDisplay} </div>
-                    </div>
-                    < div class="header-center" >
-                        <h1>تقرير صيانة </h1>
-                            < div > التاريخ: ${dateStr} </div>
-                                </div>
-                                < div class="logo" >
-                                    <img src="/logo.png" alt = "شركة سمارت" onerror = "this.outerHTML='<div style=\\'font-size:16pt;font-weight:bold;color:#1a237e\\'>شركة سمارت</div>'" />
-                                        </div>
-                                        </div>
-
-                                        < table class="info-table" >
-                                            <tr>
-                                            <td class="label" > صاحب النشاط: </td>
-                                                < td > ${customer.client_name || '-'} </td>
-                                                    < td class="label" > الرقم القومي: </td>
-                                                        < td > ${customer.national_id || '-'} </td>
-                                                            </tr>
-                                                            < tr >
-                                                            <td class="label" > التليفون: </td>
-                                                                < td > ${customer.telephone_1 || customer.phone || '-'} </td>
-                                                                    < td class="label" > العنوان: </td>
-                                                                        < td > ${customer.address || '-'} </td>
-                                                                            </tr>
-                                                                            < tr >
-                                                                            <td class="label" > كود النشاط: </td>
-                                                                                < td > ${customer.bkcode || '-'} </td>
-                                                                                    < td class="label" > مسلسل الماكينة: </td>
-                                                                                        < td > ${machine.serialNumber || '-'} </td>
-                                                                                            </tr>
-                                                                                            </table>
-
-                                                                                            < div class="section" >
-                                                                                                <div class="section-title" > توصيف العطل: </div>
-                                                                                                    < div class="section-content" > ${request.complaint || '-'} </div>
-                                                                                                        </div>
-
-                                                                                                        < div class="section" >
-                                                                                                            <div class="section-title" > الإجراء: </div>
-                                                                                                                < div class="section-content" >
-                                                                                                                    ${request.actionTaken || '-'}
-                ${freePartsText ? `<div class="parts-free">تغيير (مجاني): ${freePartsText}</div>` : ''}
-                ${paidPartsText ? `<div class="parts-paid">تغيير (بمقابل): ${paidPartsText}</div>` : ''}
-</div>
+<div class="sheet" id="report-content">
+    <div class="header">
+        <div class="header-info">
+            <div><strong>رقم الطلب: </strong> ${request.id?.slice(-5) || '00000'}</div>
+            <div>${entryExitDisplay}</div>
+        </div>
+        <div class="header-center">
+            <h1>تقرير صيانة</h1>
+            <div>التاريخ: ${dateStr}</div>
+        </div>
+        <div class="logo">
+            <img src="/logo.png" alt="شركة سمارت" onerror="this.outerHTML='<div style=\'font-size:16pt;font-weight:bold;color:#1a237e\'>شركة سمارت</div>'" />
+        </div>
     </div>
 
-    < div class="service-type" >
-        ${serviceType}
-            ${request.receiptNumber ? `<span class="receipt"> | رقم إيصال السداد: ${request.receiptNumber}</span>` : ''}
-</div>
+    <table class="info-table">
+        <tr>
+            <td class="label">صاحب النشاط:</td>
+            <td>${customer.client_name || '-'}</td>
+            <td class="label">الرقم القومي:</td>
+            <td>${customer.national_id || '-'}</td>
+        </tr>
+        <tr>
+            <td class="label">التليفون:</td>
+            <td>${customer.telephone_1 || customer.phone || '-'}</td>
+            <td class="label">العنوان:</td>
+            <td>${customer.address || '-'}</td>
+        </tr>
+        <tr>
+            <td class="label">كود النشاط:</td>
+            <td>${customer.bkcode || '-'}</td>
+            <td class="label">مسلسل الماكينة:</td>
+            <td>${machine.serialNumber || '-'}</td>
+        </tr>
+    </table>
 
-    < div class="section" >
-        <div class="section-content" style = "min-height:auto;border:none;background:none;padding:0;" >
-            تم الكشف على الماكينة والتأكد من صلاحيتها للعمل وعدم وجود أعطال أخرى.
-            </div>
-                </div>
+    <div class="section">
+        <div class="section-title">توصيف العطل:</div>
+        <div class="section-content">${request.complaint || '-'}</div>
+    </div>
 
-                < div class="declaration" >
-                    <strong>إقرار وتعهد: </strong> أنا / _________________ رقم قومي / _________________ صفة / _________________
-            بأن جميع البيانات المذكورة بالتقرير أعلاه صحيحة وأتعهد بسداد كافة تكاليف الإصلاح إن وجد في حالة أن العطل ناتج عن سوء استخدام.
-            تم استلام الماكينة من العميل وإعادة تسليمها بعد إجراء الصيانة بتاريخ تحرير هذا التقرير.< br > <br>
-    <strong>المقر بما فيه: </strong> الاسم / _________________ التوقيع / _________________
+    <div class="section">
+        <div class="section-title">الإجراء:</div>
+        <div class="section-content">
+            ${request.actionTaken || '-'}
+            ${freePartsText ? `<div class="parts-free">تغيير (مجاني): ${freePartsText}</div>` : ''}
+            ${paidPartsText ? `<div class="parts-paid">تغيير (بمقابل): ${paidPartsText}</div>` : ''}
         </div>
+    </div>
 
-        < div class="signature-section" >
-            <div class="signature-box" >
-                <h4>مسئول الصيانة </h4>
-                    < div > الاسم / ${request.technician || '_______________'} </div>
-                        < div style = "margin-top:20px;border-bottom:1px solid #000;width:80%" > </div>
-                            < div style = "margin-top:5px" > التوقيع </div>
-                                </div>
-                                < div class="signature-box" >
-                                    <h4>مراجعة تحويل الماكينة </h4>
-                                        < div style = "margin-bottom:10px" >☐ مراجعة تحويل الماكينة </div>
-                                            < div style = "margin-top:15px" > رقم الإيصال ................................</div>
-                                                </div>
-                                                </div>
+    <div class="service-type">
+        ${serviceType}
+        ${request.receiptNumber ? `<span class="receipt"> | رقم إيصال السداد: ${request.receiptNumber}</span>` : ''}
+    </div>
 
-                                                < div class="footer" >
-                                                    <div>عدد مرات الإصلاح خلال الشهر: <strong>${monthlyRepairCount} </strong></div >
-                                                        <div>${dateStr} </div>
-                                                            </div>
-                                                            </div>
+    <div class="section">
+        <div class="section-content" style="min-height:auto;border:none;background:none;padding:0;">
+            تم الكشف على الماكينة والتأكد من صلاحيتها للعمل وعدم وجود أعطال أخرى.
+        </div>
+    </div>
 
-                                                            ${getReportScripts(filename)}
+    <div class="declaration">
+        <strong>إقرار وتعهد:</strong> أنا / _________________ رقم قومي / _________________ صفة / _________________
+        بأن جميع البيانات المذكورة بالتقرير أعلاه صحيحة وأتعهد بسداد كافة تكاليف الإصلاح إن وجد في حالة أن العطل ناتج عن سوء استخدام.
+        تم استلام الماكينة من العميل وإعادة تسليمها بعد إجراء الصيانة بتاريخ تحرير هذا التقرير.<br><br>
+        <strong>المقر بما فيه:</strong> الاسم / _________________ التوقيع / _________________
+    </div>
+
+    <div class="signature-section">
+        <div class="signature-box">
+            <h4>مسئول الصيانة</h4>
+            <div>الاسم / ${request.technician || '_______________'}</div>
+            <div style="margin-top:20px;border-bottom:1px solid #000;width:80%"></div>
+            <div style="margin-top:5px">التوقيع</div>
+        </div>
+        <div class="signature-box">
+            <h4>مراجعة تحويل الماكينة</h4>
+            <div style="margin-bottom:10px">☐ مراجعة تحويل الماكينة</div>
+            <div style="margin-top:15px">رقم الإيصال ................................</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div>عدد مرات الإصلاح خلال الشهر: <strong>${monthlyRepairCount}</strong></div>
+        <div>${dateStr}</div>
+    </div>
+    </div>
+
+    ${getReportScripts(filename)}
 </body>
-    </html>
-        `;
+</html>
+`;
 }
 
 export function openMaintenanceReport(request: any, usedParts?: any[], totalCost?: number, monthlyRepairCount?: number) {

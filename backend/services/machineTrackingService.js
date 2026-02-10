@@ -11,6 +11,14 @@ async function getTrackedMachines(filters, user) {
         throw new Error('يرجى تحديد الفرع');
     }
 
+    // Authorization Check
+    const isPrivileged = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(user.role);
+    const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+
+    if (!isPrivileged && !authorizedIds.includes(originBranchId)) {
+        throw new Error('غير مصرح لك بمشاهدة بيانات هذا الفرع');
+    }
+
     const where = {
         originBranchId: originBranchId,
         status: {
@@ -82,6 +90,14 @@ async function getTrackingSummary(filters, user) {
 
     if (!originBranchId) {
         throw new Error('يرجى تحديد الفرع');
+    }
+
+    // Authorization Check
+    const isPrivileged = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(user.role);
+    const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+
+    if (!isPrivileged && !authorizedIds.includes(originBranchId)) {
+        throw new Error('غير مصرح لك بمشاهدة بيانات هذا الفرع');
     }
 
     // RULE 1: MUST include branchId

@@ -4,6 +4,7 @@ const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const { asyncHandler, AppError } = require('../utils/errorHandler');
+const { isGlobalRole } = require('../utils/constants');
 
 // ===================== EXECUTIVE DASHBOARD =====================
 // This dashboard is designed for SUPER_ADMIN, MANAGEMENT, and high-level decision makers
@@ -36,70 +37,112 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     const dateEnd = endDate ? new Date(endDate) : currentMonthEnd;
 
     // Branch filter for non-admins or when explicitly specified
-    const branchFilter = branchId ? { branchId } : {};
+    // Support hierarchy: use authorized branches if not admin
+    const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+    let branchFilter = {};
 
-    // ===================== 1. FINANCIAL KPIs =====================
+    if (isGlobalRole(req.user.role)) {
+        if (branchId) branchFilter = { branchId };
+    } else {
+        // Restricted user
+        if (branchId) {
+            // If specific branch requested, check authorization
+            branchFilter = authorizedIds.includes(branchId) ? { branchId } : { branchId: 'FORBIDDEN' };
+        } else {
+            // Default to all authorized branches
+            branchFilter = { branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds } };
+        }
+    }
 
-    // Current Period Revenue
-    const currentRevenue = await db.payment.aggregate(ensureBranchWhere({
-        where: {
-            ...branchFilter,
-            createdAt: { gte: dateStart, lte: dateEnd }
-        },
-        _sum: { amount: true }
-    }, req));
+    // ===================== PARALLEL DATA FETCH =====================
+    // All these queries are independent — run them concurrently for speed
 
-    // Previous Period Revenue (for comparison)
     const periodDiff = dateEnd.getTime() - dateStart.getTime();
     const prevStart = new Date(dateStart.getTime() - periodDiff);
     const prevEnd = new Date(dateEnd.getTime() - periodDiff);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const isAdmin = isGlobalRole(req.user.role);
 
-    const previousRevenue = await db.payment.aggregate(ensureBranchWhere({
-        where: {
-            ...branchFilter,
-            createdAt: { gte: prevStart, lte: prevEnd }
-        },
-        _sum: { amount: true }
-    }, req));
+    const [
+        currentRevenue,
+        previousRevenue,
+        revenueByType,
+        machineSales,
+        pendingPayments,
+        requestsTotal,
+        requestsClosed,
+        closedRequests,
+        overdueRequests,
+        inventoryItems
+    ] = await Promise.all([
+        // 1. Current Period Revenue
+        db.payment.aggregate(ensureBranchWhere({
+            where: { ...branchFilter, createdAt: { gte: dateStart, lte: dateEnd } },
+            _sum: { amount: true }
+        }, req)),
 
-    // Revenue by Type
-    const revenueByType = await db.payment.groupBy(ensureBranchWhere({
-        by: ['type'],
-        where: {
-            ...branchFilter,
-            createdAt: { gte: dateStart, lte: dateEnd }
-        },
-        _sum: { amount: true }
-    }, req));
+        // 2. Previous Period Revenue
+        db.payment.aggregate(ensureBranchWhere({
+            where: { ...branchFilter, createdAt: { gte: prevStart, lte: prevEnd } },
+            _sum: { amount: true }
+        }, req)),
 
-    // Pending Debts - Remaining installments from machine sales + pending maintenance debts
-    // 1. Get remaining installments from machine sales
-    const machineSales = await db.machineSale.findMany(ensureBranchWhere({
-        where: {
-            ...branchFilter,
-            status: { not: 'CANCELLED' }
-        },
-        select: { totalPrice: true, paidAmount: true }
-    }, req));
+        // 3. Revenue by Type
+        db.payment.groupBy(ensureBranchWhere({
+            by: ['type'],
+            where: { ...branchFilter, createdAt: { gte: dateStart, lte: dateEnd } },
+            _sum: { amount: true }
+        }, req)),
+
+        // 4. Machine Sales (for installment calculations)
+        db.machineSale.findMany(ensureBranchWhere({
+            where: { ...branchFilter, status: { not: 'CANCELLED' } },
+            select: { totalPrice: true, paidAmount: true }
+        }, req)),
+
+        // 5. Pending Maintenance Debts
+        db.branchDebt.findMany({
+            where: {
+                ...(branchId ? { debtorBranchId: branchId } : (isAdmin ? { _skipBranchEnforcer: true } : {})),
+                status: 'PENDING_PAYMENT'
+            },
+            select: { remainingAmount: true, createdAt: true }
+        }),
+
+        // 6. Total Requests (period)
+        db.maintenanceRequest.count(ensureBranchWhere({
+            where: { ...branchFilter, createdAt: { gte: dateStart, lte: dateEnd } }
+        }, req)),
+
+        // 7. Closed Requests count
+        db.maintenanceRequest.count(ensureBranchWhere({
+            where: { ...branchFilter, status: 'Closed', closingTimestamp: { gte: dateStart, lte: dateEnd } }
+        }, req)),
+
+        // 8. Closed Requests with timestamps (for avg resolution)
+        db.maintenanceRequest.findMany(ensureBranchWhere({
+            where: { ...branchFilter, status: 'Closed', closingTimestamp: { gte: dateStart, lte: dateEnd } },
+            select: { createdAt: true, closingTimestamp: true }
+        }, req)),
+
+        // 9. Overdue Requests (> 7 days)
+        db.maintenanceRequest.count(ensureBranchWhere({
+            where: { ...branchFilter, status: { in: ['Open', 'In Progress'] }, createdAt: { lt: sevenDaysAgo } }
+        }, req)),
+
+        // 10. Inventory Items
+        db.inventoryItem.findMany(ensureBranchWhere({
+            where: branchFilter, include: { part: true }
+        }, req))
+    ]);
+
+    // ===================== 1. FINANCIAL KPIs =====================
+
     const remainingInstallments = machineSales.reduce((sum, s) => sum + (s.totalPrice - s.paidAmount), 0);
-
-    // 2. Get pending maintenance debts from BranchDebt
-    // Note: BranchDebt uses debtorBranchId/creditorBranchId, not branchId
-    // Use _skipBranchEnforcer marker for admin all-branches view
-    const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
-    const pendingPayments = await db.branchDebt.findMany({
-        where: {
-            ...(branchId ? { debtorBranchId: branchId } : (isAdmin ? { _skipBranchEnforcer: true } : {})),
-            status: 'PENDING_PAYMENT'
-        },
-        select: { remainingAmount: true, createdAt: true }
-    });
     const pendingMaintenanceDebts = pendingPayments.reduce((sum, p) => sum + p.remainingAmount, 0);
-
-    // Total Pending Debts
     const pendingDebtsTotal = remainingInstallments + pendingMaintenanceDebts;
 
-    // Overdue Debts (> 30 days) - only from pending payments
+    // Overdue Debts (> 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const overdueDebtsTotal = pendingPayments
         .filter(p => new Date(p.createdAt) < thirtyDaysAgo)
@@ -107,33 +150,7 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
     // ===================== 2. OPERATIONAL KPIs =====================
 
-    // Maintenance Request Stats
-    const requestsTotal = await db.maintenanceRequest.count(ensureBranchWhere({
-        where: {
-            ...branchFilter,
-            createdAt: { gte: dateStart, lte: dateEnd }
-        }
-    }, req));
-
-    const requestsClosed = await db.maintenanceRequest.count(ensureBranchWhere({
-        where: {
-            ...branchFilter,
-            status: 'Closed',
-            closingTimestamp: { gte: dateStart, lte: dateEnd }
-        }
-    }, req));
-
     const closureRate = requestsTotal > 0 ? Math.round((requestsClosed / requestsTotal) * 100) : 0;
-
-    // Average Resolution Time
-    const closedRequests = await db.maintenanceRequest.findMany(ensureBranchWhere({
-        where: {
-            ...branchFilter,
-            status: 'Closed',
-            closingTimestamp: { gte: dateStart, lte: dateEnd }
-        },
-        select: { createdAt: true, closingTimestamp: true }
-    }, req));
 
     let avgResolutionTime = 0;
     if (closedRequests.length > 0) {
@@ -146,22 +163,7 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
         avgResolutionTime = (totalDays / closedRequests.length).toFixed(1);
     }
 
-    // Overdue Requests (> 7 days open)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const overdueRequests = await db.maintenanceRequest.count(ensureBranchWhere({
-        where: {
-            ...branchFilter,
-            status: { in: ['Open', 'In Progress'] },
-            createdAt: { lt: sevenDaysAgo }
-        }
-    }, req));
-
     // ===================== 3. INVENTORY HEALTH =====================
-
-    const inventoryItems = await db.inventoryItem.findMany(ensureBranchWhere({
-        where: branchFilter,
-        include: { part: true }
-    }, req));
 
     let inStock = 0, lowStock = 0, critical = 0, outOfStock = 0;
     inventoryItems.forEach(item => {
@@ -175,6 +177,7 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     const inventoryHealth = inventoryItems.length > 0
         ? Math.round((inStock / inventoryItems.length) * 100)
         : 100;
+
 
     // ===================== 4. BRANCH PERFORMANCE =====================
 
@@ -483,12 +486,21 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
  */
 router.get('/branch/:branchId', authenticateToken, asyncHandler(async (req, res) => {
     // Match allowed roles of main executive dashboard
-    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER', 'CS_SUPERVISOR'];
+    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER', 'CS_SUPERVISOR', 'BRANCH_MANAGER', 'ADMIN_AFFAIRS'];
     if (!allowedRoles.includes(req.user.role)) {
         throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
 
     const { branchId } = req.params;
+
+    // Authorization check for hierarchical access
+    const isAdmin = isGlobalRole(req.user.role);
+    if (!isAdmin) {
+        const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+        if (!authorizedIds.includes(branchId)) {
+            throw new AppError('Access denied: You do not have permission to view this branch', 403, 'FORBIDDEN');
+        }
+    }
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);

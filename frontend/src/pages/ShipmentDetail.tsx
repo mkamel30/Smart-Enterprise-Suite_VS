@@ -8,6 +8,7 @@ import { Progress } from '../components/ui/progress';
 // Using lucide-react instead of heroicons
 import { ArrowLeft, Box, Wrench, AlertTriangle, CheckCircle } from 'lucide-react';
 import ProcessingModal from '../components/ProcessingModal';
+import MachineDetailsModal from '../components/MachineDetailsModal';
 
 const ShipmentDetail: React.FC = () => {
     const { id } = useParams();
@@ -15,6 +16,7 @@ const ShipmentDetail: React.FC = () => {
     const queryClient = useQueryClient();
     const [selectedMachine, setSelectedMachine] = useState<any>(null);
     const [isProcessingModalOpen, setIsProcessingModalOpen] = useState(false);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
     const { data: shipment, isLoading } = useQuery({
         queryKey: ['shipment', id],
@@ -155,10 +157,10 @@ const ShipmentDetail: React.FC = () => {
                                             </Button>
                                         )}
 
-                                        {(currentStatus === 'IN_MAINTENANCE' || currentStatus === 'UNDER_INSPECTION' || currentStatus === 'AWAITING_APPROVAL' || currentStatus === 'REPAIR_APPROVED' || currentStatus === 'REPAIRED') && (
+                                        {(currentStatus === 'IN_MAINTENANCE' || currentStatus === 'UNDER_INSPECTION' || currentStatus === 'AWAITING_APPROVAL' || currentStatus === 'REPAIR_APPROVED') && (
                                             <Button
                                                 size="sm"
-                                                variant={isCompleted ? 'ghost' : 'default'} // primary -> default
+                                                variant="default"
                                                 onClick={() => {
                                                     setSelectedMachine(item.serialNumber);
                                                     setIsProcessingModalOpen(true);
@@ -166,7 +168,21 @@ const ShipmentDetail: React.FC = () => {
                                                 disabled={currentStatus === 'AWAITING_APPROVAL'}
                                             >
                                                 <Wrench className="w-4 h-4 ml-1" />
-                                                {isCompleted ? 'عرض التفاصيل' : currentStatus === 'AWAITING_APPROVAL' ? 'طلب موافقة (مرسل)' : 'إجراء / صيانة'}
+                                                {currentStatus === 'AWAITING_APPROVAL' ? 'طلب موافقة (مرسل)' : 'إجراء / صيانة'}
+                                            </Button>
+                                        )}
+                                        
+                                        {isCompleted && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setSelectedMachine(item.serialNumber);
+                                                    setIsDetailsModalOpen(true);
+                                                }}
+                                            >
+                                                <CheckCircle className="w-4 h-4 ml-1" />
+                                                عرض التفاصيل
                                             </Button>
                                         )}
                                     </>
@@ -177,7 +193,7 @@ const ShipmentDetail: React.FC = () => {
                 })}
             </div>
 
-            {/* Modal */}
+            {/* Processing Modal */}
             {isProcessingModalOpen && selectedMachine && (
                 <ProcessingModal
                     isOpen={isProcessingModalOpen}
@@ -187,6 +203,16 @@ const ShipmentDetail: React.FC = () => {
                         queryClient.invalidateQueries({ queryKey: ['shipment', id] });
                         setIsProcessingModalOpen(false);
                     }}
+                />
+            )}
+
+            {/* Details Modal */}
+            {isDetailsModalOpen && selectedMachine && (
+                <MachineDetailsModal
+                    isOpen={isDetailsModalOpen}
+                    onClose={() => setIsDetailsModalOpen(false)}
+                    serialNumber={selectedMachine}
+                    shipmentId={id || ''}
                 />
             )}
         </div>

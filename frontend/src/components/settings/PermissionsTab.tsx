@@ -6,14 +6,14 @@ import { ROLES, getRoleDisplayName } from '../../lib/permissions';
 
 // Role colors for visual distinction
 const ROLE_COLORS: Record<string, string> = {
-    [ROLES.SUPER_ADMIN]: 'bg-red-100 text-red-800 border-red-200',
-    [ROLES.MANAGEMENT]: 'bg-orange-100 text-orange-800 border-orange-200',
-    [ROLES.ADMIN_AFFAIRS]: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    [ROLES.CENTER_MANAGER]: 'bg-blue-100 text-blue-800 border-blue-200',
-    [ROLES.CENTER_TECH]: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-    [ROLES.BRANCH_MANAGER]: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    [ROLES.CS_SUPERVISOR]: 'bg-green-100 text-green-800 border-green-200',
-    [ROLES.CS_AGENT]: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    [ROLES.SUPER_ADMIN]: 'bg-rose-500/10 text-rose-600 border-rose-200 shadow-sm shadow-rose-500/5',
+    [ROLES.MANAGEMENT]: 'bg-amber-500/10 text-amber-600 border-amber-200 shadow-sm shadow-amber-500/5',
+    [ROLES.ADMIN_AFFAIRS]: 'bg-orange-500/10 text-orange-600 border-orange-200 shadow-sm shadow-orange-500/5',
+    [ROLES.CENTER_MANAGER]: 'bg-blue-500/10 text-blue-600 border-blue-200 shadow-sm shadow-blue-500/5',
+    [ROLES.CENTER_TECH]: 'bg-cyan-500/10 text-cyan-600 border-cyan-200 shadow-sm shadow-cyan-500/5',
+    [ROLES.BRANCH_MANAGER]: 'bg-indigo-500/10 text-indigo-600 border-indigo-200 shadow-sm shadow-indigo-500/5',
+    [ROLES.CS_SUPERVISOR]: 'bg-emerald-500/10 text-emerald-600 border-emerald-200 shadow-sm shadow-emerald-500/5',
+    [ROLES.CS_AGENT]: 'bg-teal-500/10 text-teal-600 border-teal-200 shadow-sm shadow-teal-500/5',
 };
 
 // Page labels in Arabic
@@ -277,17 +277,22 @@ export function PermissionsTab() {
                                         <td key={role} className="p-2 text-center">
                                             <button
                                                 onClick={() => togglePermission(viewMode === 'pages' ? 'PAGE' : 'ACTION', key, role)}
-                                                className={`w-9 h-9 rounded-xl flex items-center justify-center mx-auto transition-all duration-300 relative group/btn ${isAllowed
-                                                    ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'
-                                                    : 'bg-muted/50 text-muted-foreground/30 hover:bg-muted/100'
-                                                    } ${isPending ? 'ring-2 ring-primary/20 scale-105 shadow-md' : ''}`}
+                                                className={`w-11 h-11 rounded-2xl flex items-center justify-center mx-auto transition-all duration-300 relative group/btn ${isAllowed
+                                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5'
+                                                    : 'bg-muted/50 text-muted-foreground/20 hover:bg-muted/100 hover:text-muted-foreground/40'
+                                                    } ${isPending ? 'ring-4 ring-primary/30 scale-110 z-20' : ''}`}
                                             >
-                                                <div className={`transition-all duration-500 ${isAllowed ? 'scale-100 rotate-0' : 'scale-75 rotate-45'}`}>
-                                                    {isAllowed ? <Check size={18} strokeWidth={4} /> : <Plus size={18} strokeWidth={4} className="opacity-20" />}
+                                                <div className={`transition-all duration-500 ${isAllowed ? 'scale-100 rotate-0' : 'scale-50 rotate-45 opacity-50'}`}>
+                                                    {isAllowed ? <Check size={20} strokeWidth={4} /> : <Shield size={20} strokeWidth={2} />}
                                                 </div>
                                                 {isPending && (
-                                                    <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-primary rounded-full animate-pulse -translate-y-1/3 translate-x-1/3 border border-white dark:border-slate-900" />
+                                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full animate-bounce flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm z-30">
+                                                        <Plus size={8} className="text-white" strokeWidth={5} />
+                                                    </div>
                                                 )}
+
+                                                {/* Hover Glow Effect */}
+                                                <div className={`absolute inset-0 rounded-2xl transition-opacity duration-300 opacity-0 group-hover/btn:opacity-20 ${isAllowed ? 'bg-white' : 'bg-primary'}`} />
                                             </button>
                                         </td>
                                     );

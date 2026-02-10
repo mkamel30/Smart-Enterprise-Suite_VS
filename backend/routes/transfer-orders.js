@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { z } = require('zod');
@@ -6,6 +6,7 @@ const ExcelJS = require('exceljs');
 const { authenticateToken } = require('../middleware/auth');
 const { validateRequest, validateQuery } = require('../middleware/validation');
 const transferService = require('../services/transferService');
+const { exportEntitiesToExcel, transformTransfersForExport, setExcelHeaders, generateExportFilename } = require('../utils/excelExport');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -101,36 +102,14 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
 /**
  * GET Export Transfer Orders to Excel
  */
-const { exportToExcel } = require('../utils/excel');
 router.get('/export-data', authenticateToken, async (req, res) => {
     try {
         const orders = await transferService.listTransferOrders(req.query, req.user);
 
-        const data = orders.map(o => ({
-            'التاريخ': new Date(o.createdAt).toLocaleDateString('ar-EG'),
-            'رقم الإذن': o.orderNumber || o.id.slice(0, 8),
-            'النوع': o.type === 'MACHINE' ? 'ماكينات' : o.type === 'SIM' ? 'شرائح' : 'قطع غيار',
-            'من الفرع': o.fromBranch?.name || '-',
-            'إلى الفرع': o.toBranch?.name || '-',
-            'عدد العناصر': o.items?.length || 0,
-            'الحالة': o.status === 'PENDING' ? 'معلق' : o.status === 'COMPLETED' ? 'مكتمل' : o.status === 'CANCELLED' ? 'ملغي' : o.status,
-            'ملاحظات': o.notes || '-'
-        }));
+        const data = transformTransfersForExport(orders);
+        const buffer = await exportEntitiesToExcel(data, 'transfers', 'transfer_orders_export');
 
-        const columns = [
-            { header: 'التاريخ', key: 'التاريخ', width: 15 },
-            { header: 'رقم الإذن', key: 'رقم الإذن', width: 15 },
-            { header: 'النوع', key: 'النوع', width: 12 },
-            { header: 'من الفرع', key: 'من الفرع', width: 20 },
-            { header: 'إلى الفرع', key: 'إلى الفرع', width: 20 },
-            { header: 'عدد العناصر', key: 'عدد العناصر', width: 12 },
-            { header: 'الحالة', key: 'الحالة', width: 12 },
-            { header: 'ملاحظات', key: 'ملاحظات', width: 30 }
-        ];
-
-        const buffer = await exportToExcel(data, columns, 'transfer_orders_export');
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=transfer_orders_export.xlsx');
+        setExcelHeaders(res, generateExportFilename('transfer_orders_export'));
         res.send(buffer);
     } catch (error) {
         console.error('Failed to export transfer orders:', error);

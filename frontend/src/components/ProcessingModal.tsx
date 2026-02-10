@@ -96,9 +96,18 @@ export default function ProcessingModal({ isOpen, onClose, serialNumber, onSucce
                 }
             });
             onSuccess();
-        } catch (error) {
-            console.error(error);
-            alert('حدث خطأ أثناء تنفيذ العملية');
+        } catch (error: any) {
+            console.error('Error details:', error);
+            // Extract error message from response
+            let errorMessage = 'حدث خطأ أثناء تنفيذ العملية';
+            if (error?.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error?.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            alert(errorMessage);
         }
     };
 

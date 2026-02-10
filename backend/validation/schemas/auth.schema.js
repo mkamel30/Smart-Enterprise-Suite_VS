@@ -7,7 +7,7 @@ const loginSchema = z.object({
   email: z.string().email('Invalid email format').optional(),
   userId: z.string().optional(),
   password: z.string()
-    .min(8, 'Password must be at least 8 characters')
+    .min(12, 'Password must be at least 12 characters')
     .max(128, 'Password cannot exceed 128 characters'),
   branchId: z.string()
     .regex(/^[a-z0-9]{25}$/, 'Invalid branch ID')
@@ -18,7 +18,7 @@ const changePasswordSchema = z.object({
   currentPassword: z.string()
     .min(8, 'Current password is required'),
   newPassword: z.string()
-    .min(8, 'New password must be at least 8 characters')
+    .min(12, 'New password must be at least 12 characters')
     .max(128, 'Password cannot exceed 128 characters')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')

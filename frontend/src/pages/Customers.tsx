@@ -61,18 +61,19 @@ export default function Customers() {
         selectedReplacement: '',
         incomingStatus: 'DEFECTIVE',
         actionNotes: '',
+        complaint: '',
         selectedMachineHistory: '',
         selectedSim: null
     });
 
     // Modal Handlers
     const handleExchange = (customer: any, machine: any) => {
-        setModalData({ ...modalData, targetCustomer: customer, selectedActionMachine: machine, incomingStatus: 'DEFECTIVE', actionNotes: '', selectedReplacement: '' });
+        setModalData({ ...modalData, targetCustomer: customer, selectedActionMachine: machine, incomingStatus: 'DEFECTIVE', actionNotes: '', complaint: '', selectedReplacement: '' });
         setModals({ ...modals, exchange: true });
     };
 
     const handleReturn = (customer: any, machine: any) => {
-        setModalData({ ...modalData, targetCustomer: customer, selectedActionMachine: machine, incomingStatus: 'CLIENT_REPAIR', actionNotes: '' });
+        setModalData({ ...modalData, targetCustomer: customer, selectedActionMachine: machine, incomingStatus: 'CLIENT_REPAIR', actionNotes: '', complaint: '' });
         setModals({ ...modals, returnMachine: true });
     };
 
@@ -232,7 +233,8 @@ export default function Customers() {
                     warehouseMachines: warehouseMachines || [], // Should match what the modal needs
                     setSelectedReplacement: (id) => setModalData({ ...modalData, selectedReplacement: id }),
                     setActionNotes: (notes) => setModalData({ ...modalData, actionNotes: notes }),
-                    setIncomingStatus: (status) => setModalData({ ...modalData, incomingStatus: status })
+                    setIncomingStatus: (status) => setModalData({ ...modalData, incomingStatus: status }),
+                    setComplaint: (complaint) => setModalData({ ...modalData, complaint })
                 }}
                 mutations={{
                     exchange: exchangeMutation,

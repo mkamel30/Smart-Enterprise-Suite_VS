@@ -31,12 +31,54 @@ function getTodayBoundaries() {
 /**
  * Get date boundaries for current month
  */
-function getMonthBoundaries() {
+function getMonthBoundaries(month = null, year = null) {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    return { startOfMonth, endOfMonth, now };
+    const targetMonth = month !== null ? month : now.getMonth();
+    const targetYear = year !== null ? year : now.getFullYear();
+    const startOfMonth = new Date(targetYear, targetMonth, 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+    return { startOfMonth, endOfMonth, month: targetMonth, year: targetYear };
 }
+
+/**
+ * Get date boundaries for current quarter
+ */
+function getQuarterBoundaries(year = null) {
+    const now = new Date();
+    const targetYear = year !== null ? year : now.getFullYear();
+    const currentQuarter = Math.floor(now.getMonth() / 3);
+    const startQuarter = new Date(targetYear, currentQuarter * 3, 1, 0, 0, 0, 0);
+    const endQuarter = new Date(targetYear, (currentQuarter + 1) * 3, 0, 23, 59, 59, 999);
+    return { startQuarter, endQuarter, quarter: currentQuarter, year: targetYear };
+}
+
+/**
+ * Get date boundaries for year
+ */
+function getYearBoundaries(year = null) {
+    const now = new Date();
+    const targetYear = year !== null ? year : now.getFullYear();
+    const startOfYear = new Date(targetYear, 0, 1, 0, 0, 0, 0);
+    const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59, 999);
+    return { startOfYear, endOfYear, year: targetYear };
+}
+
+/**
+ * Get period boundaries based on period type
+ */
+function getPeriodBoundaries(period, options = {}) {
+    switch (period) {
+        case 'month':
+            return getMonthBoundaries(options.month, options.year);
+        case 'quarter':
+            return getQuarterBoundaries(options.year);
+        case 'year':
+            return getYearBoundaries(options.year);
+        default:
+            return getMonthBoundaries();
+    }
+}
+
 
 /**
  * Build branch filter based on user role
@@ -46,6 +88,7 @@ function getMonthBoundaries() {
  */
 function buildBranchFilter(user, targetBranchId = null) {
     const { role, branchId: userBranchId } = user;
+    const authorizedIds = user.authorizedBranchIds || (userBranchId ? [userBranchId] : []);
 
     // Super Admin and Management can see all or filter by specific branch
     if (['SUPER_ADMIN', 'MANAGEMENT'].includes(role)) {
@@ -56,9 +99,13 @@ function buildBranchFilter(user, targetBranchId = null) {
         return {};
     }
 
-    // All other roles are scoped to their branch
-    if (userBranchId) {
-        return { branchId: userBranchId };
+    // Support hierarchy: filter by authorized branches
+    if (authorizedIds.length > 0) {
+        if (targetBranchId) {
+            // If target provided, ensure it's within authorized branches
+            return { branchId: authorizedIds.includes(targetBranchId) ? targetBranchId : 'FORBIDDEN' };
+        }
+        return { branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds } };
     }
 
     // Fallback: no data if no branch assigned
@@ -126,8 +173,8 @@ async function getTotalUsersCount(branchFilter) {
  * Filter: createdAt >= startOfMonth AND createdAt <= endOfMonth
  * Aggregation: SUM(amount)
  */
-async function getMonthlyRevenue(branchFilter) {
-    const { startOfMonth, endOfMonth } = getMonthBoundaries();
+async function getMonthlyRevenue(branchFilter, month = null, year = null) {
+    const { startOfMonth, endOfMonth } = getMonthBoundaries(month, year);
 
     const where = {
         createdAt: { gte: startOfMonth, lte: endOfMonth },
@@ -145,6 +192,57 @@ async function getMonthlyRevenue(branchFilter) {
     });
 
     return result._sum.amount || 0;
+}
+
+/**
+ * Get revenue for a specific period
+ * 
+ * Table: Payment
+ * Returns: SUM(amount) for the period
+ */
+async function getPeriodRevenue(branchFilter, period = 'month', options = {}) {
+    const boundaries = getPeriodBoundaries(period, options);
+
+    let startDate, endDate;
+    switch (period) {
+        case 'month':
+            startDate = boundaries.startOfMonth;
+            endDate = boundaries.endOfMonth;
+            break;
+        case 'quarter':
+            startDate = boundaries.startQuarter;
+            endDate = boundaries.endQuarter;
+            break;
+        case 'year':
+            startDate = boundaries.startOfYear;
+            endDate = boundaries.endOfYear;
+            break;
+        default:
+            startDate = boundaries.startOfMonth;
+            endDate = boundaries.endOfMonth;
+    }
+
+    const where = {
+        createdAt: { gte: startDate, lte: endDate },
+        ...branchFilter
+    };
+
+    // Ensure branchId filter is present for enforcer
+    if (!where.branchId) {
+        where.branchId = { not: null };
+    }
+
+    const result = await db.payment.aggregate({
+        where,
+        _sum: { amount: true }
+    });
+
+    return {
+        amount: result._sum.amount || 0,
+        period,
+        startDate,
+        endDate
+    };
 }
 
 /**
@@ -244,6 +342,57 @@ async function getOverdueInstallmentsCount(branchFilter) {
 }
 
 /**
+ * Get pending installments (due but not paid)
+ * 
+ * Table: Installment
+ * Filter: isPaid=false AND dueDate >= today AND dueDate <= endOfPeriod
+ */
+async function getPendingInstallments(branchFilter, period = 'month') {
+    const today = new Date();
+    const { endOfMonth } = getMonthBoundaries();
+
+    const where = {
+        isPaid: false,
+        dueDate: {
+            gte: today,
+            lte: period === 'month' ? endOfMonth : today // Current period
+        },
+        ...branchFilter
+    };
+
+    // Ensure branchId filter is present for enforcer
+    if (!where.branchId) {
+        where.branchId = { not: null };
+    }
+
+    const installments = await db.installment.findMany({
+        where,
+        orderBy: { dueDate: 'asc' },
+        take: 10,
+        include: {
+            sale: {
+                include: {
+                    customer: true
+                }
+            }
+        }
+    });
+
+    // Calculate totals
+    const totals = await db.installment.aggregate({
+        where,
+        _sum: { amount: true },
+        _count: { id: true }
+    });
+
+    return {
+        installments,
+        totalCount: totals._count.id || 0,
+        totalAmount: totals._sum.amount || 0,
+        totalRemaining: totals._sum.amount || 0
+    };
+}
+/**
  * Get inventory statistics
  * 
  * Tables: WarehouseMachine, WarehouseSim, InventoryItem
@@ -277,9 +426,9 @@ async function getInventoryStats(branchFilter) {
  * Get pending transfer orders count
  * 
  * Table: TransferOrder
- * Filter: status='PENDING' AND (fromBranchId=branchId OR toBranchId=branchId)
+ * Filter: status='PENDING' AND (fromBranchId IN authorizedIds OR toBranchId IN authorizedIds)
  */
-async function getPendingTransfersCount(userBranchId, isAdmin) {
+async function getPendingTransfersCount(user, isAdmin) {
     if (isAdmin) {
         // Admin sees all pending transfers
         return db.transferOrder.count({
@@ -290,13 +439,14 @@ async function getPendingTransfersCount(userBranchId, isAdmin) {
         });
     }
 
-    if (!userBranchId) return 0;
+    const authorizedIds = user?.authorizedBranchIds || (user?.branchId ? [user.branchId] : []);
+    if (authorizedIds.length === 0) return 0;
 
     return db.transferOrder.count({
         where: {
             OR: [
-                { fromBranchId: userBranchId },
-                { toBranchId: userBranchId }
+                { fromBranchId: { in: authorizedIds } },
+                { toBranchId: { in: authorizedIds } }
             ],
             status: 'PENDING',
             branchId: { not: null } // Satisfy branch enforcer
@@ -409,20 +559,193 @@ async function getAdminSummary() {
     };
 }
 
+/**
+ * Get maintenance performance statistics for a period
+ * 
+ * Tables: WarehouseMachine, ServiceAssignment, BranchDebt
+ */
+async function getMaintenanceStats(branchFilter, period = 'month', options = {}) {
+    const boundaries = getPeriodBoundaries(period, options);
+
+    let startDate, endDate;
+    switch (period) {
+        case 'month':
+            startDate = boundaries.startOfMonth;
+            endDate = boundaries.endOfMonth;
+            break;
+        case 'quarter':
+            startDate = boundaries.startQuarter;
+            endDate = boundaries.endQuarter;
+            break;
+        case 'year':
+            startDate = boundaries.startOfYear;
+            endDate = boundaries.endOfYear;
+            break;
+        default:
+            startDate = boundaries.startOfMonth;
+            endDate = boundaries.endOfMonth;
+    }
+
+    // Count completed repairs in period
+    const completedRepairs = await db.warehouseMachine.count({
+        where: {
+            ...branchFilter,
+            status: 'REPAIRED',
+            updatedAt: { gte: startDate, lte: endDate }
+        }
+    });
+
+    // Count total loss in period
+    const totalLossCount = await db.warehouseMachine.count({
+        where: {
+            ...branchFilter,
+            status: 'TOTAL_LOSS',
+            updatedAt: { gte: startDate, lte: endDate }
+        }
+    });
+
+    // Get maintenance costs (branch debts)
+    const maintenanceCosts = await db.branchDebt.aggregate({
+        where: {
+            ...branchFilter,
+            type: 'MAINTENANCE_COST',
+            createdAt: { gte: startDate, lte: endDate },
+            status: 'PENDING'
+        },
+        _sum: { amount: true },
+        _count: { id: true }
+    });
+
+    // Get branch breakdown for admin
+    let branchBreakdown = null;
+    if (!branchFilter.branchId) {
+        const branches = await db.branch.findMany({
+            where: { type: 'BRANCH', isActive: true },
+            select: { id: true, name: true }
+        });
+
+        branchBreakdown = await Promise.all(branches.map(async (branch) => {
+            const branchFilterWithId = { branchId: branch.id };
+            const [repairs, losses, costs] = await Promise.all([
+                db.warehouseMachine.count({
+                    where: {
+                        ...branchFilterWithId,
+                        status: 'REPAIRED',
+                        updatedAt: { gte: startDate, lte: endDate }
+                    }
+                }),
+                db.warehouseMachine.count({
+                    where: {
+                        ...branchFilterWithId,
+                        status: 'TOTAL_LOSS',
+                        updatedAt: { gte: startDate, lte: endDate }
+                    }
+                }),
+                db.branchDebt.aggregate({
+                    where: {
+                        ...branchFilterWithId,
+                        type: 'MAINTENANCE_COST',
+                        createdAt: { gte: startDate, lte: endDate }
+                    },
+                    _sum: { amount: true }
+                })
+            ]);
+
+            return {
+                branchId: branch.id,
+                branchName: branch.name,
+                repairs,
+                totalLoss: losses,
+                totalCost: costs._sum.amount || 0
+            };
+        }));
+    }
+
+    return {
+        completedRepairs,
+        totalLoss: totalLossCount,
+        totalCost: maintenanceCosts._sum.amount || 0,
+        costCount: maintenanceCosts._count.id || 0,
+        period,
+        branchBreakdown
+    };
+}
+
+/**
+ * Get detailed stats for dashboard with period support
+ */
+async function getDashboardStats(params = {}) {
+    const { branchId, period = 'month', month, quarter, year } = params;
+
+    const branchFilter = buildBranchFilter({ role: 'USER', branchId }, branchId);
+
+    const periodOptions = { month, year };
+    const periodType = period || 'month';
+
+    const [
+        monthlyRevenue,
+        weeklyTrend,
+        requestStats,
+        overdueCount,
+        inventoryStats,
+        pendingTransfers,
+        recentPayments,
+        pendingInstallments
+    ] = await Promise.all([
+        getMonthlyRevenue(branchFilter, month, year),
+        getWeeklyRevenueTrend(branchFilter),
+        getRequestStats(branchFilter),
+        getOverdueInstallmentsCount(branchFilter),
+        getInventoryStats(branchFilter),
+        getPendingTransfersCount(branchFilter?.branchId, !branchFilter.branchId),
+        getRecentPayments(branchFilter),
+        getPendingInstallments(branchFilter, periodType)
+    ]);
+
+    return {
+        revenue: {
+            monthly: monthlyRevenue,
+            trend: weeklyTrend
+        },
+        requests: requestStats,
+        alerts: {
+            overdueInstallments: overdueCount
+        },
+        inventory: inventoryStats,
+        alerts: {
+            pendingTransfers: pendingTransfers
+        },
+        recentActivity: recentPayments,
+        pendingInstallments,
+        period: {
+            type: periodType,
+            month,
+            year: year || new Date().getFullYear()
+        }
+    };
+}
+
 module.exports = {
     buildBranchFilter,
     getTodayBoundaries,
     getMonthBoundaries,
+    getQuarterBoundaries,
+    getYearBoundaries,
+    getPeriodBoundaries,
     getDailyOperationsCount,
     getActiveBranchesCount,
     getTotalUsersCount,
     getMonthlyRevenue,
+    getPeriodRevenue,
     getWeeklyRevenueTrend,
     getRequestStats,
     getOverdueInstallmentsCount,
+    getPendingInstallments,
     getInventoryStats,
     getPendingTransfersCount,
     getRecentPayments,
     getBranchPerformance,
-    getAdminSummary
+    getAdminSummary,
+    getMaintenanceStats,
+    getDashboardStats
 };

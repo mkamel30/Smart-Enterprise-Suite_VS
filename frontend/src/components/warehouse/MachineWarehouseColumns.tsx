@@ -130,6 +130,22 @@ export const getMachineColumns = (
                 const notes = row.getValue("notes") as string;
                 return <div className="max-w-[150px] truncate text-slate-400 text-[10px]" title={notes}>{notes || '-'}</div>;
             }
+        },
+        {
+            accessorKey: "complaint",
+            header: "الشكوى",
+            cell: ({ row }: { row: any }) => {
+                const complaint = row.getValue("complaint") as string;
+                return (
+                    <div className="max-w-[200px]" title={complaint}>
+                        {complaint ? (
+                            <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100 line-clamp-2">{complaint}</span>
+                        ) : (
+                            <span className="text-slate-300 text-xs">-</span>
+                        )}
+                    </div>
+                );
+            }
         }
     );
 

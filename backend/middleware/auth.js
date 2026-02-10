@@ -16,13 +16,14 @@ if (JWT_SECRET.length < 32) {
 }
 
 const { AppError, NotFoundError } = require('../utils/errorHandler');
+const db = require('../db');
 
 // ===================== AUTHENTICATE TOKEN =====================
 /**
  * Middleware to verify JWT token and attach user to request
  * Throws 401 if token invalid, expired, or missing
  */
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -43,6 +44,16 @@ const authenticateToken = (req, res, next) => {
       email: decoded.email,
       permissions: decoded.permissions || []
     };
+
+    // --- EXPANSION: Branch Hierarchy ---
+    // If user belongs to a branch, fetch its children for "Parent sees Children" visibility
+    if (req.user.branchId && !['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role)) {
+      const children = await db.branch.findMany({
+        where: { parentBranchId: req.user.branchId },
+        select: { id: true }
+      });
+      req.user.authorizedBranchIds = [req.user.branchId, ...children.map(c => c.id)];
+    }
 
     logger.debug({ userId: req.user.id, role: req.user.role }, 'Token verified');
     next();

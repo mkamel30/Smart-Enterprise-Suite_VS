@@ -28,7 +28,6 @@ import BranchesSettings from './pages/BranchesSettings';
 import TransferOrders from './pages/TransferOrders';
 import ReceiveOrders from './pages/ReceiveOrders';
 import Approvals from './pages/Approvals';
-import MaintenanceBoard from './pages/MaintenanceBoard';
 // Service Center Workflow Pages
 import TechnicianDashboard from './pages/TechnicianDashboard';
 import MaintenanceShipments from './pages/MaintenanceShipments';
@@ -38,6 +37,9 @@ import TrackMachines from './pages/TrackMachines';
 import PendingPayments from './pages/PendingPayments';
 import ExecutiveDashboard from './pages/ExecutiveDashboard';
 import ProductionReports from './pages/ProductionReports';
+// Maintenance Center Pages
+import MaintenanceCenter from './pages/MaintenanceCenter';
+import MaintenanceMachineDetail from './pages/MaintenanceMachineDetail';
 
 import { useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
@@ -83,9 +85,7 @@ function AppContent() {
                 <Route path="/transfer-orders" element={<TransferOrders />} />
                 <Route path="/receive-orders" element={<ReceiveOrders />} />
                 <Route path="/approvals" element={<Approvals />} />
-                {/* <Route path="/maintenance-board" element={<MaintenanceBoard />} /> */}
                 {/* Service Center Workflow Routes */}
-                {/* <Route path="/assignments" element={<TechnicianDashboard />} /> */}
                 <Route path="/maintenance/shipments" element={
                   <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN']}>
                     <MaintenanceShipments />
@@ -94,6 +94,17 @@ function AppContent() {
                 <Route path="/maintenance/shipments/:id" element={
                   <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN']}>
                     <ShipmentDetail />
+                  </ProtectedRoute>
+                } />
+                {/* Maintenance Center Routes */}
+                <Route path="/maintenance-center" element={
+                  <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN', 'MANAGEMENT']}>
+                    <MaintenanceCenter />
+                  </ProtectedRoute>
+                } />
+                <Route path="/maintenance-center/machine/:id" element={
+                  <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN', 'MANAGEMENT']}>
+                    <MaintenanceMachineDetail />
                   </ProtectedRoute>
                 } />
                 <Route path="/maintenance-approvals" element={<MaintenanceApprovals />} />

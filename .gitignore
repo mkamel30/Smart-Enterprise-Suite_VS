@@ -21,10 +21,20 @@ yarn-debug.log*
 *.tsbuildinfo
 
 .env
+.env.local
+.env.*.local
 !.env.example
+
+# Sensitive files - NEVER commit credentials
+ADMIN_CREDENTIALS.md
+LOGIN_INFO.txt
 
 # prisma
 /src/generated/prisma
 **/dev.db
 **/dev.db-journal
 **/backups/
+
+# logs
+logs/
+*.log

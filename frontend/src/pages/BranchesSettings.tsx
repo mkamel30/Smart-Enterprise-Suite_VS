@@ -10,7 +10,14 @@ export default function BranchesSettings() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingBranch, setEditingBranch] = useState<any>(null);
     const [branchToDelete, setBranchToDelete] = useState<any>(null);
-    const [formData, setFormData] = useState({ code: '', name: '', address: '', type: 'BRANCH', parentBranchId: '' });
+    const [formData, setFormData] = useState({
+        code: '',
+        name: '',
+        address: '',
+        type: 'BRANCH',
+        maintenanceCenterId: '',
+        parentBranchId: ''
+    });
 
     const { data: branches, isLoading } = useQuery({
         queryKey: ['branches'],
@@ -18,8 +25,7 @@ export default function BranchesSettings() {
     });
 
     const createMutation = useMutation({
-        mutationFn: (data: { code: string; name: string; address?: string; type?: string; parentBranchId?: string }) =>
-            api.createBranch(data),
+        mutationFn: (data: any) => api.createBranch(data),
         onSuccess: () => {
             toast.success('تم إنشاء الفرع بنجاح');
             queryClient.invalidateQueries({ queryKey: ['branches'] });
@@ -74,11 +80,19 @@ export default function BranchesSettings() {
                 name: branch.name,
                 address: branch.address || '',
                 type: branch.type || 'BRANCH',
-                parentBranchId: branch.maintenanceCenterId || branch.parentBranchId || ''
+                maintenanceCenterId: branch.maintenanceCenterId || '',
+                parentBranchId: branch.parentBranchId || ''
             });
         } else {
             setEditingBranch(null);
-            setFormData({ code: '', name: '', address: '', type: 'BRANCH', parentBranchId: '' });
+            setFormData({
+                code: '',
+                name: '',
+                address: '',
+                type: 'BRANCH',
+                maintenanceCenterId: '',
+                parentBranchId: ''
+            });
         }
         setIsModalOpen(true);
     };
@@ -86,7 +100,14 @@ export default function BranchesSettings() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingBranch(null);
-        setFormData({ code: '', name: '', address: '', type: 'BRANCH', parentBranchId: '' });
+        setFormData({
+            code: '',
+            name: '',
+            address: '',
+            type: 'BRANCH',
+            maintenanceCenterId: '',
+            parentBranchId: ''
+        });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -98,8 +119,8 @@ export default function BranchesSettings() {
 
         const payload = {
             ...formData,
-            // Map parentBranchId to maintenanceCenterId for backend
-            maintenanceCenterId: formData.parentBranchId || null
+            maintenanceCenterId: formData.maintenanceCenterId || null,
+            parentBranchId: formData.parentBranchId || null
         };
 
         if (editingBranch) {
@@ -179,16 +200,23 @@ export default function BranchesSettings() {
                                         </td>
                                         <td className="px-4 py-3 font-medium">{branch.name}</td>
                                         <td className="px-4 py-3 text-sm">
-                                            {branch.maintenanceCenter ? (
-                                                <div className="flex items-center gap-1 text-slate-600">
-                                                    <span className="text-xs">تابع لـ:</span>
+                                            {branch.maintenanceCenter && (
+                                                <div className="flex items-center gap-1 text-slate-600 mb-1">
+                                                    <span className="text-xs">مركز:</span>
                                                     <span className="font-medium text-slate-900">{branch.maintenanceCenter.name}</span>
                                                 </div>
-                                            ) : branch.type === 'MAINTENANCE_CENTER' ? (
-                                                <span className="text-xs text-slate-400">مركز رئيسي</span>
-                                            ) : (
-                                                <span className="text-xs text-slate-400">-</span>
                                             )}
+                                            {branch.parentBranch && (
+                                                <div className="flex items-center gap-1 text-slate-600">
+                                                    <span className="text-xs">أب:</span>
+                                                    <span className="font-medium text-slate-900">{branch.parentBranch.name}</span>
+                                                </div>
+                                            )}
+                                            {!branch.maintenanceCenter && !branch.parentBranch && branch.type === 'MAINTENANCE_CENTER' ? (
+                                                <span className="text-xs text-slate-400">مركز رئيسي</span>
+                                            ) : !branch.maintenanceCenter && !branch.parentBranch ? (
+                                                <span className="text-xs text-slate-400">-</span>
+                                            ) : null}
                                         </td>
                                         <td className="px-4 py-3 text-slate-600">
                                             {branch.address || '-'}
@@ -309,8 +337,8 @@ export default function BranchesSettings() {
                                         مركز الصيانة التابع له
                                     </label>
                                     <select
-                                        value={formData.parentBranchId}
-                                        onChange={e => setFormData({ ...formData, parentBranchId: e.target.value })}
+                                        value={formData.maintenanceCenterId}
+                                        onChange={e => setFormData({ ...formData, maintenanceCenterId: e.target.value })}
                                         className="w-full border rounded-lg px-3 py-2"
                                     >
                                         <option value="">-- اختر مركز صيانة (اختياري) --</option>
@@ -320,6 +348,23 @@ export default function BranchesSettings() {
                                     </select>
                                 </div>
                             )}
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">
+                                    الفرع الأب (للهيكلية الإدارية)
+                                </label>
+                                <select
+                                    value={formData.parentBranchId}
+                                    onChange={e => setFormData({ ...formData, parentBranchId: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                >
+                                    <option value="">-- اختر فرع أب (اختياري) --</option>
+                                    {branches?.filter((b: any) => b.id !== editingBranch?.id).map((branch: any) => (
+                                        <option key={branch.id} value={branch.id}>{branch.name} ({branch.type})</option>
+                                    ))}
+                                </select>
+                            </div>
+
 
                             <div className="flex gap-2 pt-4">
                                 <button

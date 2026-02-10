@@ -1,7 +1,7 @@
 # 🏛️ SYSTEM BLUEPRINT (Core Logic)
 
-**Last Updated**: January 13, 2026
-**Status**: ✅ COMPLETE (12/12 Phases) - Backend fully enhanced; Frontend Role-Based Customizations Active
+**Last Updated**: February 10, 2026
+**Status**: ✅ COMPLETE (STABILITY & FOUNDATIONS PHASE) - Backend logic refactored; Arabic UTF-8 enforcement active; Service layer consolidation complete.
 
 ## 1. البنية العامة للبناء المهني
 > For detailed technical specifications, refer to:
@@ -231,10 +231,15 @@ model Branch {
   type               String    @default("BRANCH")
   // Types: BRANCH, MAINTENANCE_CENTER, ADMIN_AFFAIRS
   
-  // ربط الفرع بمركز الصيانة التابع له
+  // ربط الفرع بمركز الصيانة التابع له (علاقة فنية)
   maintenanceCenterId String?
-  maintenanceCenter   Branch?   @relation("BranchToCenter")
+  maintenanceCenter   Branch?   @relation("BranchToCenter", fields: [maintenanceCenterId], references: [id])
   servicedBranches    Branch[]  @relation("BranchToCenter")
+
+  // ربط الفرع بالفرع الأب (علاقة هيكلية/إدارية)
+  parentBranchId      String?
+  parentBranch        Branch?   @relation("BranchHierarchy", fields: [parentBranchId], references: [id])
+  childBranches       Branch[]  @relation("BranchHierarchy")
 }
 ```
 
@@ -409,6 +414,11 @@ model SystemLog {
 21. ✅ تقارير الإدارة الاستراتيجية (Executive Analytics Dashboard)
 22. ✅ إصلاح دقة الحسابات المالية وتقريب الأقساط (rounding logic)
 23. ✅ نظام الصلاحيات الديناميكي وتعديله من الواجهة
+24. ✅ توحيد طبقة الخدمات (Service Layer Consolidation) لسهولة الصيانة
+25. ✅ دعم اللغة العربية (UTF-8 Middleware) في جميع العمليات والتقارير
+26. ✅ إضافة اختبارات الوحدة (Unit Tests) للمنطق البرمجي الحساس (Inventory, Requests)
+27. ✅ سياسة كلمات مرور صارمة (12 خانة، حروف كبيرة وصفيرة، أرقام ورموز)
+28. ✅ خاصية تعطيل وتفعيل حسابات المستخدمين (Enable/Disable Users)
 
 ### 🔄 قيد التنفيذ:
 1. إعادة هيكلة دورة عمل مركز الصيانة (Service Center Workflow Redesign)
@@ -469,8 +479,12 @@ model SystemLog {
 ### 3.4 Data Isolation & Traceability (Core Principle)
 - **Isolation**: Every Branch (including `ADMIN_AFFAIRS`) has its own distinct data scope. This applies to Inventory, Customers, Sales, Payments, and Maintenance Requests.
 - **Traceability**: Every action is logged in `SystemLog` with a `branchId`, ensuring a clear audit trail of which branch performed what action.
-- **Stock Movement**: Admin Affairs introduces stock to *their own* warehouse or *directly* to a branch via "Transfer Orders" or direct assignment during Import.
-- **Access Control**: `SUPER_ADMIN` and `MANAGEMENT` can view data across all branches, while branch-level roles are strictly restricted to their own `branchId`.
+- **Stock Movement**: Admin Affairs introduces stock to *their own* warehouse or *directly* to a branch via "Transfer Orders". **Related branches (Parent/Child)** can also transfer stock between each other without Super Admin intervention.
+- **Access Control & Hierarchy**: 
+    - `SUPER_ADMIN` and `MANAGEMENT` can view data across all branches.
+    - **One-Way Hierarchical Visibility**: Users in a "Parent Branch" can view and manage data from their own branch AND all their direct "Child Branches". 
+    - Child branches remain isolated and cannot view parent branch data or sibling data unless explicitly authorized.
+    - Branch-level roles from independent branches are strictly restricted to their own `branchId`.
 
 ### 7. Dynamic Settings & Personalization
 

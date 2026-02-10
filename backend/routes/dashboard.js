@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Dashboard Routes
  * 
  * Provides accurate, real-time dashboard statistics from the database.
@@ -32,10 +32,19 @@ const dashboardService = require('../services/dashboardService');
  * Main dashboard endpoint - returns all KPIs filtered by user's branch
  * For SUPER_ADMIN/MANAGEMENT: Global view or filtered by ?branchId=X
  * For others: Scoped to their branch
+ * 
+ * Query params:
+ * - branchId: Filter by specific branch (admin only)
+ * - period: 'month' | 'quarter' | 'year' (default: 'month')
+ * - month: 0-11 (for specific month)
+ * - year: YYYY (for specific year)
  */
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     const user = req.user;
     const targetBranchId = req.query.branchId;
+    const period = req.query.period || 'month';
+    const month = req.query.month ? parseInt(req.query.month) : null;
+    const year = req.query.year ? parseInt(req.query.year) : new Date().getFullYear();
 
     // Build branch filter based on user role and optional filter
     const branchFilter = dashboardService.buildBranchFilter(user, targetBranchId);
@@ -46,28 +55,33 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
     // Fetch all metrics in parallel for performance
     const [
-        monthlyRevenue,
+        periodRevenue,
         weeklyTrend,
         requestStats,
         inventoryStats,
         overdueInstallments,
         pendingTransfers,
-        recentPayments
+        recentPayments,
+        pendingInstallments
     ] = await Promise.all([
-        dashboardService.getMonthlyRevenue(branchFilter),
+        dashboardService.getPeriodRevenue(branchFilter, period, { month, year }),
         dashboardService.getWeeklyRevenueTrend(branchFilter),
         dashboardService.getRequestStats(branchFilter),
         dashboardService.getInventoryStats(branchFilter),
         // Hide installments for center roles
         isCenterRole ? Promise.resolve(0) : dashboardService.getOverdueInstallmentsCount(branchFilter),
-        dashboardService.getPendingTransfersCount(user.branchId, isAdmin),
-        dashboardService.getRecentPayments(branchFilter)
+        dashboardService.getPendingTransfersCount(user, isAdmin),
+        dashboardService.getRecentPayments(branchFilter),
+        // Hide installments for center roles
+        isCenterRole ? Promise.resolve({ installments: [], totalCount: 0, totalAmount: 0 })
+            : dashboardService.getPendingInstallments(branchFilter, period)
     ]);
 
     res.json({
         revenue: {
-            monthly: monthlyRevenue,
-            trend: weeklyTrend
+            amount: periodRevenue.amount,
+            trend: weeklyTrend,
+            period: periodRevenue.period
         },
         requests: requestStats,
         inventory: inventoryStats,
@@ -75,7 +89,18 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
             overdueInstallments: overdueInstallments,
             pendingTransfers: pendingTransfers
         },
-        recentActivity: recentPayments
+        recentActivity: recentPayments,
+        pendingInstallments: {
+            installments: pendingInstallments.installments,
+            totalCount: pendingInstallments.totalCount,
+            totalAmount: pendingInstallments.totalAmount,
+            totalRemaining: pendingInstallments.totalRemaining
+        },
+        period: {
+            type: period,
+            month,
+            year
+        }
     });
 }));
 

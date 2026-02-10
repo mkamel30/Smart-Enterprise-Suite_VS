@@ -99,27 +99,21 @@ const sanitizeRequest = (req, res, next) => {
       }
     });
 
-    // Sanitize query parameters (prevent NoSQL injection)
+    // Sanitize query parameter values (prevent XSS via query strings)
     if (req.query) {
       const sanitizedQuery = {};
       Object.keys(req.query).forEach(key => {
         const value = req.query[key];
-        
-        // Remove $ and . from keys to prevent MongoDB operators
-        if (key.includes('$') || key.includes('.')) {
-          logger.warn({ key }, 'Suspicious query parameter key detected');
-          return;
-        }
 
-        // If value is string, remove dangerous characters
         if (typeof value === 'string') {
           sanitizedQuery[key] = value
             .replace(/[<>]/g, '') // Remove angle brackets
             .trim();
-        } else if (typeof value === 'object' && value !== null) {
-          // For object queries, skip (likely injection attempt)
-          logger.warn({ key }, 'Complex query parameter detected, skipping');
-          return;
+        } else if (Array.isArray(value)) {
+          // Support multi-value params like ?status=NEW&status=STANDBY
+          sanitizedQuery[key] = value.map(v =>
+            typeof v === 'string' ? v.replace(/[<>]/g, '').trim() : v
+          );
         } else {
           sanitizedQuery[key] = value;
         }
@@ -188,7 +182,7 @@ const removeServerHeader = (req, res, next) => {
 const requestSizeLimit = (maxSize = '10mb') => {
   return (req, res, next) => {
     const contentLength = req.headers['content-length'];
-    
+
     // Parse max size to bytes
     const parseSize = (size) => {
       const units = {
@@ -231,19 +225,19 @@ const requestSizeLimit = (maxSize = '10mb') => {
 const additionalSecurityHeaders = (req, res, next) => {
   // Prevent browsers from MIME-sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  
+
   // Enable XSS protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  
+
   // Prevent clickjacking
   res.setHeader('X-Frame-Options', 'DENY');
-  
+
   // Prevent embedding in iframes
   res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
-  
+
   // Block referrer leakage
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
+
   // Disable client-side caching for sensitive data
   if (req.path.includes('/api/auth') || req.path.includes('/api/user')) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

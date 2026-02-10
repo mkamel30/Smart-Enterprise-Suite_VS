@@ -37,6 +37,8 @@ interface CustomerModalsProps {
         setIncomingStatus: (status: string) => void;
         selectedMachineHistory: string;
         selectedSim: any;
+        complaint: string;
+        setComplaint: (complaint: string) => void;
     };
     mutations: {
         exchange: any;
@@ -86,6 +88,8 @@ export default function CustomerModals({
                 selectedActionMachine={data.selectedActionMachine}
                 actionNotes={data.actionNotes}
                 setActionNotes={data.setActionNotes}
+                complaint={data.complaint}
+                setComplaint={data.setComplaint}
                 setIncomingStatus={data.setIncomingStatus}
                 isPending={mutations.return.isPending}
                 onConfirm={() => {
@@ -94,6 +98,7 @@ export default function CustomerModals({
                         customerId: data.targetCustomer.bkcode,
                         reason: 'Return',
                         notes: data.actionNotes,
+                        complaint: data.complaint,
                         status: data.incomingStatus
                     });
                 }}

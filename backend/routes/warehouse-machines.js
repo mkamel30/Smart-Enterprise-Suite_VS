@@ -11,6 +11,7 @@ const warehouseService = require('../services/warehouseService');
 const transferService = require('../services/transferService');
 const movementService = require('../services/movementService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const { isGlobalRole } = require('../utils/constants');
 
 // Validation Schemas
 const listQuerySchema = z.object({
@@ -32,7 +33,7 @@ router.get('/', authenticateToken, validateQuery(listQuerySchema), async (req, r
         const whereClause = { ...branchFilter };
 
         // Allow Super Admin/Management to filter by branch
-        if (targetBranchId && (['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role))) {
+        if (targetBranchId && (isGlobalRole(req.user.role))) {
             whereClause.branchId = targetBranchId;
         }
 
@@ -65,7 +66,12 @@ router.get('/', authenticateToken, validateQuery(listQuerySchema), async (req, r
             select: { serialNumber: true }
         });
 
-        const pendingSerialsSet = new Set(pendingTransferSerials.map(item => item.serialNumber));
+        const pendingSerialsList = pendingTransferSerials.map(item => item.serialNumber);
+
+        // Exclude pending-transfer machines directly in DB query (not JS filter)
+        if (pendingSerialsList.length > 0) {
+            whereClause.serialNumber = { notIn: pendingSerialsList };
+        }
 
         const machines = await db.warehouseMachine.findMany(ensureBranchWhere({
             where: whereClause,
@@ -73,12 +79,9 @@ router.get('/', authenticateToken, validateQuery(listQuerySchema), async (req, r
             include: { branch: true }
         }, req));
 
-        // Filter out machines that are in pending transfers
-        const availableMachines = machines.filter(m => !pendingSerialsSet.has(m.serialNumber));
-
-        res.json(availableMachines);
+        res.json(machines);
     } catch (error) {
-        console.error('Failed to fetch warehouse machines:', error);
+        logAction('Failed to fetch warehouse machines: ' + error.message, req);
         res.status(500).json({ error: 'فشل في جلب الماكينات' });
     }
 });
@@ -1168,7 +1171,7 @@ router.get('/check-duplicates', authenticateToken, async (req, res) => {
                 currentCustomerId: customerMachines.find(cm => cm.serialNumber === wm.serialNumber)?.customerId
             }));
 
-        console.log(`Found ${duplicates.length} duplicates`);
+        logAction(`Found ${duplicates.length} duplicates`, req);
 
         res.json({
             warehouseCount: warehouseMachines.length,
@@ -1178,11 +1181,10 @@ router.get('/check-duplicates', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('â‌Œ Check duplicates failed:', error);
+        logAction('Check duplicates failed: ' + error.message, req);
         res.status(500).json({
             error: 'Failed to check duplicates',
-            details: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            details: error.message
         });
     }
 });
@@ -1190,7 +1192,7 @@ router.get('/check-duplicates', authenticateToken, async (req, res) => {
 // GET Check for ALL duplicate serial numbers across ALL tables
 router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
     try {
-        console.log('ًں”چ Checking for duplicates across ALL machines...');
+        logAction('Checking for duplicates across ALL machines...', req);
 
         const branchFilter = getBranchFilter(req);
 
@@ -1218,7 +1220,7 @@ router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
         });
 
         // console.log(`Found ${warehouseMachines.length} warehouse machines`);
-        console.log(`Found ${customerMachines.length} customer machines`);
+        logAction(`Found ${customerMachines.length} customer machines`, req);
 
         // Combine all machines with their source
         const allMachines = [
@@ -1252,7 +1254,7 @@ router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
                 locations: machines
             }));
 
-        console.log(`Found ${duplicates.length} duplicate serial numbers`);
+        logAction(`Found ${duplicates.length} duplicate serial numbers`, req);
 
         res.json({
             totalMachines: allMachines.length,
@@ -1263,7 +1265,7 @@ router.get('/check-all-duplicates', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('â‌Œ Check all duplicates failed:', error);
+        logAction('Check all duplicates failed: ' + error.message, req);
         res.status(500).json({
             error: 'Failed to check all duplicates',
             details: error.message
@@ -1309,7 +1311,7 @@ router.post('/cleanup-duplicates', authenticateToken, async (req, res) => {
             customerMachinesMap.has(wm.serialNumber)
         );
 
-        console.log(`Found ${duplicatesToDelete.length} duplicates to clean up`);
+        logAction(`Found ${duplicatesToDelete.length} duplicates to clean up`, req);
 
         if (duplicatesToDelete.length === 0) {
             return res.json({
@@ -1339,7 +1341,7 @@ router.post('/cleanup-duplicates', authenticateToken, async (req, res) => {
             }
         });
 
-        console.log(`âœ… Deleted ${deleteResult.count} duplicates from warehouse`);
+        logAction(`Deleted ${deleteResult.count} duplicates from warehouse`, req);
 
         res.json({
             success: true,

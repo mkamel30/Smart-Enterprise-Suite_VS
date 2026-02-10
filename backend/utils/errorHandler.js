@@ -21,18 +21,18 @@ class ValidationError extends AppError {
 
 class NotFoundError extends AppError {
   constructor(resource = 'Resource') {
-    super(`${resource} not found`, 404, 'NOT_FOUND');
+    super(`${resource} غير موجود`, 404, 'NOT_FOUND');
   }
 }
 
 class UnauthorizedError extends AppError {
-  constructor(message = 'Unauthorized') {
+  constructor(message = 'غير مصرح لك بالوصول') {
     super(message, 401, 'UNAUTHORIZED');
   }
 }
 
 class ForbiddenError extends AppError {
-  constructor(message = 'Access denied') {
+  constructor(message = 'تم رفض الوصول') {
     super(message, 403, 'FORBIDDEN');
   }
 }
@@ -45,7 +45,7 @@ class ConflictError extends AppError {
 
 class RateLimitError extends AppError {
   constructor(retryAfter = 60) {
-    super('Too many requests. Please try again later.', 429, 'RATE_LIMIT_EXCEEDED');
+    super('طلبات كثيرة جداً. يرجى المحاولة مرة أخرى لاحقاً.', 429, 'RATE_LIMIT_EXCEEDED');
     this.retryAfter = retryAfter;
   }
 }
@@ -80,28 +80,28 @@ const errorHandler = (err, req, res, next) => {
   if (err.code === 'P2002') {
     statusCode = 409;
     code = 'DUPLICATE_RECORD';
-    const field = err.meta?.target?.[0] || 'field';
-    message = `Record with this ${field} already exists`;
+    const field = err.meta?.target?.[0] || 'الحقل';
+    message = `السجل بهذا ${field} موجود بالفعل`;
   }
   else if (err.code === 'P2025') {
     statusCode = 404;
     code = 'NOT_FOUND';
-    message = 'Record not found';
+    message = 'السجل غير موجود';
   }
   else if (err.code === 'P2024') {
     statusCode = 400;
     code = 'INVALID_RELATION';
-    message = 'Invalid relation reference';
+    message = 'مرجع علاقة غير صالح';
   }
   else if (err.code === 'P2003') {
     statusCode = 400;
     code = 'FOREIGN_KEY_ERROR';
-    message = 'Cannot delete record: used by other records';
+    message = 'لا يمكن الحذف: السجل مستخدم في سجلات أخرى';
   }
   else if (err.code === 'P2014') {
     statusCode = 400;
     code = 'RELATION_REQUIRED';
-    message = 'Required relation not found';
+    message = 'العلاقة المطلوبة غير موجودة';
   }
 
   // ===================== JWT ERROR HANDLING =====================
@@ -109,12 +109,12 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'JsonWebTokenError') {
     statusCode = 403;
     code = 'INVALID_TOKEN';
-    message = 'Invalid token';
+    message = 'رمز وصول غير صالح';
   }
   else if (err.name === 'TokenExpiredError') {
     statusCode = 401;
     code = 'TOKEN_EXPIRED';
-    message = 'Token has expired';
+    message = 'انتهت صلاحية رمز الوصول';
   }
 
   // ===================== VALIDATION ERROR HANDLING =====================
@@ -136,7 +136,6 @@ const errorHandler = (err, req, res, next) => {
     userId: req.user?.id,
     userRole: req.user?.role,
     ip: req.ip,
-    timestamp: new Date().toISOString(),
     timestamp: new Date().toISOString(),
     // Always include the raw error object for the logger to serialize (includes stack)
     err: err,
@@ -177,7 +176,7 @@ const notFoundHandler = (req, res) => {
 
   res.status(404).json({
     error: {
-      message: `Route ${req.path} not found`,
+      message: `المسار ${req.path} غير موجود`,
       code: 'ROUTE_NOT_FOUND',
       timestamp: new Date().toISOString()
     }

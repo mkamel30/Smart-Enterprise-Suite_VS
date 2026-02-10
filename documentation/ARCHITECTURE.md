@@ -1,14 +1,14 @@
 # System Architecture (Technical Specification)
 
-**Last Updated**: January 1, 2026  
-**Status**: ✅ Backend Enhanced (12/12 Phases) + Transfer Validation System (v3.1.0)
+**Last Updated**: February 10, 2026  
+**Status**: ✅ v3.4.0 — Comprehensive Review + Security & Performance Fixes
 
 This document outlines the technical design principles and architectural patterns used in the CS-Dept-Console.
 
 ## 1. Tech Stack
 - **Frontend**: React 18 (Vite), TypeScript, Tailwind CSS, Framer Motion (Animations), TanStack Query (State & Caching).
 - **Backend**: Node.js, Express.js, Prisma ORM.
-  - **Security**: Helmet.js, express-rate-limit, CORS
+  - **Security**: Helmet.js, express-rate-limit (global + login-specific), CORS, additional security headers (no-cache on auth, XSS protection)
   - **Validation**: Zod schemas with custom middleware + Transfer validators (v3.1.0)
   - **Logging**: Pino (structured JSON logging) + pino-http
   - **Documentation**: Swagger/OpenAPI (available at /api-docs)
@@ -31,19 +31,20 @@ We have successfully transitioned from "Fat Routes" to a clean Service Layer:
   - **transferService.js**: Enhanced with comprehensive validation (v3.1.0)
   - Auto-freeze items during transfer creation
   - Integration with validation utilities
-- **Middleware Stack** (12 phases complete):
-  - **Security**: Helmet.js (security headers), Rate Limiting (100 req/15min/IP)
+- **Middleware Stack** (13 phases complete):
+  - **Security**: Helmet.js (security headers) + additional security headers (XSS, no-cache), Rate Limiting (global API + stricter login limiter)
   - **Logging**: pino-http (structured HTTP logging), custom logger methods
   - **Authentication**: JWT token validation (authenticateToken)
   - **Authorization**: Role-Based Access Control (checkPermissions)
   - **Validation**: Zod schema validation middleware
   - **Error Handling**: Global error handler with custom error classes
 - **Utilities**:
-  - Custom error classes: ValidationError, NotFoundError, ForbiddenError, ConflictError, UnauthorizedError, AppError
+  - Custom error classes: ValidationError, NotFoundError, ForbiddenError, ConflictError, UnauthorizedError, AppError (consolidated in `errorHandler.js`)
+  - **Shared Constants** (`utils/constants.js`): Single source of truth for `ROLES`, `GLOBAL_ROLES`, `BRANCH_TYPES`, `MACHINE_STATUS`, `REQUEST_STATUS`, `TRANSFER_STATUS` with helper functions (`isGlobalRole()`, `isCenterRole()`, `isPrivilegedRole()`)
   - Structured logger with methods: logger.http(), logger.db(), logger.event(), logger.security(), logger.metric()
   - Configuration module: Centralized environment variables
   - Health checks: /health (simple), /api/health (detailed with DB check)
-  - **Transfer validators** (NEW v3.1.0): `backend/utils/transfer-validators.js`
+  - **Transfer validators** (v3.1.0): `backend/utils/transfer-validators.js`
     - `validateItemsForTransfer()`: Comprehensive item validation
     - `validateBranches()`: Branch validation and compatibility
     - `validateUserPermission()`: Permission checks
@@ -76,6 +77,7 @@ A dedicated reporting layer designed for management:
 - **Financial Aggregation**: Real-time sales, collections, and debt monitoring.
 - **Branch Performance Comparison**: Dynamic ranking systems.
 - **Trend Analysis**: 6-month historical growth tracking for inventory and sales.
+- **Parallel Query Execution**: All independent analytics queries run via `Promise.all()` for optimal latency.
 - **Fail-Safe Design**: Components use defensive programming to handle missing or delayed API data without crashing.
 
 ---
@@ -157,3 +159,37 @@ Dedicated support for accessibility and user preference:
 - **Prisma Schema**: `User` model includes `theme` and `fontFamily`.
 - **Global Context**: Local preferences (Light/Dark mode) are synced from the DB and applied at the `App.tsx` level using a persistent font-variable and Tailwind CSS `dark` class.
 - **Executive Overview**: `SUPER_ADMIN` receives a summarized system view (Global performance vs Branch performance) powered by the `admin-summary` API.
+
+---
+
+## 📚 Related Documentation
+
+### Detailed Architecture & Database Documentation
+
+For comprehensive technical architecture details, refer to the **[project-analysis/](../project-analysis/)** documentation:
+
+#### System Architecture
+- **[13-system-architecture.md](../project-analysis/13-system-architecture.md)** - Complete system architecture with:
+  - High-level architecture diagrams with all component layers
+  - Deployment architecture (single-server and scaled)
+  - Data flow architecture and request lifecycle
+  - Security architecture with multi-layer security model
+  - Service interactions and transaction boundaries
+  - Technology stack by layer (Frontend, Backend, Database, DevOps)
+
+#### Database Documentation
+- **[01-database-erd.md](../project-analysis/01-database-erd.md)** - Complete Entity Relationship Diagrams showing:
+  - All 27 interconnected database models
+  - Entity groups: Organization & Users, Customer & Assets, Maintenance Workflow, Inventory Management, Warehouse & Assets, Sales & Financials, Transfer System
+  - Visual Mermaid diagrams for all major entity relationships
+  - Detailed field specifications for each model
+
+#### Additional Technical References
+- **[02-database-schema-reference.md](../project-analysis/02-database-schema-reference.md)** - Detailed schema reference for all 19 models
+- **[03-database-query-patterns.md](../project-analysis/03-database-query-patterns.md)** - Complex query patterns and branch isolation
+- **[04-database-optimization.md](../project-analysis/04-database-optimization.md)** - Database performance optimization recommendations
+- **[14-deployment-guide.md](../project-analysis/14-deployment-guide.md)** - Complete deployment and infrastructure guide
+
+---
+
+*This document is a living document and should be updated as the architecture evolves.*

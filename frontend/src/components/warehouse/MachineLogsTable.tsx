@@ -137,13 +137,23 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
             }
 
             if (log.action === 'SELL' && data.sale) {
+                // New backend structure has everything nested under sale
+                const customerName = data.sale.customer?.client_name || 'غير معروف';
+                const customerCode = data.sale.customer?.bkcode || '';
                 return (
                     <div className="flex items-center justify-between gap-4">
                         <div className="text-xs">
-                            <span className="font-bold text-emerald-700">بيع:</span> {data.sale.customer.client_name}
-                            <div className="text-slate-500">{data.sale.type === 'CASH' ? 'كاش' : 'قسط'} | {data.sale.totalPrice} ج.م</div>
+                            <span className="font-bold text-emerald-700">بيع:</span> {customerName}
+                            {customerCode && <span className="text-slate-400 mr-1">({customerCode})</span>}
+                            <div className="text-slate-500">{data.sale.type === 'CASH' ? 'كاش' : 'قسط'} | {data.sale.totalPrice?.toLocaleString()} ج.م</div>
                         </div>
-                        <button onClick={() => openSaleReport(data)} className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100">
+                        <button 
+                            onClick={() => openSaleReport({ 
+                                sale: data.sale, 
+                                installments: data.installments || [] 
+                            })} 
+                            className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100"
+                        >
                             <Printer size={14} />
                         </button>
                     </div>

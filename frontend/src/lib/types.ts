@@ -167,8 +167,9 @@ export type User = {
 
 export type DashboardStats = {
   revenue: {
-    monthly: number;
+    amount: number;
     trend?: { name: string; value: number }[];
+    period?: string;
   };
   requests: {
     open: number;
@@ -177,20 +178,30 @@ export type DashboardStats = {
   };
   inventory: {
     lowStock: any[];
-    machines?: number; // Added
-    sims?: number;     // Added
+    machines?: number;
+    sims?: number;
   };
   alerts: {
     overdueInstallments: number;
-    pendingTransfers?: number; // Added
+    pendingTransfers?: number;
   };
   recentActivity: any[];
+  pendingInstallments: {
+    installments: any[];
+    totalCount: number;
+    totalAmount: number;
+    totalRemaining: number;
+  };
+  period: {
+    type: 'month' | 'quarter' | 'year';
+    month?: number;
+    year: number;
+  };
   maintenanceStats?: {
     revenue: number;
     paidCount: number;
     freeCount: number;
   };
-  // Legacy fields (optional if needed temporarily)
   activeRequests?: number;
 };
 

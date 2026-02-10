@@ -16,7 +16,7 @@ import {
 import PageHeader from '../components/PageHeader';
 
 export default function Warehouse() {
-    const { user } = useAuth();
+    const { user, activeBranchId } = useAuth();
     const isAdmin = !user?.branchId;
     const [filterBranchId, setFilterBranchId] = useState('');
     const [activeTab, setActiveTab] = useState<'inventory' | 'movements'>('inventory');
@@ -77,8 +77,8 @@ export default function Warehouse() {
     };
 
     const { data: inventory, isLoading } = useQuery({
-        queryKey: ['inventory', filterBranchId],
-        queryFn: () => api.getInventory({ branchId: filterBranchId }),
+        queryKey: ['inventory', activeBranchId, filterBranchId],
+        queryFn: () => api.getInventory({ branchId: activeBranchId || filterBranchId }),
         enabled: !!user
     });
 
@@ -89,9 +89,9 @@ export default function Warehouse() {
     });
 
     const { data: movements, isLoading: isMovementsLoading } = useQuery({
-        queryKey: ['stock-movements', filterBranchId, movementFilters],
+        queryKey: ['stock-movements', activeBranchId, filterBranchId, movementFilters],
         queryFn: () => api.getStockMovements({
-            branchId: filterBranchId,
+            branchId: activeBranchId || filterBranchId,
             ...movementFilters
         }),
         enabled: !!user

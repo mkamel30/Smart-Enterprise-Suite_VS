@@ -3,12 +3,20 @@ const db = require('../db');
 const { logAction } = require('../utils/logger');
 const { roundMoney } = require('./paymentService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const socketManager = require('../utils/socketManager');
 
 async function getInventory(req) {
   const branchFilter = getBranchFilter(req);
-  // If admin and no specific branch filter, allow seeing all inventory items
-  if (Object.keys(branchFilter).length === 0 && ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role)) {
-    branchFilter._skipBranchEnforcer = true;
+  const authorizedIds = req.user?.authorizedBranchIds || (req.user?.branchId ? [req.user.branchId] : []);
+
+  // If admin, strict checks are handled by getBranchFilter or they can see all
+  if (['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role)) {
+    if (Object.keys(branchFilter).length === 0) branchFilter._skipBranchEnforcer = true;
+  } else {
+    // For normal users, support hierarchy if no specific branch requested
+    if (!branchFilter.branchId && authorizedIds.length > 0) {
+      branchFilter.branchId = authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds };
+    }
   }
 
   const parts = await db.sparePart.findMany({
@@ -29,8 +37,13 @@ async function getInventory(req) {
 }
 
 async function stockIn(req, { partId, quantity, reason, branchId }) {
+  const { canAccessBranch } = require('../middleware/permissions');
   const bId = branchId || req.user.branchId;
   if (!bId) throw new Error('Branch ID required');
+
+  if (!await canAccessBranch(req, bId, db)) {
+    throw new Error('Access denied for this branch');
+  }
 
   let inventoryItem = await db.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: bId } }, req));
 
@@ -51,8 +64,14 @@ async function stockIn(req, { partId, quantity, reason, branchId }) {
 }
 
 async function importStock(req, items, branchId) {
+  const { canAccessBranch } = require('../middleware/permissions');
   const bId = branchId || req.user.branchId;
   if (!bId) throw new Error('Branch ID required');
+
+  if (!await canAccessBranch(req, bId, db)) {
+    throw new Error('Access denied for this branch');
+  }
+
   let updated = 0;
   for (const item of items) {
     if (item.quantity <= 0) continue;
@@ -74,8 +93,13 @@ async function importStock(req, items, branchId) {
 }
 
 async function updateQuantity(req, partId, quantity, branchId) {
+  const { canAccessBranch } = require('../middleware/permissions');
   const bId = branchId || req.user.branchId;
   if (!bId) throw new Error('Branch ID required');
+
+  if (!await canAccessBranch(req, bId, db)) {
+    throw new Error('Access denied for this branch');
+  }
 
   let inventoryItem = await db.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: bId } }, req));
   let oldQuantity = 0;
@@ -95,8 +119,13 @@ async function updateQuantity(req, partId, quantity, branchId) {
 }
 
 async function stockOut(req, { partId, quantity, reason, requestId, cost, customerId, customerName, userId, userName }, branchId) {
+  const { canAccessBranch } = require('../middleware/permissions');
   const bId = branchId || req.user.branchId;
   if (!bId) throw new Error('Branch ID required');
+
+  if (!await canAccessBranch(req, bId, db)) {
+    throw new Error('Access denied for this branch');
+  }
 
   const inventoryItem = await db.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: bId } }, req));
   if (!inventoryItem || inventoryItem.quantity < quantity) throw new Error('الكمية غير كافية');
@@ -122,9 +151,13 @@ async function stockOut(req, { partId, quantity, reason, requestId, cost, custom
 }
 
 async function transferStock(req, { partId, quantity, fromBranchId, toBranchId, reason }) {
+  const { canAccessBranch } = require('../middleware/permissions');
   const userId = req.user?.id; const userName = req.user?.displayName || 'System';
   if (!partId || !quantity || !fromBranchId || !toBranchId) throw new Error('Components required (Part, Qty, From, To)');
   if (quantity <= 0) throw new Error('Quantity must be positive');
+
+  if (!await canAccessBranch(req, fromBranchId, db)) throw new Error('Access denied for source branch');
+  if (!await canAccessBranch(req, toBranchId, db)) throw new Error('Access denied for destination branch');
 
   await db.$transaction(async (tx) => {
     const sourceItem = await tx.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: fromBranchId } }, req));
@@ -154,7 +187,16 @@ async function transferStock(req, { partId, quantity, fromBranchId, toBranchId, 
 
 async function getMovements(req) {
   const branchFilter = getBranchFilter(req);
+  const authorizedIds = req.user?.authorizedBranchIds || (req.user?.branchId ? [req.user.branchId] : []);
+
   if (!db.stockMovement) return [];
+
+  // Apply hierarchy filter if applicable
+  if (!['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role)) {
+    if (!branchFilter.branchId && authorizedIds.length > 0) {
+      branchFilter.branchId = authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds };
+    }
+  }
 
   const { startDate, endDate, search, requestId } = req.query || {};
 
@@ -247,10 +289,7 @@ async function getMovements(req) {
  * @throws {Error} If part not found or insufficient quantity
  */
 async function deductParts(parts, requestId, performedBy, branchId, tx = null) {
-  console.log('DEBUG: deductParts called with:', { partsCount: parts.length, requestId, performedBy, branchId, txType: typeof tx });
   const txOrDb = tx || db;
-  console.log('DEBUG: txOrDb keys:', Object.keys(txOrDb));
-  console.log('DEBUG: txOrDb.stockMovement:', !!txOrDb.stockMovement);
 
   if (!branchId) {
     throw new Error('Branch ID is required for deducting parts');
@@ -281,14 +320,24 @@ async function deductParts(parts, requestId, performedBy, branchId, tx = null) {
     }
 
     // 3. Deduct - RULE 1
+    const newQuantity = invItem.quantity - part.quantity;
     await txOrDb.inventoryItem.updateMany({
       where: { id: invItem.id, branchId: branchId },
       data: {
-        quantity: {
-          decrement: part.quantity
-        }
+        quantity: newQuantity
       }
     });
+
+    // Check for low stock alert
+    if (newQuantity <= (invItem.minLevel || 5)) {
+      socketManager.emitToBranch(branchId, 'stock-alert', {
+        partId: part.partId,
+        partName: part.name,
+        currentQuantity: newQuantity,
+        minLevel: invItem.minLevel || 5,
+        message: `تنبيه: مخزون "${part.name}" وصل للحد الأدنى (${newQuantity})`
+      });
+    }
 
     // 4. Log movement
     const movement = await txOrDb.stockMovement.create({

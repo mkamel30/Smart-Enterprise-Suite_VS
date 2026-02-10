@@ -32,6 +32,30 @@ If you are working on the API, database, or business services:
 
 ---
 
+## 📚 Detailed Technical Documentation
+
+For comprehensive technical documentation, visit the **[project-analysis/](../project-analysis/)** folder:
+
+### For Backend Developers
+- **[01-database-erd.md](../project-analysis/01-database-erd.md)** - Complete ERD diagrams showing all 27 database models and their relationships
+- **[02-database-schema-reference.md](../project-analysis/02-database-schema-reference.md)** - Detailed schema documentation for all 19 database models
+- **[05-api-endpoints-reference.md](../project-analysis/05-api-endpoints-reference.md)** - Complete API endpoint reference with examples
+- **[13-system-architecture.md](../project-analysis/13-system-architecture.md)** - Comprehensive system architecture with deployment diagrams
+
+### For Frontend Developers
+- **[09-frontend-architecture.md](../project-analysis/09-frontend-architecture.md)** - Frontend architecture and state management patterns
+- **[10-frontend-pages.md](../project-analysis/10-frontend-pages.md)** - Page structure and routing documentation
+- **[11-frontend-components.md](../project-analysis/11-frontend-components.md)** - Component library documentation
+- **[12-frontend-api-integration.md](../project-analysis/12-frontend-api-integration.md)** - API integration patterns and hooks
+
+### For Project Managers & Stakeholders
+- **[16-enhancements-high-impact.md](../project-analysis/16-enhancements-high-impact.md)** - Critical security and performance improvements (P0 priority)
+- **[17-enhancements-medium-impact.md](../project-analysis/17-enhancements-medium-impact.md)** - Medium priority feature enhancements
+- **[18-enhancements-low-impact.md](../project-analysis/18-enhancements-low-impact.md)** - Low priority improvements and technical debt
+- **[19-enhancement-roadmap.md](../project-analysis/19-enhancement-roadmap.md)** - Future development roadmap and timeline
+
+---
+
 ## 🏛️ Core Principles
 Before you write your first line of code, please read our **Guiding Principles** in [ARCHITECTURE.md](./ARCHITECTURE.md#L42). We value **Reliability**, **Developer Velocity**, and **Predictability**.
 

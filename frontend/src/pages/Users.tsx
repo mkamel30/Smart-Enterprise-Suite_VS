@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Trash2, UserPlus, Key, Filter, Building, Pencil } from 'lucide-react';
+import { Trash2, UserPlus, Key, Filter, Building, Pencil, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useApiMutation } from '../hooks/useApiMutation';
 import { ROLES, BRANCH_TYPES, getRoleDisplayName, getAvailableRoles } from '../lib/permissions';
@@ -10,7 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import PageHeader from '../components/PageHeader';
 
 export default function Users() {
-    const { user } = useAuth();
+    const { user, activeBranchId } = useAuth();
     const isAdmin = !user?.branchId; // Super Admin or Management
     const [filterBranchId, setFilterBranchId] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
@@ -31,8 +31,8 @@ export default function Users() {
 
     // Fetch users
     const { data: users, isLoading } = useQuery<any[]>({
-        queryKey: ['users', filterBranchId],
-        queryFn: async () => (await api.getUsers({ branchId: filterBranchId })) as any[],
+        queryKey: ['users', activeBranchId, filterBranchId],
+        queryFn: async () => (await api.getUsers({ branchId: activeBranchId || filterBranchId })) as any[],
         enabled: !!user
     });
 
@@ -377,12 +377,37 @@ export default function Users() {
                                     <label className="block text-xs font-black uppercase tracking-widest text-primary mr-1">كلمة المرور</label>
                                     <input
                                         type="password"
-                                        placeholder="••••••"
+                                        placeholder="••••••••••••"
                                         value={newUser.password}
                                         onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                                         className="smart-input"
                                         required
                                     />
+                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2 mt-2">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">سياسة الأمان (Pattern):</p>
+                                        <ul className="text-[10px] grid grid-cols-2 gap-x-2 gap-y-1 font-bold text-slate-500">
+                                            <li className="flex items-center gap-1.5">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${newUser.password.length >= 12 ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                                12 خانة على الأقل
+                                            </li>
+                                            <li className="flex items-center gap-1.5">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${/[A-Z]/.test(newUser.password) ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                                حرف كبير (A)
+                                            </li>
+                                            <li className="flex items-center gap-1.5">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${/[a-z]/.test(newUser.password) ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                                حرف صغير (a)
+                                            </li>
+                                            <li className="flex items-center gap-1.5">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${/[0-9]/.test(newUser.password) ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                                أرقام (123)
+                                            </li>
+                                            <li className="flex items-center gap-1.5">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${/[@$!%*?&#]/.test(newUser.password) ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                                رموز (@#$)
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -526,18 +551,49 @@ export default function Users() {
                         <h3 className="font-bold mb-4">تغيير كلمة المرور: {resetPasswordState.displayName}</h3>
                         <input
                             type="password"
-                            placeholder="كلمة المرور الجديدة"
+                            placeholder="••••••••••••"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            className="w-full p-2 border rounded mb-4"
+                            className="w-full p-3 border-2 border-primary/10 rounded-xl mb-4 font-mono focus:border-primary outline-none transition-all"
                         />
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-6">
+                            <p className="text-[11px] font-black text-slate-400 mb-3 uppercase tracking-widest">مواصفات كلمة المرور القوية:</p>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-[11px] font-bold ${newPassword.length >= 12 ? 'text-emerald-600' : 'text-slate-500'}`}>12 خانة على الأقل</span>
+                                    <Check size={14} className={newPassword.length >= 12 ? 'text-emerald-500' : 'text-slate-200'} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-[11px] font-bold ${(/[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword)) ? 'text-emerald-600' : 'text-slate-500'}`}>حروف كبيرة وصغيرة (A/a)</span>
+                                    <Check size={14} className={(/[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword)) ? 'text-emerald-500' : 'text-slate-200'} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-[11px] font-bold ${(/[0-9]/.test(newPassword) && /[@$!%*?&#]/.test(newPassword)) ? 'text-emerald-600' : 'text-slate-500'}`}>أرقام ورموز خاصة (@#1)</span>
+                                    <Check size={14} className={(/[0-9]/.test(newPassword) && /[@$!%*?&#]/.test(newPassword)) ? 'text-emerald-500' : 'text-slate-200'} />
+                                </div>
+                                <hr className="border-slate-100" />
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-[11px] font-bold ${(!/([a-zA-Z0-9])\1{3,}/.test(newPassword) && !/(012|123|234|345|456|567|678|789|890|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i.test(newPassword)) ? 'text-emerald-600' : 'text-slate-500'}`}>بدون تكرار أو تسلسل (123/aaa)</span>
+                                    <Check size={14} className={(!/([a-zA-Z0-9])\1{3,}/.test(newPassword) && !/(012|123|234|345|456|567|678|789|890|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i.test(newPassword)) ? 'text-emerald-500' : 'text-slate-200'} />
+                                </div>
+                            </div>
+                        </div>
                         <div className="flex gap-2">
                             <button
                                 onClick={() => resetPasswordMutation.mutate({ id: resetPasswordState.userId, password: newPassword })}
-                                className="flex-1 bg-amber-500 text-white py-2 rounded hover:bg-amber-600"
-                                disabled={!newPassword}
+                                className="flex-1 bg-amber-500 text-white py-2 rounded-xl font-bold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                disabled={
+                                    newPassword.length < 12 ||
+                                    !/[A-Z]/.test(newPassword) ||
+                                    !/[a-z]/.test(newPassword) ||
+                                    !/[0-9]/.test(newPassword) ||
+                                    !/[@$!%*?&#]/.test(newPassword) ||
+                                    /([a-zA-Z0-9])\1{3,}/.test(newPassword) ||
+                                    /(012|123|234|345|456|567|678|789|890|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i.test(newPassword) ||
+                                    resetPasswordMutation.isPending
+                                }
                             >
-                                حفظ
+                                {resetPasswordMutation.isPending ? 'جاري الحفظ...' : 'تغيير كلمة المرور'}
                             </button>
                             <button
                                 onClick={() => setResetPasswordState({ userId: null, displayName: '', show: false })}

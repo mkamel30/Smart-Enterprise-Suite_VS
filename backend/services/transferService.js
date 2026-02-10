@@ -1,4 +1,4 @@
-﻿const db = require('../db');
+const db = require('../db');
 const { detectMachineParams } = require('../utils/machine-validation');
 const { createNotification } = require('../routes/notifications');
 const movementService = require('./movementService');
@@ -8,21 +8,33 @@ const { validateTransferOrder } = require('../utils/transfer-validators');
 // Apply branch scoping for transfer-order queries (from/to branch)
 function applyTransferBranchFilter(args = {}, user, branchId) {
     const isGlobalAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user?.role);
-    const targetBranchId = isGlobalAdmin ? (branchId || undefined) : user?.branchId;
+    const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+
+    // Determine which IDs to filter by
+    let filterIds = [];
+    if (isGlobalAdmin) {
+        if (branchId) filterIds = [branchId];
+    } else {
+        filterIds = authorizedIds;
+    }
 
     // Ensure where exists
     if (!args.where) args.where = {};
 
-    // If we have a target branch, filter by it (either as from or to)
-    if (targetBranchId) {
+    // If we have authorized IDs, filter by them (either as from or to)
+    if (filterIds.length > 0) {
         args.where = {
             ...args.where,
-            OR: [{ fromBranchId: targetBranchId }, { toBranchId: targetBranchId }]
+            OR: [
+                { fromBranchId: { in: filterIds } },
+                { toBranchId: { in: filterIds } }
+            ]
         };
     }
 
     // Every query MUST include branchId filter - RULE 1
-    if (isGlobalAdmin) {
+    // For transfer orders, branchId usually equals toBranchId or matches owner
+    if (isGlobalAdmin && !branchId) {
         if (!args.where.branchId) {
             args.where.branchId = { not: null };
         }
@@ -207,14 +219,17 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
     if (isAdmin) {
         order = await db.transferOrder.findFirst({ where: { id: orderId, branchId: { not: null } }, include: { items: true, fromBranch: true, toBranch: true } });
     } else {
-        if (!user.branchId) {
+        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+        if (authorizedIds.length === 0) {
             const err = new Error('Access denied'); err.status = 403; throw err;
         }
         order = await db.transferOrder.findFirst({
             where: {
                 id: orderId,
-                branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+                OR: [
+                    { toBranchId: { in: authorizedIds } },
+                    { fromBranchId: { in: authorizedIds } }
+                ]
             },
             include: { items: true, fromBranch: true, toBranch: true }
         });
@@ -272,13 +287,24 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
                 }
 
                 await movementService.logSimMovement(tx, { simId: simObj.id, serialNumber: item.serialNumber, action: 'TRANSFER_IN', details: { reason: 'Transfer Order Received', orderNumber: order.orderNumber, fromBranchId: order.fromBranchId }, performedBy: receivedByName || 'System', branchId: order.branchId, fromBranchId: order.fromBranchId });
-            } else if (['MACHINE', 'MAINTENANCE', 'SEND_TO_CENTER'].includes(order.type)) {
+            } else if (['MACHINE', 'MAINTENANCE', 'SEND_TO_CENTER', 'RETURN_TO_BRANCH'].includes(order.type)) {
                 const existing = await tx.warehouseMachine.findFirst({
                     where: { serialNumber: item.serialNumber, branchId: { not: null } }
                 });
 
                 let newStatus = 'NEW';
-                if (['MAINTENANCE', 'SEND_TO_CENTER'].includes(order.type)) {
+                let updateData = { branchId: order.branchId, status: newStatus };
+
+                if (order.type === 'RETURN_TO_BRANCH') {
+                    // Machine is being returned to origin branch after maintenance
+                    // Keep the current status (should be REPAIRED, READY_FOR_RETURN, or TOTAL_LOSS)
+                    newStatus = existing?.status || 'REPAIRED';
+                    updateData = {
+                        branchId: order.branchId, // Now at the origin branch
+                        status: newStatus,
+                        originBranchId: null // Clear origin since it's back home
+                    };
+                } else if (['MAINTENANCE', 'SEND_TO_CENTER'].includes(order.type)) {
                     if (order.toBranch.type === 'MAINTENANCE_CENTER') {
                         newStatus = 'RECEIVED_AT_CENTER';
                         const activeRequest = await tx.maintenanceRequest.findFirst({ where: { serialNumber: item.serialNumber, status: { in: ['PENDING_TRANSFER', 'Open', 'In Progress'] }, branchId: order.fromBranchId } });
@@ -288,15 +314,16 @@ async function receiveTransferOrder(orderId, { receivedBy, receivedByName, recei
                     } else {
                         newStatus = 'REPAIRED';
                     }
+                    updateData = { branchId: order.branchId, status: newStatus };
+                    if (['MAINTENANCE', 'SEND_TO_CENTER'].includes(order.type) && order.toBranch.type === 'MAINTENANCE_CENTER') updateData.originBranchId = order.fromBranchId;
                 } else if (existing) {
                     if (existing.status === 'IN_TRANSIT') newStatus = 'NEW'; else newStatus = existing.status;
+                    updateData = { branchId: order.branchId, status: newStatus };
                 }
 
                 if (!existing) {
                     await tx.warehouseMachine.create({ data: { branchId: order.branchId, serialNumber: item.serialNumber, model: item.type || 'Unknown', manufacturer: item.manufacturer || 'Unknown', status: newStatus, notes: `تم الإضافة من إذن ${order.orderNumber}` } });
                 } else {
-                    const updateData = { branchId: order.branchId, status: newStatus };
-                    if (['MAINTENANCE', 'SEND_TO_CENTER'].includes(order.type) && order.toBranch.type === 'MAINTENANCE_CENTER') updateData.originBranchId = order.fromBranchId;
                     await tx.warehouseMachine.updateMany({
                         where: { id: existing.id, branchId: { not: null } },
                         data: updateData
@@ -489,7 +516,44 @@ async function getPendingOrders({ branchId, type }, user, req) {
     const args = applyTransferBranchFilter({ where, include: { fromBranch: true, toBranch: true, items: true }, orderBy: { createdAt: 'desc' } }, user, branchId);
 
     const orders = await db.transferOrder.findMany(args);
-    return orders;
+
+    // For maintenance-related orders, fetch complaint data from MaintenanceRequest
+    const ordersWithComplaints = await Promise.all(
+        orders.map(async (order) => {
+            if (['MAINTENANCE', 'SEND_TO_CENTER'].includes(order.type) && order.items?.length > 0) {
+                const serialNumbers = order.items.map(item => item.serialNumber).filter(Boolean);
+
+                if (serialNumbers.length > 0) {
+                    // Fetch active maintenance requests for these serial numbers
+                    const maintenanceRequests = await db.maintenanceRequest.findMany({
+                        where: {
+                            serialNumber: { in: serialNumbers },
+                            status: { in: ['Open', 'In Progress', 'PENDING_TRANSFER'] },
+                            branchId: order.fromBranchId
+                        },
+                        select: {
+                            serialNumber: true,
+                            complaint: true
+                        }
+                    });
+
+                    // Create a map of serialNumber to complaint
+                    const complaintMap = new Map(
+                        maintenanceRequests.map(req => [req.serialNumber, req.complaint])
+                    );
+
+                    // Add complaint to each item
+                    order.items = order.items.map(item => ({
+                        ...item,
+                        complaint: complaintMap.get(item.serialNumber) || null
+                    }));
+                }
+            }
+            return order;
+        })
+    );
+
+    return ordersWithComplaints;
 }
 
 async function getPendingSerials({ branchId, type }, user) {
@@ -511,18 +575,53 @@ async function getTransferOrderById(id, user) {
             include: { fromBranch: true, toBranch: true, items: true }
         });
     } else {
-        if (!user.branchId) { const err = new Error('Access denied'); err.status = 403; throw err; }
+        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+        if (authorizedIds.length === 0) { const err = new Error('Access denied'); err.status = 403; throw err; }
         order = await db.transferOrder.findFirst({
             where: {
                 id,
-                branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+                OR: [
+                    { toBranchId: { in: authorizedIds } },
+                    { fromBranchId: { in: authorizedIds } }
+                ]
             },
             include: { fromBranch: true, toBranch: true, items: true }
         });
     }
 
     if (!order) { const err = new Error('الإذن غير موجود'); err.status = 404; throw err; }
+
+    // For maintenance-related orders, fetch complaint data from MaintenanceRequest
+    if (['MAINTENANCE', 'SEND_TO_CENTER'].includes(order.type) && order.items?.length > 0) {
+        const serialNumbers = order.items.map(item => item.serialNumber).filter(Boolean);
+
+        if (serialNumbers.length > 0) {
+            // Fetch active maintenance requests for these serial numbers
+            const maintenanceRequests = await db.maintenanceRequest.findMany({
+                where: {
+                    serialNumber: { in: serialNumbers },
+                    status: { in: ['Open', 'In Progress', 'PENDING_TRANSFER'] },
+                    branchId: order.fromBranchId
+                },
+                select: {
+                    serialNumber: true,
+                    complaint: true
+                }
+            });
+
+            // Create a map of serialNumber to complaint
+            const complaintMap = new Map(
+                maintenanceRequests.map(req => [req.serialNumber, req.complaint])
+            );
+
+            // Add complaint to each item
+            order.items = order.items.map(item => ({
+                ...item,
+                complaint: complaintMap.get(item.serialNumber) || null
+            }));
+        }
+    }
+
     return order;
 }
 
@@ -565,12 +664,15 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
     if (isAdmin) {
         order = await db.transferOrder.findFirst({ where: { id, branchId: { not: null } } });
     } else {
-        if (!user.branchId) { const err = new Error('Access denied'); err.status = 403; throw err; }
+        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+        if (authorizedIds.length === 0) { const err = new Error('Access denied'); err.status = 403; throw err; }
         order = await db.transferOrder.findFirst({
             where: {
                 id,
-                branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+                OR: [
+                    { toBranchId: { in: authorizedIds } },
+                    { fromBranchId: { in: authorizedIds } }
+                ]
             }
         });
     }
@@ -583,8 +685,10 @@ async function rejectOrder(id, { rejectionReason, receivedBy, receivedByName }, 
     }) : await db.transferOrder.findFirst({
         where: {
             id,
-            branchId: user.branchId,
-            OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+            OR: [
+                { toBranchId: { in: user.authorizedBranchIds || [user.branchId] } },
+                { fromBranchId: { in: user.authorizedBranchIds || [user.branchId] } }
+            ]
         },
         include: { items: true }
     });
@@ -644,16 +748,19 @@ async function cancelOrder(id, user) {
     let order;
     if (isAdmin) {
         order = await db.transferOrder.findFirst({
-            where: { id, branchId: { not: null } },
+            where: { id },
             include: { items: true }
         });
     } else {
-        if (!user.branchId) { const err = new Error('Access denied'); err.status = 403; throw err; }
+        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+        if (authorizedIds.length === 0) { const err = new Error('Access denied'); err.status = 403; throw err; }
         order = await db.transferOrder.findFirst({
             where: {
                 id,
-                branchId: user.branchId,
-                OR: [{ toBranchId: user.branchId }, { fromBranchId: user.branchId }]
+                OR: [
+                    { toBranchId: { in: authorizedIds } },
+                    { fromBranchId: { in: authorizedIds } }
+                ]
             },
             include: { items: true }
         });

@@ -1,9 +1,6 @@
 ﻿/**
- * AsyncHandler - Wrapper to eliminate try/catch boilerplate
- * Catches errors and passes them to Express error handler
+ * AsyncHandler - Re-exports from errorHandler for backward compatibility
+ * All new code should import from '../utils/errorHandler' instead.
  */
-const asyncHandler = (fn) => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
-};
-
+const { asyncHandler } = require('./errorHandler');
 module.exports = asyncHandler;

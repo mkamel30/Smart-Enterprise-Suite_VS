@@ -2,6 +2,7 @@
 const router = express.Router();
 const db = require('../db');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const { isGlobalRole } = require('../utils/constants');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
@@ -87,7 +88,7 @@ router.delete('/:tableName/:id', async (req, res) => {
         
         // Authorization check if record has branchId
         if (record.branchId && req.user?.branchId) {
-            const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
+            const isAdmin = isGlobalRole(req.user?.role);
             if (!isAdmin && record.branchId !== req.user.branchId) {
                 return res.status(403).json({ error: 'Access denied' });
             }

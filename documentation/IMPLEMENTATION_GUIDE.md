@@ -15,6 +15,7 @@ This guide explains all the enhancements that have been implemented and how to u
 7. [API Documentation](#api-documentation)
 8. [Security Features](#security-features)
 9. [Health Checks](#health-checks)
+10. [Branch Hierarchy & Visibility](#branch-hierarchy--visibility)
 
 ---
 
@@ -603,4 +604,48 @@ describe('Error handling', () => {
 - [Swagger/OpenAPI Spec](https://swagger.io)
 - [Express Error Handling](https://expressjs.com/en/guide/error-handling.html)
 - [Jest Testing](https://jestjs.io)
+
+---
+
+## Branch Hierarchy & Visibility
+
+### Concept
+The system supports a tree-like hierarchy for branches. User visibility is **hierarchical (one-way)**:
+- **Parent Branch** users can see their own data + all descendants (child branches).
+- **Child Branch** users can only see their own data.
+
+### Implementation in Prisma
+Use the `ensureBranchWhere` helper in `backend/prisma/branchHelpers.js`. 
+For users with a branch, it automatically fetches family IDs (self + direct children) and filters results.
+
+```javascript
+const { ensureBranchWhere } = require('../prisma/branchHelpers');
+
+router.get('/items', authenticateToken, asyncHandler(async (req, res) => {
+    // ❌ OLD WAY
+    // const items = await db.item.findMany({ where: { branchId: req.user.branchId } });
+    
+    // ✅ NEW WAY (Hierarchical-aware)
+    const args = ensureBranchWhere({
+        where: { status: 'ACTIVE' },
+        include: { details: true }
+    }, req);
+    
+    const items = await db.item.findMany(args);
+    res.json(items);
+}));
+```
+
+### Authorization Helpers
+Use updated helpers in `backend/utils/auth-helpers.js`:
+
+- `getBranchFilter(req)`: Returns `{ branchId: { in: authorizedIds } }` or `{ branchId: id }`.
+- `canAccessBranch(req, targetId)`: Returns `true` if `targetId` is user's branch OR a child branch.
+
+### Transfer Permission Logic
+Transfers between related branches (Parent to Child or vice-versa) are allowed without Super Admin roles. 
+
+Validation is handled in `backend/utils/transfer-validators.js` via `validateUserPermission(user, fromBranchId)`. It checks if `fromBranchId` is in the user's `authorizedBranchIds` list (populated by `authenticateToken` middleware).
+
+---
 

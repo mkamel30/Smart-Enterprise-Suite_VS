@@ -44,7 +44,7 @@ router.post('/subscribe', authenticateToken, async (req, res) => {
     // Store subscription (in production, save to database)
     subscriptions.set(userId, subscription);
 
-    console.log(`Push subscription saved for user: ${userId}`);
+    logger.info({ userId }, "Push subscription saved");
     res.json({ success: true, message: 'Subscription saved' });
   } catch (error) {
     console.error('Error saving subscription:', error);
@@ -66,7 +66,7 @@ router.post('/unsubscribe', authenticateToken, async (req, res) => {
 
     subscriptions.delete(userId);
 
-    console.log(`Push subscription removed for user: ${userId}`);
+    logger.info({ userId }, "Push subscription removed");
     res.json({ success: true, message: 'Subscription removed' });
   } catch (error) {
     console.error('Error removing subscription:', error);
@@ -84,12 +84,12 @@ async function sendPushToUser(userId, payload) {
     const subscription = subscriptions.get(userId);
     
     if (!subscription) {
-      console.log(`No push subscription found for user: ${userId}`);
+      logger.warn({ userId }, "No push subscription found");
       return false;
     }
 
     await webpush.sendNotification(subscription, JSON.stringify(payload));
-    console.log(`Push notification sent to user: ${userId}`);
+    logger.info({ userId }, "Push notification sent");
     return true;
   } catch (error) {
     console.error(`Failed to send push to user ${userId}:`, error);

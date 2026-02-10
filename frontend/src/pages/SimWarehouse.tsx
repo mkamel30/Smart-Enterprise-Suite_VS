@@ -33,7 +33,7 @@ interface WarehouseSim {
 }
 
 export default function SimWarehouse() {
-    const { user } = useAuth();
+    const { user, activeBranchId } = useAuth();
     const isAdmin = !user?.branchId;
     const isAffairs = user?.role === 'ADMIN_AFFAIRS';
     const queryClient = useQueryClient();
@@ -60,13 +60,13 @@ export default function SimWarehouse() {
 
     // Queries
     const { data: sims, isLoading } = useQuery<WarehouseSim[]>({
-        queryKey: ['warehouse-sims', filterBranchId],
-        queryFn: () => api.getWarehouseSims(filterBranchId)
+        queryKey: ['warehouse-sims', activeBranchId, filterBranchId],
+        queryFn: () => api.getWarehouseSims(activeBranchId || filterBranchId)
     });
 
     const { data: counts } = useQuery({
-        queryKey: ['warehouse-sims-counts', filterBranchId],
-        queryFn: () => api.getWarehouseSimCounts(filterBranchId)
+        queryKey: ['warehouse-sims-counts', activeBranchId, filterBranchId],
+        queryFn: () => api.getWarehouseSimCounts(activeBranchId || filterBranchId)
     });
 
     const { data: branches } = useQuery({

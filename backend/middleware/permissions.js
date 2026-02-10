@@ -3,26 +3,7 @@
  * Handles role-based access control for all routes
  */
 
-// Role definitions with their permissions
-const ROLES = {
-    SUPER_ADMIN: 'SUPER_ADMIN',
-    MANAGEMENT: 'MANAGEMENT',
-    ADMIN_AFFAIRS: 'ADMIN_AFFAIRS',
-    CENTER_MANAGER: 'CENTER_MANAGER',
-    CENTER_TECH: 'CENTER_TECH',
-    BRANCH_MANAGER: 'BRANCH_MANAGER',
-    CS_SUPERVISOR: 'CS_SUPERVISOR',
-    CS_AGENT: 'CS_AGENT',
-    BRANCH_TECH: 'BRANCH_TECH',
-    TECHNICIAN: 'TECHNICIAN'
-};
-
-// Branch types
-const BRANCH_TYPES = {
-    BRANCH: 'BRANCH',
-    MAINTENANCE_CENTER: 'MAINTENANCE_CENTER',
-    ADMIN_AFFAIRS: 'ADMIN_AFFAIRS'
-};
+const { ROLES, BRANCH_TYPES, isGlobalRole } = require('../utils/constants');
 
 // Permission definitions
 const PERMISSIONS = {
@@ -194,6 +175,7 @@ const requirePermission = (...permissions) => {
 const getBranchFilter = (req) => {
     const userRole = req.user?.role || ROLES.TECHNICIAN;
     const userBranchId = req.user?.branchId;
+    const authorizedIds = req.user?.authorizedBranchIds || (userBranchId ? [userBranchId] : []);
 
     // These roles can see all data
     if ([ROLES.SUPER_ADMIN, ROLES.MANAGEMENT].includes(userRole)) {
@@ -204,9 +186,11 @@ const getBranchFilter = (req) => {
         return {};
     }
 
-    // All other roles see only their branch
-    if (userBranchId) {
-        return { branchId: userBranchId };
+    // Support hierarchy: Use the list of authorized branches
+    if (authorizedIds.length > 0) {
+        return {
+            branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds }
+        };
     }
 
     return {};
@@ -218,9 +202,15 @@ const getBranchFilter = (req) => {
 const canAccessBranch = async (req, branchId, db) => {
     const userRole = req.user?.role || ROLES.TECHNICIAN;
     const userBranchId = req.user?.branchId;
+    const authorizedIds = req.user?.authorizedBranchIds || (userBranchId ? [userBranchId] : []);
 
     // Admin and management can access all
     if ([ROLES.SUPER_ADMIN, ROLES.MANAGEMENT].includes(userRole)) {
+        return true;
+    }
+
+    // Support hierarchy: Check if branchId is in the authorized list
+    if (authorizedIds.includes(branchId)) {
         return true;
     }
 
@@ -231,11 +221,10 @@ const canAccessBranch = async (req, branchId, db) => {
             where: { id: branchId },
             select: { maintenanceCenterId: true }
         });
-        return targetBranch?.maintenanceCenterId === userBranchId || branchId === userBranchId;
+        return targetBranch?.maintenanceCenterId === userBranchId;
     }
 
-    // Branch users can only access their own branch
-    return branchId === userBranchId;
+    return false;
 };
 
 /**

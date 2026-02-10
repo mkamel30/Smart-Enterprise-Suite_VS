@@ -1,6 +1,6 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 require('express-async-errors');
-// Force restart timestamp: 2026-01-08-T08:30:00
+
 
 const express = require('express');
 const cors = require('cors');
@@ -22,7 +22,8 @@ const {
   securityHeaders,
   enforceHttps,
   sanitizeRequest,
-  removeServerHeader
+  removeServerHeader,
+  additionalSecurityHeaders
 } = require('./middleware/security');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 
@@ -43,6 +44,9 @@ app.use(enforceHttps);
 // 3. Security headers via Helmet
 app.use(securityHeaders);
 
+// 3b. Additional security headers (no-cache on auth, XSS protection)
+app.use(additionalSecurityHeaders);
+
 // 4. CORS Configuration
 app.use(cors({
   origin: config.cors.origin,
@@ -61,6 +65,12 @@ app.use(express.urlencoded({
   extended: true,
   limit: config.uploads.maxFileSize
 }));
+
+// 5b. Force UTF-8 Encoding
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 
 // 6. CSRF Protection (must come after body parser)
 if (config.security.csrfEnabled) {
@@ -168,8 +178,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ===================== API ROUTES =====================
 
-// Auth & User Routes
-app.use('/api/auth', require('./routes/auth'));
+// Auth & User Routes (login endpoint has a stricter rate limiter)
+app.use('/api/auth', loginLimiter, require('./routes/auth'));
+app.use('/api/mfa', require('./routes/mfa'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/user', require('./routes/user-preferences'));
 
@@ -186,8 +197,9 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/audit-logs', require('./routes/audit-logs'));
 
 // Settings & Configuration
-app.use('/api/branches-lookup', require('./routes/branches'));
 app.use('/api/branches', require('./routes/branches'));
+// /api/branches-lookup is served by the same routes module (legacy alias)
+app.use('/api/branches-lookup', require('./routes/branches'));
 
 // Permissions management - full route
 app.use('/api/permissions', require('./routes/permissions'));
@@ -222,10 +234,11 @@ app.use('/api/maintenance', require('./routes/maintenance-reports'));
 app.use('/api/service-assignments', require('./routes/service-assignments'));
 app.use('/api/approvals', require('./routes/approvals'));
 app.use('/api/track-machines', require('./routes/track-machines'));
+app.use('/api/maintenance-center', require('./routes/maintenance-center'));
 
 // Notifications
 app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api', require('./routes/push-notifications'));
+app.use('/api/push', require('./routes/push-notifications'));
 
 // Utilities
 app.use('/api/ai', require('./routes/ai'));
@@ -286,29 +299,12 @@ if (require.main === module) {
 
 // ===================== SOCKET.IO FOR REAL-TIME =====================
 
-const io = new Server(server, {
-  cors: {
-    origin: config.cors.origin,
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
+const socketManager = require('./utils/socketManager');
+socketManager.init(server, {
+  origin: config.cors.origin,
+  methods: ['GET', 'POST'],
+  credentials: true
 });
-
-io.on('connection', (socket) => {
-  logger.debug({ socketId: socket.id }, 'Client connected');
-
-  socket.on('join-branch', (branchId) => {
-    socket.join(`branch-${branchId}`);
-    logger.debug({ branchId }, 'Client joined branch room');
-  });
-
-  socket.on('disconnect', () => {
-    logger.debug({ socketId: socket.id }, 'Client disconnected');
-  });
-});
-
-// Make io available globally for notifications
-global.io = io;
 
 // ===================== SCHEDULED TASKS =====================
 
@@ -361,4 +357,4 @@ process.on('SIGINT', () => {
   });
 });
 
-module.exports = { app, io };
+module.exports = { app, server };

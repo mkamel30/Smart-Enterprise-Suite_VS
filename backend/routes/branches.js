@@ -12,6 +12,8 @@ router.get('/', authenticateToken, async (req, res) => {
         const branches = await db.branch.findMany({
             orderBy: { createdAt: 'desc' },
             include: {
+                parentBranch: { select: { id: true, name: true, code: true } },
+                maintenanceCenter: { select: { id: true, name: true, code: true } },
                 _count: {
                     select: {
                         users: true,
@@ -25,6 +27,40 @@ router.get('/', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Failed to fetch branches:', error);
         res.status(500).json({ error: 'فشل في جلب الفروع' });
+    }
+});
+
+// Get authorized branches for the current user
+router.get('/authorized', authenticateToken, async (req, res) => {
+    try {
+        const { role, branchId } = req.user;
+        const authorizedIds = req.user.authorizedBranchIds || (branchId ? [branchId] : []);
+
+        let where = {};
+
+        // Super Admin & Management see all branches
+        if (['SUPER_ADMIN', 'MANAGEMENT'].includes(role)) {
+            // No filter
+        } else {
+            // Others see only authorized branches
+            if (authorizedIds.length > 0) {
+                where.id = { in: authorizedIds };
+            } else {
+                // If no authorized branches, return empty (shouldn't happen for valid users)
+                return res.json([]);
+            }
+        }
+
+        const branches = await db.branch.findMany({
+            where,
+            orderBy: { name: 'asc' },
+            select: { id: true, name: true, code: true, type: true }
+        });
+
+        res.json(branches);
+    } catch (error) {
+        console.error('Failed to fetch authorized branches:', error);
+        res.status(500).json({ error: 'فشل في جلب الفروع المصرح بها' });
     }
 });
 
@@ -66,7 +102,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create branch
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { code, name, address, type, maintenanceCenterId, isActive } = req.body;
+        const { code, name, address, type, maintenanceCenterId, parentBranchId, isActive } = req.body;
 
         if (!code || !name) {
             return res.status(400).json({ error: 'الكود والاسم مطلوبان' });
@@ -97,7 +133,8 @@ router.post('/', authenticateToken, async (req, res) => {
                 address: address || null,
                 type: type || 'BRANCH',
                 isActive: isActive !== undefined ? isActive : true,
-                maintenanceCenterId: maintenanceCenterId || null
+                maintenanceCenterId: maintenanceCenterId || null,
+                parentBranchId: parentBranchId || null
             }
         });
 
@@ -111,14 +148,14 @@ router.post('/', authenticateToken, async (req, res) => {
 // Update branch
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
-        const { code, name, address, type, maintenanceCenterId, isActive } = req.body;
+        const { code, name, address, type, maintenanceCenterId, parentBranchId, isActive } = req.body;
 
         // Check if branch exists
         const existing = await db.branch.findUnique({
             where: { id: req.params.id }
         });
         if (!existing) {
-            return res.status(404).json({ error: 'ط§ظ„ظپط±ط¹ ط؛ظٹط± ظ…ظˆط¬ظˆط¯' });
+            return res.status(404).json({ error: 'الفرع غير موجود' });
         }
 
         // Check for duplicate code
@@ -127,7 +164,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 where: { code }
             });
             if (duplicate) {
-                return res.status(400).json({ error: 'ظƒظˆط¯ ط§ظ„ظپط±ط¹ ظ…ظˆط¬ظˆط¯ ظ…ط³ط¨ظ‚ط§ظ‹' });
+                return res.status(400).json({ error: 'كود الفرع موجود مسبقاً' });
             }
         }
 
@@ -137,7 +174,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 where: { id: maintenanceCenterId }
             });
             if (!center || center.type !== 'MAINTENANCE_CENTER') {
-                return res.status(400).json({ error: 'ظ…ط±ظƒط² ط§ظ„طµظٹط§ظ†ط© ط؛ظٹط± طµط§ظ„ط­' });
+                return res.status(400).json({ error: 'مركز الصيانة غير صالح' });
             }
         }
 
@@ -149,7 +186,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 address: address !== undefined ? address : existing.address,
                 type: type || existing.type,
                 isActive: isActive !== undefined ? isActive : existing.isActive,
-                maintenanceCenterId: maintenanceCenterId !== undefined ? maintenanceCenterId : existing.maintenanceCenterId
+                maintenanceCenterId: maintenanceCenterId !== undefined ? maintenanceCenterId : existing.maintenanceCenterId,
+                parentBranchId: parentBranchId !== undefined ? parentBranchId : existing.parentBranchId
             }
         });
 

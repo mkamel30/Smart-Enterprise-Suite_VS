@@ -72,7 +72,7 @@ export default function InstallmentsDashboard({ onFilterOverdue }: { onFilterOve
 
                 {/* 3. Total Value */}
                 <StatCard
-                    title="إجمالي المديونية"
+                    title="المستحقات القائمة"
                     value={stats.totalValue.toLocaleString('ar-EG')}
                     icon={DollarSign}
                     color="emerald"

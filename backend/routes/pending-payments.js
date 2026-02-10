@@ -4,6 +4,7 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { createNotification } = require('./notifications');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const { isGlobalRole } = require('../utils/constants');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
@@ -42,7 +43,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
         // Ensure at least one branch field exists to pass enforcer
         // Use _skipBranchEnforcer marker for admin all-branches view
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
+        const isAdmin = isGlobalRole(req.user.role);
         if (!where.debtorBranchId && !where.creditorBranchId) {
             if (isAdmin) {
                 where._skipBranchEnforcer = true;
@@ -86,7 +87,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
 
         // Ensure at least one branch field exists to pass enforcer
         // Use _skipBranchEnforcer marker for admin all-branches view
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
+        const isAdmin = isGlobalRole(req.user.role);
         if (!where.debtorBranchId && !where.creditorBranchId) {
             if (isAdmin) {
                 where._skipBranchEnforcer = true;
@@ -246,7 +247,7 @@ router.get('/export', authenticateToken, async (req, res) => {
         if (centerBranchId) where.creditorBranchId = centerBranchId;
         if (status) where.status = status;
 
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
+        const isAdmin = isGlobalRole(req.user.role);
         if (!where.debtorBranchId && !where.creditorBranchId && isAdmin) {
             where._skipBranchEnforcer = true;
         }

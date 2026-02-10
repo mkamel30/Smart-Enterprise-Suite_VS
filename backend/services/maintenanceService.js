@@ -1,6 +1,7 @@
-﻿const db = require('../db');
+const db = require('../db');
 const logger = require('../utils/logger');
 const { ValidationError, NotFoundError, ForbiddenError, ConflictError } = require('../utils/errors');
+const inventoryService = require('./inventoryService');
 
 // ============================================
 // Helper Functions
@@ -367,7 +368,7 @@ async function completeDirect(data, user) {
     });
 
     // Update machine status - RULE 1
-    await tx.warehouseMachine.update({
+    await tx.warehouseMachine.updateMany({
       where: {
         serialNumber: assignment.serialNumber,
         branchId: assignment.centerBranchId
@@ -382,9 +383,6 @@ async function completeDirect(data, user) {
 
     return { assignment: updatedAssignment, debt };
   });
-
-  logger.db({ assignmentId: data.assignmentId, totalCost }, 'Direct maintenance completed (stock deducted)');
-  return result;
 }
 
 /**
@@ -539,7 +537,7 @@ async function completeAfterApproval(data, user) {
     });
 
     // Update machine status - RULE 1
-    await tx.warehouseMachine.update({
+    await tx.warehouseMachine.updateMany({
       where: {
         serialNumber: assignment.serialNumber,
         branchId: assignment.centerBranchId
@@ -771,13 +769,24 @@ async function getShipments(filters, user) {
     orderBy: { createdAt: 'desc' }
   });
 
-  // Enrich with machine statuses
-  return await Promise.all(shipments.map(async (shipment) => {
-    const serials = shipment.items.map(i => i.serialNumber);
-    const machines = await db.warehouseMachine.findMany({
-      where: { serialNumber: { in: serials }, branchId: { not: null } },
-      select: { serialNumber: true, status: true, resolution: true }
-    });
+  // Collect all serial numbers first
+  const allSerials = shipments.flatMap(s => s.items.map(i => i.serialNumber));
+
+  // Single batch query for all machines
+  const allMachines = await db.warehouseMachine.findMany({
+    where: {
+      serialNumber: { in: allSerials },
+      branchId: { not: null }
+    },
+    select: { serialNumber: true, status: true, resolution: true }
+  });
+
+  // Create lookup map
+  const machineMap = new Map(allMachines.map(m => [m.serialNumber, m]));
+
+  // Map to shipments
+  return shipments.map(shipment => {
+    const machines = shipment.items.map(i => machineMap.get(i.serialNumber)).filter(Boolean);
 
     const completedCount = machines.filter(m =>
       ['REPAIRED', 'SCRAPPED', 'RETURNED_AS_IS', 'READY_FOR_DELIVERY', 'IN_RETURN_TRANSIT'].includes(m.status) ||
@@ -789,7 +798,7 @@ async function getShipments(filters, user) {
       machineStatuses: machines,
       progress: Math.round((completedCount / shipment.items.length) * 100) || 0
     };
-  }));
+  });
 }
 
 /**
@@ -813,11 +822,20 @@ async function receiveShipment(id, user) {
     });
 
     for (const item of order.items) {
+      // Update machine to center's branch - machine could be at original branch
       await tx.warehouseMachine.updateMany({
-        where: { serialNumber: item.serialNumber, branchId: user.branchId },
+        where: { 
+          serialNumber: item.serialNumber,
+          OR: [
+            { branchId: order.fromBranchId },  // At original branch
+            { branchId: user.branchId }         // Already at center (edge case)
+          ]
+        },
         data: {
           status: 'RECEIVED_AT_CENTER',
-          branchId: user.branchId
+          branchId: user.branchId,
+          originalOwnerId: item.originalOwnerId || null,
+          originBranchId: order.fromBranchId
         }
       });
 
@@ -880,15 +898,37 @@ async function transitionMachine(serial, action, data, user) {
       activeRequest = await tx.maintenanceRequest.findFirst({
         where: {
           serialNumber: serial,
+          branchId: machine.originBranchId || machine.branchId,
           status: { in: ['Open', 'In Progress', 'PENDING_TRANSFER'] }
         }
       });
 
       if (!activeRequest) {
+        // Find or create a system customer for center maintenance
+        let systemCustomer = await tx.customer.findFirst({
+          where: { 
+            bkcode: 'SYSTEM_CENTER',
+            branchId: machine.branchId
+          }
+        });
+        
+        if (!systemCustomer) {
+          systemCustomer = await tx.customer.create({
+            data: {
+              bkcode: 'SYSTEM_CENTER',
+              client_name: 'System Center Maintenance',
+              branchId: machine.branchId,
+              address: 'Maintenance Center',
+              status: 'Active'
+            }
+          });
+        }
+        
         activeRequest = await tx.maintenanceRequest.create({
           data: {
             branchId: machine.originBranchId || machine.branchId,
             serialNumber: serial,
+            customerId: systemCustomer.id,
             customerName: machine.originalOwnerId ? 'Client ' + machine.originalOwnerId : 'Unknown',
             type: 'MAINTENANCE',
             status: 'Open',
@@ -919,6 +959,25 @@ async function transitionMachine(serial, action, data, user) {
         proposedParts: null,
         proposedTotalCost: null
       };
+      
+      // Deduct parts from inventory - Apply spare parts withdrawal law
+      if (data.parts && data.parts.length > 0) {
+        // Format parts for inventory service
+        const partsToDeduct = data.parts.map(p => ({
+          partId: p.partId,
+          name: p.name,
+          quantity: p.quantity || 1
+        }));
+        
+        // Deduct from center's inventory
+        await inventoryService.deductParts(
+          partsToDeduct,
+          machine.id, // Use machine ID as reference
+          user.displayName || user.email,
+          machine.branchId, // Center branch ID
+          tx
+        );
+      }
     } else if (action === 'SCRAP') {
       newStatus = 'SCRAPPED';
       updateData = {
@@ -928,12 +987,23 @@ async function transitionMachine(serial, action, data, user) {
       };
     }
 
-    const updatedMachine = await tx.warehouseMachine.update({
-      where: { serialNumber: serial },
+    const updatedMachine = await tx.warehouseMachine.updateMany({
+      where: { 
+        serialNumber: serial,
+        branchId: { not: null }
+      },
       data: updateData
     });
+    
+    // Fetch the updated machine
+    const refreshedMachine = await tx.warehouseMachine.findFirst({
+      where: { 
+        serialNumber: serial,
+        branchId: { not: null }
+      }
+    });
 
-    return { updatedMachine, approval, activeRequest, newStatus, logActionType };
+    return { updatedMachine: refreshedMachine, approval, activeRequest, newStatus, logActionType };
   });
 }
 

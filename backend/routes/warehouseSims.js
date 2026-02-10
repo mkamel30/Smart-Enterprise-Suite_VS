@@ -11,6 +11,7 @@ const movementService = require('../services/movementService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const logger = require('../utils/logger');
 const { asyncHandler } = require('../utils/errorHandler');
+const { isGlobalRole } = require('../utils/constants');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -81,8 +82,13 @@ router.get('/', authenticateToken, validateQuery(listQuerySchema), asyncHandler(
     const targetBranchId = req.query.branchId;
     const where = { ...branchFilter };
 
-    if (targetBranchId && (['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role))) {
-        where.branchId = targetBranchId;
+    if (targetBranchId) {
+        const isPrivileged = isGlobalRole(req.user.role);
+        const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+
+        if (isPrivileged || authorizedIds.includes(targetBranchId)) {
+            where.branchId = targetBranchId;
+        }
     }
 
     if (req.query.status) {
@@ -103,8 +109,13 @@ router.get('/counts', authenticateToken, asyncHandler(async (req, res) => {
     const targetBranchId = req.query.branchId;
     const where = { ...branchFilter };
 
-    if (targetBranchId && (['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(req.user.role))) {
-        where.branchId = targetBranchId;
+    if (targetBranchId) {
+        const isPrivileged = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(req.user.role);
+        const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+
+        if (isPrivileged || authorizedIds.includes(targetBranchId)) {
+            where.branchId = targetBranchId;
+        }
     }
 
     // Count by status

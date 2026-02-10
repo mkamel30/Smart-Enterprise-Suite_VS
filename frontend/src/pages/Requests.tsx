@@ -20,7 +20,7 @@ import PageHeader from '../components/PageHeader';
 
 export default function Requests() {
     const location = useLocation();
-    const { user } = useAuth();
+    const { user, activeBranchId } = useAuth();
     const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
     const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -69,13 +69,13 @@ export default function Requests() {
     const [selectedTechnician, setSelectedTechnician] = useState('');
 
     const { data: requests, isLoading } = useQuery<MaintenanceRequest[]>({
-        queryKey: ['requests', filterBranchId, debouncedSearch],
-        queryFn: () => api.getRequests({ branchId: filterBranchId, search: debouncedSearch })
+        queryKey: ['requests', activeBranchId, filterBranchId, debouncedSearch],
+        queryFn: () => api.getRequests({ branchId: activeBranchId || filterBranchId, search: debouncedSearch })
     });
 
     const { data: stats } = useQuery({
-        queryKey: ['requests-stats', filterBranchId],
-        queryFn: () => api.getRequestStats(filterBranchId),
+        queryKey: ['requests-stats', activeBranchId, filterBranchId],
+        queryFn: () => api.getRequestStats(activeBranchId || filterBranchId),
         refetchInterval: 1000 * 60 // Refresh stats every minute
     });
 

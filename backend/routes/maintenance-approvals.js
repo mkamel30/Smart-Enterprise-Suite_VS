@@ -1,9 +1,10 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { createNotification } = require('./notifications');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const { isGlobalRole } = require('../utils/constants');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
@@ -56,6 +57,119 @@ router.get('/pending-count', authenticateToken, async (req, res) => {
     }
 });
 
+// Get approval statistics
+router.get('/stats', authenticateToken, async (req, res) => {
+    try {
+        const { branchId, period = 'month', month, quarter, year } = req.query;
+        const userBranchId = branchId || req.user.branchId;
+
+        // Build date filter
+        let startDate, endDate;
+        const now = new Date();
+        
+        if (period === 'month') {
+            const targetMonth = month !== undefined ? parseInt(month) : now.getMonth();
+            const targetYear = year ? parseInt(year) : now.getFullYear();
+            startDate = new Date(targetYear, targetMonth, 1);
+            endDate = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+        } else if (period === 'quarter') {
+            const targetQuarter = quarter !== undefined ? parseInt(quarter) : Math.floor(now.getMonth() / 3);
+            const targetYear = year ? parseInt(year) : now.getFullYear();
+            startDate = new Date(targetYear, targetQuarter * 3, 1);
+            endDate = new Date(targetYear, (targetQuarter + 1) * 3, 0, 23, 59, 59, 999);
+        } else if (period === 'year') {
+            const targetYear = year ? parseInt(year) : now.getFullYear();
+            startDate = new Date(targetYear, 0, 1);
+            endDate = new Date(targetYear, 11, 31, 23, 59, 59, 999);
+        } else {
+            // Default: current month
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        }
+
+        // Build where clause
+        const baseWhere = {
+            targetBranchId: userBranchId,
+            createdAt: {
+                gte: startDate,
+                lte: endDate
+            }
+        };
+
+        // Count by status
+        const [pending, approved, rejected, totalCostApproved, totalCostRejected] = await Promise.all([
+            db.maintenanceApprovalRequest.count({
+                where: { ...baseWhere, status: 'PENDING' }
+            }),
+            db.maintenanceApprovalRequest.count({
+                where: { ...baseWhere, status: 'APPROVED' }
+            }),
+            db.maintenanceApprovalRequest.count({
+                where: { ...baseWhere, status: 'REJECTED' }
+            }),
+            // Sum approved costs
+            db.maintenanceApprovalRequest.aggregate({
+                where: { ...baseWhere, status: 'APPROVED' },
+                _sum: { proposedTotal: true }
+            }),
+            // Sum rejected costs
+            db.maintenanceApprovalRequest.aggregate({
+                where: { ...baseWhere, status: 'REJECTED' },
+                _sum: { proposedTotal: true }
+            })
+        ]);
+
+        // Get branch breakdown for admin
+        let branchBreakdown = null;
+        if (isGlobalRole(req.user.role)) {
+            const branches = await db.branch.findMany({
+                where: { type: 'BRANCH', isActive: true },
+                select: { id: true, name: true }
+            });
+
+            branchBreakdown = await Promise.all(branches.map(async (branch) => {
+                const branchWhere = {
+                    targetBranchId: branch.id,
+                    createdAt: { gte: startDate, lte: endDate }
+                };
+
+                const [p, a, r] = await Promise.all([
+                    db.maintenanceApprovalRequest.count({ where: { ...branchWhere, status: 'PENDING' } }),
+                    db.maintenanceApprovalRequest.count({ where: { ...branchWhere, status: 'APPROVED' } }),
+                    db.maintenanceApprovalRequest.count({ where: { ...branchWhere, status: 'REJECTED' } })
+                ]);
+
+                return {
+                    branchId: branch.id,
+                    branchName: branch.name,
+                    pending: p,
+                    approved: a,
+                    rejected: r,
+                    total: p + a + r
+                };
+            }));
+        }
+
+        res.json({
+            pending,
+            approved,
+            rejected,
+            total: pending + approved + rejected,
+            totalCostApproved: totalCostApproved._sum.proposedTotal || 0,
+            totalCostRejected: totalCostRejected._sum.proposedTotal || 0,
+            period: {
+                type: period,
+                startDate,
+                endDate
+            },
+            branchBreakdown
+        });
+    } catch (error) {
+        console.error('Failed to fetch approval stats:', error);
+        res.status(500).json({ error: 'فشل في جلب إحصائيات الموافقات' });
+    }
+});
+
 // Get single approval request
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
@@ -74,7 +188,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         }
 
         // Authorization check
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
+        const isAdmin = isGlobalRole(req.user?.role);
         if (!isAdmin && request.targetBranchId !== req.user.branchId && request.centerBranchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied' });
         }
@@ -98,7 +212,7 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
         }
 
         // Authorization check
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
+        const isAdmin = isGlobalRole(req.user?.role);
         if (!isAdmin && approvalRequest.targetBranchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied' });
         }
@@ -201,7 +315,7 @@ router.put('/:id/reject', authenticateToken, async (req, res) => {
         }
 
         // Authorization check
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
+        const isAdmin = isGlobalRole(req.user?.role);
         if (!isAdmin && approvalRequest.targetBranchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied' });
         }

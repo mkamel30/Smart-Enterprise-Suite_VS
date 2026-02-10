@@ -62,33 +62,56 @@ function ensureBranchWhere(args = {}, req) {
       return args;
     }
   }
-  // Resolve branchId from various sources - treat empty strings as null
-  const rawBranchId = req.user.branchId || req.body?.branchId || req.query?.branchId;
-  const branchId = (rawBranchId && rawBranchId.trim() !== '') ? rawBranchId : null;
+  // Resolve authorized branch IDs
+  // 1. Get the base IDs the user is allowed to see (self + children, if loaded by middleware)
+  const userBranchId = req.user.branchId;
+  const authorizedIds = req.user.authorizedBranchIds || (userBranchId ? [userBranchId] : []);
 
-  // If no branchId is found and user is Admin, add _skipBranchEnforcer marker
-  // This tells the enforcer to skip the branch check and not filter any data
-  if (!branchId && isAdmin) {
-    if (!args.where) {
-      return { ...args, where: { _skipBranchEnforcer: true } };
+  // 2. Resolve requested branchId from various sources
+  const rawRequestedId = req.query?.branchId || req.body?.branchId;
+  const requestedId = (rawRequestedId && rawRequestedId.trim() !== '') ? rawRequestedId : null;
+
+  // 3. Logic:
+  // - If requestedId exists:
+  //    - If user is Admin (Super/Mgmt), allow requestedId.
+  //    - If current user is restricted, allow requestedId ONLY if it's in authorizedIds.
+  // - If NO requestedId exists:
+  //    - If user is Admin (Super/Mgmt), skip filter (handled by _skipBranchEnforcer).
+  //    - If current user is restricted, use authorizedIds (self + children).
+
+  let finalBranchFilter;
+
+  if (requestedId) {
+    if (isAdmin || authorizedIds.includes(requestedId)) {
+      finalBranchFilter = requestedId;
+    } else {
+      // Forbidden access attempt, force a filter that returns nothing
+      finalBranchFilter = 'FORBIDDEN_ACCESS_' + Math.random();
     }
-    return { ...args, where: { ...args.where, _skipBranchEnforcer: true } };
+  } else {
+    // No specific branch requested
+    if (isAdmin && !userBranchId) {
+      // Super admin without specific branch -> skip
+      if (!args.where) return { ...args, where: { _skipBranchEnforcer: true } };
+      return { ...args, where: { ...args.where, _skipBranchEnforcer: true } };
+    }
+
+    // Use the list of authorized branches
+    if (authorizedIds.length > 0) {
+      finalBranchFilter = authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds };
+    } else {
+      return args; // No branch restrictions found
+    }
   }
 
-  // If still no branchId and NOT admin, we might still return as is 
-  // and let the enforcer catch it, or we could force a filter that returns nothing.
-  if (!branchId) return args;
-
-  // If no where provided, set simple branch filter
+  // Apply the filter
   if (!args.where) {
-    return { ...args, where: { branchId } };
+    return { ...args, where: { branchId: finalBranchFilter } };
   }
 
-  // If where exists but doesn't include branchId, wrap with AND
-  // (We check for branchId at top level of where)
   const where = { ...args.where };
   if (typeof where === 'object' && !Object.prototype.hasOwnProperty.call(where, 'branchId')) {
-    return { ...args, where: { AND: [{ branchId }, where] } };
+    return { ...args, where: { AND: [{ branchId: finalBranchFilter }, where] } };
   }
 
   return args;

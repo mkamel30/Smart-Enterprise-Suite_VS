@@ -70,7 +70,8 @@ class ApiClient {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `API Error: ${response.statusText}`);
+            const errorMessage = errorData.error?.message || errorData.message || errorData.error || `API Error: ${response.status}`;
+            throw new Error(errorMessage);
         }
 
         return response.json();
@@ -114,6 +115,52 @@ class ApiClient {
         return this.request('/auth/change-password', {
             method: 'POST',
             body: JSON.stringify(data)
+        });
+    }
+
+    // MFA
+    async getMFAStatus() {
+        return this.request<any>('/mfa/status');
+    }
+
+    async setupMFA() {
+        return this.request<any>('/mfa/setup', {
+            method: 'POST'
+        });
+    }
+
+    async verifyMFASetup(token: string) {
+        return this.request<any>('/mfa/verify-setup', {
+            method: 'POST',
+            body: JSON.stringify({ token })
+        });
+    }
+
+    async disableMFA(token: string) {
+        return this.request<any>('/mfa/disable', {
+            method: 'POST',
+            body: JSON.stringify({ token })
+        });
+    }
+
+    async verifyMFALogin(userId: string, token: string) {
+        return this.request<any>('/mfa/verify', {
+            method: 'POST',
+            body: JSON.stringify({ userId, token })
+        });
+    }
+
+    async generateMFARecoveryCodes(token: string) {
+        return this.request<any>('/mfa/recovery-codes', {
+            method: 'POST',
+            body: JSON.stringify({ token })
+        });
+    }
+
+    async verifyMFARecovery(userId: string, code: string) {
+        return this.request<any>('/mfa/verify-recovery', {
+            method: 'POST',
+            body: JSON.stringify({ userId, code })
         });
     }
 
@@ -346,6 +393,10 @@ class ApiClient {
     // Settings
     async getBranchesLookup() {
         return this.request<any[]>('/branches-lookup');
+    }
+
+    async getAuthorizedBranches() {
+        return this.request<any[]>('/branches/authorized');
     }
 
     async getMachineParameters(): Promise<MachineParameter[]> {
@@ -636,9 +687,21 @@ class ApiClient {
     }
 
     // Dashboard
-    async getDashboardStats(params?: { branchId?: string }): Promise<DashboardStats> {
-        const query = params?.branchId ? `?branchId=${params.branchId}` : '';
-        return this.request(`/dashboard${query}`);
+    async getDashboardStats(params?: {
+        branchId?: string;
+        period?: 'month' | 'quarter' | 'year';
+        month?: number;
+        quarter?: number;
+        year?: number;
+    }): Promise<DashboardStats> {
+        const query = new URLSearchParams();
+        if (params?.branchId) query.append('branchId', params.branchId);
+        if (params?.period) query.append('period', params.period);
+        if (params?.month !== undefined) query.append('month', params.month.toString());
+        if (params?.quarter !== undefined) query.append('quarter', params.quarter.toString());
+        if (params?.year !== undefined) query.append('year', params.year.toString());
+        const queryStr = query.toString() ? `?${query.toString()}` : '';
+        return this.request(`/dashboard${queryStr}`);
     }
 
     async getInstallmentStats(): Promise<any> {
@@ -1231,6 +1294,222 @@ class ApiClient {
         query.append('entityType', params.entityType);
         if (params.entityId) query.append('entityId', params.entityId);
         return this.request(`/audit-logs?${query.toString()}`);
+    }
+
+    // ==================== MAINTENANCE CENTER API METHODS ====================
+
+    /**
+     * Get all machines currently at the maintenance center
+     */
+    async getMaintenanceCenterMachines(params?: {
+        status?: string;
+        technicianId?: string;
+        branchId?: string;
+        search?: string;
+    }): Promise<any[]> {
+        const query = new URLSearchParams();
+        if (params?.status) query.append('status', params.status);
+        if (params?.technicianId) query.append('technicianId', params.technicianId);
+        if (params?.branchId) query.append('branchId', params.branchId);
+        if (params?.search) query.append('search', params.search);
+        const queryStr = query.toString() ? `?${query.toString()}` : '';
+        return this.request(`/maintenance-center/machines${queryStr}`);
+    }
+
+    /**
+     * Get detailed information for a single machine at the maintenance center
+     */
+    async getMaintenanceCenterMachine(id: string): Promise<any> {
+        return this.request(`/maintenance-center/machines/${id}`);
+    }
+
+    /**
+     * Assign a technician to a machine
+     */
+    async assignTechnicianToMachine(id: string, data: {
+        technicianId: string;
+        technicianName?: string;
+        notes?: string;
+    }): Promise<any> {
+        return this.request(`/maintenance-center/machines/${id}/assign`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Inspect a machine and record findings
+     */
+    async inspectMachine(id: string, data: {
+        problemDescription: string;
+        estimatedCost: number;
+        requiredParts?: Array<{ partId: string; quantity: number }>;
+        notes?: string;
+    }): Promise<any> {
+        return this.request(`/maintenance-center/machines/${id}/inspect`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Start repair process on a machine
+     */
+    async startRepair(id: string, data: {
+        repairType: 'FREE' | 'PAID';
+        problemDescription?: string;
+        estimatedCost?: number;
+        requiredParts?: Array<{ partId: string; quantity: number }>;
+        notes?: string;
+    }): Promise<any> {
+        return this.request(`/maintenance-center/machines/${id}/start-repair`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Request approval from branch for expensive repairs
+     */
+    async requestRepairApproval(id: string, data: {
+        cost: number;
+        parts: Array<{ partId: string; partName: string; quantity: number; cost: number }>;
+        reason: string;
+        notes?: string;
+    }): Promise<any> {
+        return this.request(`/maintenance-center/machines/${id}/request-approval`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Mark machine as repaired and completed
+     */
+    async markMachineRepaired(id: string, data?: {
+        finalCost?: number;
+        partsUsed?: Array<{ partId: string; quantity: number }>;
+        notes?: string;
+        voucherNumber?: string;
+    }): Promise<any> {
+        return this.request(`/maintenance-center/machines/${id}/mark-repaired`, {
+            method: 'POST',
+            body: JSON.stringify(data || {})
+        });
+    }
+
+    /**
+     * Mark machine as total loss (cannot be repaired)
+     */
+    async markMachineTotalLoss(id: string, data?: {
+        reason: string;
+        notes?: string;
+    }): Promise<any> {
+        return this.request(`/maintenance-center/machines/${id}/mark-total-loss`, {
+            method: 'POST',
+            body: JSON.stringify(data || {})
+        });
+    }
+
+    /**
+     * Return repaired machine to its origin branch
+     */
+    async returnMachineToBranch(id: string, data?: {
+        returnNotes?: string;
+        waybillNumber?: string;
+    }): Promise<any> {
+        return this.request(`/maintenance-center/machines/${id}/return`, {
+            method: 'POST',
+            body: JSON.stringify(data || {})
+        });
+    }
+
+    /**
+     * Get maintenance center statistics
+     */
+    async getMaintenanceCenterStats(): Promise<{
+        totalMachines: number;
+        underRepair: number;
+        waitingApproval: number;
+        repaired: number;
+        totalLoss: number;
+        underInspection: number;
+    }> {
+        return this.request('/maintenance-center/stats');
+    }
+
+    /**
+     * Get all pending approvals for the maintenance center
+     */
+    async getPendingApprovals(): Promise<any[]> {
+        return this.request('/maintenance-center/pending-approvals');
+    }
+
+    /**
+     * Get machines from a specific branch that are at the maintenance center
+     */
+    async getBranchMachinesAtCenter(branchId: string): Promise<any[]> {
+        return this.request(`/maintenance-center/branch-machines/${branchId}`);
+    }
+
+    /**
+     * Get summary statistics for branch machines at center
+     */
+    async getBranchMachinesSummary(branchId: string): Promise<any> {
+        return this.request(`/maintenance-center/branch-machines/${branchId}/summary`);
+    }
+
+    /**
+     * Get machine history/status changes
+     */
+    async getMachineStatusHistory(id: string): Promise<any[]> {
+        return this.request(`/maintenance-center/machines/${id}/history`);
+    }
+
+    // ==================== RETURN PACKAGE (إرجاع للفرع) ====================
+
+    /**
+     * Get machines ready for return to origin branch
+     */
+    async getMachinesReadyForReturn(): Promise<any[]> {
+        return this.request('/maintenance-center/return/ready');
+    }
+
+    /**
+     * Create return package to send machines back to origin branch
+     */
+    async createReturnPackage(data: {
+        machineIds: string[];
+        notes?: string;
+        driverName?: string;
+        driverPhone?: string;
+    }): Promise<any> {
+        return this.request('/maintenance-center/return/create', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    // ==================== APPROVAL STATISTICS ====================
+
+    /**
+     * Get approval statistics for a period
+     */
+    async getApprovalStats(params?: {
+        branchId?: string;
+        period?: 'month' | 'quarter' | 'year';
+        month?: number;
+        quarter?: number;
+        year?: number;
+    }): Promise<any> {
+        const query = new URLSearchParams();
+        if (params?.branchId) query.append('branchId', params.branchId);
+        if (params?.period) query.append('period', params.period);
+        if (params?.month !== undefined) query.append('month', params.month.toString());
+        if (params?.quarter !== undefined) query.append('quarter', params.quarter.toString());
+        if (params?.year !== undefined) query.append('year', params.year.toString());
+        const queryStr = query.toString() ? `?${query.toString()}` : '';
+        return this.request(`/maintenance-approvals/stats${queryStr}`);
     }
 }
 

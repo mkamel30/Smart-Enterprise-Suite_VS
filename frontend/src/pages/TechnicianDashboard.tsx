@@ -74,7 +74,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
 };
 
 export default function TechnicianDashboard() {
-    const { user } = useAuth();
+    const { user, activeBranchId } = useAuth();
     const queryClient = useQueryClient();
     const [selectedAssignment, setSelectedAssignment] = useState<ServiceAssignment | null>(null);
     const [showPartsModal, setShowPartsModal] = useState(false);
@@ -93,17 +93,18 @@ export default function TechnicianDashboard() {
     const isManager = user?.role === 'CENTER_MANAGER' || user?.role === 'SUPER_ADMIN';
 
     const { data: machines, isLoading } = useQuery<ServiceAssignment[]>({
-        queryKey: ['tech-dashboard-machines', user?.branchId, filterStatus],
+        queryKey: ['tech-dashboard-machines', activeBranchId, user?.branchId, filterStatus],
         queryFn: async () => {
             if (isManager) {
                 // Fetch all from track-machines (it returns mapped warehouse machines)
                 const params = new URLSearchParams();
-                if (user?.branchId) params.append('branchId', user.branchId);
+                if (activeBranchId) params.append('branchId', activeBranchId);
+                else if (user?.branchId) params.append('branchId', user.branchId);
                 // We want ALL machines in center, so we actually need a different endpoint?
                 // Or we can use kanban endpoint but it returns different structure?
                 // Let's use track-machines/summary logic but for list
                 // actually simpler: Use the kanban endpoint! It gives everything.
-                const res = await api.get<any[]>('/machine-workflow/kanban');
+                const res = await api.get<any[]>(`/machine-workflow/kanban?${params.toString()}`);
                 return res.map(m => ({
                     ...m,
                     technicianName: m.currentTechnicianName || 'غير معين',

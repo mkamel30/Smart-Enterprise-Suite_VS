@@ -9,6 +9,9 @@ export default function Login() {
     const { login } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [mfaCode, setMfaCode] = useState('');
+    const [showMfa, setShowMfa] = useState(false);
+    const [userIdForMfa, setUserIdForMfa] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -20,8 +23,17 @@ export default function Login() {
         try {
             const data: any = await api.login({
                 email,
-                password
+                password,
+                mfaToken: showMfa ? mfaCode : undefined
             });
+
+            if (data.mfaRequired) {
+                setShowMfa(true);
+                setUserIdForMfa(data.user.id);
+                setIsLoading(false);
+                return;
+            }
+
             login(data.token, data.user);
             navigate('/');
         } catch (err: any) {
@@ -52,35 +64,64 @@ export default function Login() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">البريد الإلكتروني</label>
-                        <div className="relative">
-                            <Mail className="absolute right-3 top-2.5 text-slate-400" size={20} />
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full pl-4 pr-10 py-2 border rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
-                                placeholder="name@example.com"
-                                required
-                            />
-                        </div>
-                    </div>
+                    {!showMfa ? (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">البريد الإلكتروني</label>
+                                <div className="relative">
+                                    <Mail className="absolute right-3 top-2.5 text-slate-400" size={20} />
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full pl-4 pr-10 py-2 border rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
+                                        placeholder="name@example.com"
+                                        required
+                                    />
+                                </div>
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">كلمة المرور</label>
-                        <div className="relative">
-                            <Lock className="absolute right-3 top-2.5 text-slate-400" size={20} />
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full pl-4 pr-10 py-2 border rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
-                                placeholder="••••••••"
-                                required
-                            />
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">كلمة المرور</label>
+                                <div className="relative">
+                                    <Lock className="absolute right-3 top-2.5 text-slate-400" size={20} />
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full pl-4 pr-10 py-2 border rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
+                                        placeholder="••••••••"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="animate-scale-in">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">رمز التحقق (MFA Code)</label>
+                            <div className="relative">
+                                <Lock className="absolute right-3 top-2.5 text-slate-400" size={20} />
+                                <input
+                                    type="text"
+                                    value={mfaCode}
+                                    onChange={(e) => setMfaCode(e.target.value)}
+                                    className="w-full pl-4 pr-10 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition-all text-center tracking-[0.5em] text-2xl font-mono"
+                                    placeholder="000000"
+                                    maxLength={6}
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-2 text-center">أدخل الرمز المكون من 6 أرقام من تطبيق التحقق الخاص بك</p>
+                            <button
+                                type="button"
+                                onClick={() => setShowMfa(false)}
+                                className="text-xs text-indigo-600 hover:text-indigo-800 mt-4 block mx-auto font-bold"
+                            >
+                                العودة لتسجيل الدخول
+                            </button>
                         </div>
-                    </div>
+                    )}
 
                     <button
                         type="submit"
@@ -90,18 +131,20 @@ export default function Login() {
                         {isLoading ? (
                             <>
                                 <Loader2 className="animate-spin" size={20} />
-                                جاري التحقق...
+                                {showMfa ? 'جاري التحقق من الرمز...' : 'جاري التحقق...'}
                             </>
                         ) : (
-                            'دخول'
+                            showMfa ? 'تحقق ودخول' : 'دخول'
                         )}
                     </button>
 
-                    <div className="text-center">
-                        <button type="button" className="text-sm text-slate-500 hover:text-slate-700">
-                            نسيت كلمة المرور؟ يرجى التواصل مع مدير النظام لإعادة تعيينها.
-                        </button>
-                    </div>
+                    {!showMfa && (
+                        <div className="text-center">
+                            <button type="button" className="text-sm text-slate-500 hover:text-slate-700">
+                                نسيت كلمة المرور؟ يرجى التواصل مع مدير النظام لإعادة تعيينها.
+                            </button>
+                        </div>
+                    )}
                 </form>
             </div>
         </div>

@@ -1,5 +1,8 @@
-# Frontend Dockerfile
-FROM node:22-alpine AS build
+# Frontend Dockerfile for Smart Enterprise Suite
+# Multi-stage build for optimization
+
+# Stage 1: Build
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -7,18 +10,25 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
-# Copy source and build
+# Copy source code
 COPY . .
+
+# Build the application
 RUN npm run build
 
-# Serve stage
-FROM node:22-alpine
-WORKDIR /app
-RUN npm install -g serve
-COPY --from=build /app/dist ./dist
+# Stage 2: Production
+FROM nginx:alpine
 
-EXPOSE 5173
+# Copy built assets from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-CMD ["serve", "-s", "dist", "-l", "5173"]
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

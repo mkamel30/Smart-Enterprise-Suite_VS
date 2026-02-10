@@ -143,6 +143,8 @@ interface MachineReturnModalProps {
     selectedActionMachine: any;
     actionNotes: string;
     setActionNotes: (notes: string) => void;
+    complaint: string;
+    setComplaint: (complaint: string) => void;
     setIncomingStatus: (status: string) => void;
     onConfirm: () => void;
     isPending: boolean;
@@ -155,6 +157,8 @@ export function MachineReturnModal({
     selectedActionMachine,
     actionNotes,
     setActionNotes,
+    complaint,
+    setComplaint,
     setIncomingStatus,
     onConfirm,
     isPending
@@ -204,8 +208,19 @@ export function MachineReturnModal({
                             value={actionNotes}
                             onChange={(e) => setActionNotes(e.target.value)}
                             className="w-full border rounded-lg p-3 bg-background focus:ring-2 focus:ring-primary/20 outline-none resize-none"
-                            rows={3}
+                            rows={2}
                             placeholder="ملاحظات..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium mb-1.5 text-orange-700">الشكوى/العطل من العميل</label>
+                        <textarea
+                            value={complaint}
+                            onChange={(e) => setComplaint(e.target.value)}
+                            className="w-full border border-orange-200 bg-orange-50 rounded-lg p-3 focus:ring-2 focus:ring-orange-500/20 outline-none resize-none"
+                            rows={3}
+                            placeholder="اكتب الشكوى أو العطل الذي اشتكى به العميل..."
                         />
                     </div>
                 </div>

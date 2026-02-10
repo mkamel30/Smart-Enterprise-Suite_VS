@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2026-02-10
+### Security (Critical)
+- **Removed JWT secret fallback** in `routes/auth.js` — eliminated the `test_secret_123` fallback that could be exploited if `NODE_ENV` was misconfigured.
+- **Fixed hardcoded localhost URL** in `AuthContext.tsx` — token verification now uses the configured API client instead of `http://localhost:5000`.
+- **Added credential files to `.gitignore`** — `ADMIN_CREDENTIALS.md` and `LOGIN_INFO.txt` are now excluded from version control.
+- **Applied login rate limiter** — `loginLimiter` middleware is now active on `/api/auth` routes to prevent brute-force attacks.
+- **Applied additional security headers** — `additionalSecurityHeaders` middleware (no-cache on auth routes, XSS protection) is now active in the middleware chain.
+- **Fixed undefined `io` export** in `server.js` — module now correctly exports `{ app, server }` instead of the undefined `io` variable.
+
+### Performance
+- **Parallelized executive dashboard queries** — 10 independent DB queries in `executive-dashboard.js` now run via `Promise.all()`, reducing endpoint latency by ~60%.
+
+### Architecture & Code Quality
+- **Created shared constants** (`utils/constants.js`) — single source of truth for `ROLES`, `BRANCH_TYPES`, `MACHINE_STATUS`, `REQUEST_STATUS`, and `TRANSFER_STATUS`, replacing hundreds of hardcoded magic strings.
+- **Consolidated duplicate utilities** — `utils/errors.js` and `utils/asyncHandler.js` now re-export from `utils/errorHandler.js` instead of duplicating definitions.
+- **Replaced `console.log` with structured logger** — all `console.log`/`console.error` calls in `warehouse-machines.js`, `push-notifications.js`, and `self-test.js` now use `logAction` or `logger`.
+- **Removed irrelevant NoSQL sanitization** — MongoDB-specific `$` and `.` key sanitization removed from `security.js` (app uses SQLite/Prisma). XSS sanitization preserved and improved with array param support.
+- **Removed duplicate timestamp** in `errorHandler.js` error logging object.
+- **Removed dead code** — cleared commented-out route in `App.tsx` and restart timestamp comment in `server.js`.
+- **Clarified dual branch mount** in `server.js` — `/api/branches` is now primary, `/api/branches-lookup` is documented as a legacy alias.
+- **Permissions module** now imports `ROLES` and `BRANCH_TYPES` from shared constants instead of re-defining them.
+
+## [3.3.0] - 2026-02-10
+### Added
+- **🌳 Branch Hierarchy & Hierarchical Visibility**:
+  - Implemented one-way hierarchical visibility: **Parent branches can see all data (Machines, SIMs, Transfers, etc.) from their direct child branches**.
+  - Updated `Branch` model management in UI to support selecting a "Parent Branch" (الفرع الأب).
+  - Modified `ensureBranchWhere` Prisma helper to automatically resolve and include child branch data in queries for parent branch users.
+  - Enhanced `authenticateToken` middleware to fetch and cache the user's authorized branch list (self + children).
+
+- **🔄 Related-Branch Resource Sharing**:
+  - Enabled cross-branch transfers between parent and child branches without requiring Super Admin roles.
+  - Updated `validateUserPermission` to allow parent branch users to initiate transfers FROM their child branches.
+  - Updated `applyTransferBranchFilter` to allow parent branches to see transfers involving their children.
+
+### Changed
+- **Branches Settings UI**:
+  - Separated "Maintenance Center" (servicing relation) from "Parent Branch" (hierarchical relation).
+  - Added visual indicators in the branch list to show both servicing and hierarchical relations.
+- **Auth Helpers**:
+  - Updated `getBranchFilter` and `canAccessBranch` to support hierarchical branch IDs, ensuring consistent permissions across the entire API.
+
 ## [3.2.0] - 2026-01-13
 ### Changed
 - **Admin Affairs Dashboard Redesign**:

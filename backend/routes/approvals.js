@@ -8,6 +8,7 @@ const { logAction } = require('../utils/logger');
 // Import roundMoney from centralized payment service
 const { roundMoney } = require('../services/paymentService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const { isGlobalRole } = require('../utils/constants');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
@@ -23,7 +24,7 @@ router.get('/request/:requestId', authenticateToken, async (req, res) => {
         }
 
         // Authorization check
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
+        const isAdmin = isGlobalRole(req.user?.role);
         if (!isAdmin && approval.branchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied' });
         }
@@ -45,7 +46,7 @@ router.post('/', authenticateToken, async (req, res) => {
         });
 
         // Authorization check
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
+        const isAdmin = isGlobalRole(req.user?.role);
         if (!isAdmin && request && request.branchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied' });
         }
@@ -123,7 +124,7 @@ router.put('/:id/respond', authenticateToken, async (req, res) => {
         }
 
         // Authorization check
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role);
+        const isAdmin = isGlobalRole(req.user?.role);
         if (!isAdmin && previousApproval.branchId !== req.user.branchId) {
             return res.status(403).json({ error: 'Access denied' });
         }

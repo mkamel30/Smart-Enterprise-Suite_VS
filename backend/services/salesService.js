@@ -72,14 +72,13 @@ const salesService = {
 
         const customersCount = new Set(activeSales.map(s => s.customerId)).size;
 
-        // Calculate average months (total installments across active sales / number of sales)
+        // Calculate average months
         const totalInstallmentsInActiveSales = activeSales.reduce((acc, s) => acc + s._count.installments, 0);
         const avgMonths = activeSales.length > 0
             ? Math.round(totalInstallmentsInActiveSales / activeSales.length)
             : 0;
 
         // 2. Financials (Total Unpaid Value)
-        // We get sum of all unpaid installments for active sales
         const unpaidStats = await db.installment.aggregate({
             _sum: { amount: true },
             _count: { id: true },
@@ -87,7 +86,6 @@ const salesService = {
                 where: {
                     ...branchFilter,
                     isPaid: false,
-                    // Optional: link to active sales only? Usually unpaid installment implies debt exists.
                     sale: { status: { not: 'COMPLETED' } }
                 }
             }, req).where
@@ -115,7 +113,7 @@ const salesService = {
 
         return {
             customersCount,
-            totalInstallments: unpaidStats._count.id || 0, // Pending installments count
+            totalInstallments: unpaidStats._count.id || 0,
             totalValue: unpaidStats._sum.amount || 0,
             avgMonths,
             overdueCount,
@@ -125,7 +123,7 @@ const salesService = {
     },
 
     /**
-     * Create a new machine sale (CASH or INSTALLMENT)
+     * Create a new machine sale
      */
     async createSale(saleData, user, req) {
         const {
@@ -142,8 +140,13 @@ const salesService = {
             receiptNumber
         } = saleData;
 
-        const branchId = user.branchId || saleData.branchId;
-        if (!branchId) throw new AppError('Branch ID is required', 400);
+        const { canAccessBranch } = require('../middleware/permissions');
+        const branchId = saleData.branchId || user.branchId;
+        if (!branchId) throw new AppError('معرف الفرع مطلوب', 400);
+
+        if (!await canAccessBranch({ user }, branchId, db)) {
+            throw new AppError('ليس لديك صلاحية الوصول لهذا الفرع', 403);
+        }
 
         // 1. Validation
         if (parseFloat(paidAmount) > 0) {
@@ -156,27 +159,27 @@ const salesService = {
             const existingReceipt = await db.payment.findFirst(ensureBranchWhere({
                 where: { receiptNumber }
             }, req));
-            if (existingReceipt) throw new AppError('Receipt number already exists', 400);
+            if (existingReceipt) throw new AppError('رقم الإيصال موجود بالفعل في سجل المدفوعات', 400);
         }
 
         // 3. Machine Check
         const machine = await db.warehouseMachine.findFirst(ensureBranchWhere({
             where: { serialNumber }
         }, req));
-        if (!machine) throw new NotFoundError('Machine');
-        if (user.branchId && machine.branchId !== user.branchId) throw new AppError('Access denied to machine', 403);
-        if (machine.status === 'SOLD') throw new AppError('Machine is already sold', 400);
+        if (!machine) throw new NotFoundError('الماكينة');
+        if (!await canAccessBranch({ user }, machine.branchId, db)) throw new AppError('ليس لديك صلاحية الوصول لهذه الماكينة', 403);
+        if (machine.status === 'SOLD') throw new AppError('هذه الماكينة مباعة بالفعل', 400);
 
         // 4. Serial conflict check
         await ensureSerialNotAssignedToCustomer(serialNumber);
 
-        // 5. Customer Check - Get the actual CUID
+        // 5. Customer Check
         const customerBkcode = String(customerId).trim();
         const customer = await db.customer.findFirst(ensureBranchWhere({
             where: { bkcode: customerBkcode }
         }, req));
-        if (!customer) throw new NotFoundError('Customer');
-        if (user.branchId && customer.branchId !== user.branchId) throw new AppError('Access denied to customer', 403);
+        if (!customer) throw new NotFoundError('الالعميل');
+        if (!await canAccessBranch({ user }, customer.branchId, db)) throw new AppError('ليس لديك صلاحية الوصول لهذا العميل', 403);
 
         const actualCustomerId = customer.id;
 
@@ -190,7 +193,7 @@ const salesService = {
                 data: {
                     branchId,
                     serialNumber,
-                    customerId: actualCustomerId, // Use the cuid
+                    customerId: actualCustomerId,
                     type,
                     totalPrice: roundedTotalPrice,
                     paidAmount: roundedPaidAmount,
@@ -229,7 +232,7 @@ const salesService = {
                 }
             }
 
-            // C. Update Warehouse Machine - RULE 1
+            // C. Update Warehouse Machine
             await tx.warehouseMachine.updateMany({
                 where: { id: machine.id, branchId: machine.branchId },
                 data: { status: 'SOLD' }
@@ -241,7 +244,7 @@ const salesService = {
                     serialNumber: machine.serialNumber,
                     model: machine.model,
                     manufacturer: machine.manufacturer,
-                    customerId: actualCustomerId, // Use the cuid
+                    customerId: actualCustomerId,
                     branchId,
                     isMain: false
                 }
@@ -258,41 +261,45 @@ const salesService = {
                             id: sale.id,
                             type: type,
                             totalPrice: roundedTotalPrice,
-                            paidAmount: roundedPaidAmount
-                        },
-                        customer: {
-                            id: actualCustomerId,
-                            client_name: customer.client_name,
-                            bkcode: customer.bkcode
-                        },
-                        price: roundedTotalPrice,
-                        paymentMethod: paymentPlace || paymentMethod || 'ضامن'
+                            paidAmount: roundedPaidAmount,
+                            saleDate: sale.saleDate,
+                            serialNumber: machine.serialNumber,
+                            model: machine.model,
+                            manufacturer: machine.manufacturer,
+                            paymentMethod: paymentPlace || paymentMethod || 'التزام',
+                            notes: notes || '',
+                            customer: {
+                                id: actualCustomerId,
+                                client_name: customer.client_name,
+                                bkcode: customer.bkcode
+                            }
+                        }
                     }),
-                    performedBy
+                    performedBy: performedBy || user.displayName || user.name || 'System',
+                    branchId: branchId
                 }
             });
 
-            // F. Create Payment record for downpayment
+            // F. Create Payment record
             if (roundedPaidAmount > 0) {
                 await tx.payment.create({
                     data: {
                         branchId,
-                        customerId: actualCustomerId, // Use the cuid
+                        customerId: actualCustomerId,
                         customerName: customer.client_name,
                         amount: roundedPaidAmount,
                         reason: `بيع ماكينة ${serialNumber}`,
                         type: 'SALE',
-                        paymentPlace: paymentPlace || paymentMethod || 'ضامن',
+                        paymentPlace: paymentPlace || paymentMethod || 'التزام',
                         receiptNumber,
                         notes: `دفعة ${type === 'CASH' ? 'كاملة' : 'مقدم'} - ${notes || ''}`,
                         userId: user.id,
-                        userName: user.displayName || performedBy,
+                        userName: user.displayName || performedBy || user.name || 'System',
                         createdAt: new Date()
                     }
                 });
             }
 
-            // G. Return final sale object - RULE 1
             return await tx.machineSale.findFirst({
                 where: { id: sale.id, branchId },
                 include: { installments: true, customer: true }
@@ -303,7 +310,7 @@ const salesService = {
             ...result,
             model: machine.model,
             manufacturer: machine.manufacturer,
-            paymentMethod: paymentPlace || paymentMethod || 'ضامن',
+            paymentMethod: paymentPlace || paymentMethod || 'التزام',
             receiptNumber
         };
     },
@@ -319,32 +326,34 @@ const salesService = {
         const existingPayment = await db.payment.findFirst(ensureBranchWhere({
             where: { receiptNumber: receiptNumber.trim() }
         }, req));
-        if (existingPayment) throw new AppError('رقم الإيصال مستخدم من قبل', 400);
+        if (existingPayment) throw new AppError('رقم الإيصال مستخدم من قبل في سجلات المدفوعات', 400);
 
         const existingInstallment = await db.installment.findFirst(ensureBranchWhere({
             where: { receiptNumber: receiptNumber.trim(), isPaid: true }
         }, req));
-        if (existingInstallment) throw new AppError('رقم الإيصال مستخدم من قبل', 400);
+        if (existingInstallment) throw new AppError('رقم الإيصال مستخدم من قبل في الأقساط', 400);
 
-        // 2. Fetch Installment - RULE 1
+        // 2. Fetch Installment
+        const { canAccessBranch } = require('../middleware/permissions');
         const existing = await db.installment.findFirst({
             where: { id, branchId: { not: null } },
             include: { sale: { include: { customer: true } } }
         });
-        if (!existing) throw new NotFoundError('Installment');
+        if (!existing) throw new NotFoundError('القسط');
+        if (!await canAccessBranch({ user }, existing.branchId, db)) throw new AppError('Access denied', 403);
 
         // 3. Execute Payment Transaction
         const result = await db.$transaction(async (tx) => {
             const payAmount = amount || existing.amount;
 
-            const installment = await tx.installment.updateMany({
+            await tx.installment.updateMany({
                 where: { id, branchId: { not: null } },
                 data: {
                     isPaid: true,
                     paidAt: new Date(),
                     paidAmount: payAmount,
-                    receiptNumber: receiptNumber || null,
-                    paymentPlace: paymentPlace || null
+                    receiptNumber: receiptNumber.trim(),
+                    paymentPlace
                 }
             });
 
@@ -364,15 +373,15 @@ const salesService = {
                         type: 'INSTALLMENT',
                         reason: existing.description || 'سداد قسط',
                         paymentPlace,
-                        receiptNumber,
+                        receiptNumber: receiptNumber.trim(),
                         notes: `سداد ${existing.description}`,
                         userId: user.id,
-                        userName: user.displayName
+                        userName: user.displayName || user.name || 'System'
                     }
                 });
             }
 
-            return { installment, paymentRecord };
+            return { paymentRecord };
         });
 
         // 4. Post-transaction logging
@@ -380,13 +389,13 @@ const salesService = {
             entityType: 'INSTALLMENT',
             entityId: id,
             action: 'PAY',
-            details: `دفع قسط بمبلغ ${amount || existing.amount} - إيصال ${receiptNumber}`,
+            details: `سداد قسط بقيمة ${amount || existing.amount} - إيصال ${receiptNumber}`,
             userId: user.id,
-            performedBy: user.displayName || 'System',
+            performedBy: user.displayName || user.name || 'System',
             branchId: existing.branchId || existing.sale.branchId || user.branchId
         });
 
-        return result.installment;
+        return { success: true };
     },
 
     /**
@@ -398,11 +407,12 @@ const salesService = {
             include: { installments: true }
         });
 
-        if (!sale) throw new NotFoundError('Sale');
-        if (user.branchId && sale.branchId !== user.branchId) throw new AppError('Access denied', 403);
+        if (!sale) throw new NotFoundError('العملية');
+        const { canAccessBranch } = require('../middleware/permissions');
+        if (!await canAccessBranch({ user }, sale.branchId, db)) throw new AppError('ليس لديك صلاحية الوصول', 403);
 
         const totalRemaining = roundMoney(sale.totalPrice - sale.paidAmount);
-        if (totalRemaining <= 0) throw new AppError('No remaining balance to recalculate', 400);
+        if (totalRemaining <= 0) throw new AppError('لا يوجد مبالغ متبقية لإعادة الجدولة', 400);
 
         const installments = await db.$transaction(async (tx) => {
             await tx.installment.deleteMany({
@@ -444,7 +454,7 @@ const salesService = {
             action: 'RECALCULATE_INSTALLMENTS',
             details: `إعادة حساب الأقساط - المتبقي: ${totalRemaining} - عدد الأقساط الجديدة: ${newCount}`,
             userId: user.id,
-            performedBy: user.displayName,
+            performedBy: user.displayName || user.name || 'System',
             branchId: user.branchId || sale.branchId
         });
 
@@ -460,15 +470,15 @@ const salesService = {
             include: { installments: true }
         });
 
-        if (!sale) throw new NotFoundError('Sale');
-        if (user.branchId && sale.branchId !== user.branchId) throw new AppError('Access denied', 403);
+        if (!sale) throw new NotFoundError('العملية');
+        const { canAccessBranch } = require('../middleware/permissions');
+        if (!await canAccessBranch({ user }, sale.branchId, db)) throw new AppError('ليس لديك صلاحية الوصول', 403);
 
         await db.$transaction(async (tx) => {
             // 1. Delete all installments
             await tx.installment.deleteMany({ where: { saleId: id, branchId: sale.branchId } });
 
-            // 2. Delete associated payments (receipts)
-            // We search for payments that match the specific sale reason format
+            // 2. Delete associated payments
             await tx.payment.deleteMany({
                 where: {
                     customerId: sale.customerId,
@@ -478,7 +488,7 @@ const salesService = {
                 }
             });
 
-            // 3. Find and Delete PosMachine (customer machine)
+            // 3. Delete PosMachine
             const posMachine = await tx.posMachine.findFirst({
                 where: { serialNumber: sale.serialNumber, branchId: sale.branchId }
             });
@@ -487,7 +497,7 @@ const salesService = {
                 await tx.posMachine.deleteMany({ where: { id: posMachine.id, branchId: sale.branchId } });
             }
 
-            // 4. Update Warehouse Machine status back to NEW
+            // 4. Restore Warehouse Machine
             const warehouseMachine = await tx.warehouseMachine.findFirst({
                 where: { serialNumber: sale.serialNumber, branchId: sale.branchId }
             });
@@ -498,20 +508,20 @@ const salesService = {
                     data: { status: 'NEW' }
                 });
 
-                // 5. Log the void movement
+                // 5. Log void
                 await tx.machineMovementLog.create({
                     data: {
                         machineId: warehouseMachine.id,
                         serialNumber: warehouseMachine.serialNumber,
                         action: 'SALE_VOID',
-                        details: `إلغاء البيع ${id} وإعادة الماكينة للمخزن - العميل: ${sale.customerId}`,
-                        performedBy: user.displayName || 'Admin',
+                        details: `إلغاء البيع وإعادة الماكينة للمخزن - العميل: ${sale.customerId}`,
+                        performedBy: user.displayName || user.name || 'Admin',
                         branchId: user.branchId || sale.branchId
                     }
                 });
             }
 
-            // 6. Delete the Sale record itself
+            // 6. Delete the Sale record
             await tx.machineSale.deleteMany({ where: { id, branchId: sale.branchId } });
         });
 

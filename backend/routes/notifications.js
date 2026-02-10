@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const { isGlobalRole } = require('../utils/constants');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
@@ -14,9 +15,10 @@ router.get('/', authenticateToken, async (req, res) => {
         const where = {};
 
         // If no specific filter provided, default to user's context
+        const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
         if (!branchId && !userId) {
             where.OR = [
-                { branchId: req.user.branchId },
+                { branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds } },
                 { userId: req.user.id }
             ];
         } else {
@@ -47,9 +49,10 @@ router.get('/count', authenticateToken, async (req, res) => {
         const where = { isRead: false };
 
         // If no specific filter provided, default to user's context
+        const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
         if (!branchId && !userId) {
             where.OR = [
-                { branchId: req.user.branchId },
+                { branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds } },
                 { userId: req.user.id }
             ];
         } else {
@@ -82,11 +85,12 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
         const notif = await db.notification.findUnique({ where: { id: req.params.id } });
         if (!notif) return res.status(404).json({ error: 'الإشعار غير موجود' });
 
-        // Authorization: allow if same branch or targeted user
-        const sameBranch = notif.branchId && req.user.branchId && notif.branchId === req.user.branchId;
+        // Authorization: allow if same branch or targeted user or authorized via hierarchy
+        const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+        const canAccess = notif.branchId && authorizedIds.includes(notif.branchId);
         const sameUser = notif.userId && notif.userId === req.user.id;
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
-        if (!(sameBranch || sameUser || isAdmin)) {
+        const isAdmin = isGlobalRole(req.user.role);
+        if (!(canAccess || sameUser || isAdmin)) {
             return res.status(403).json({ error: 'لا تملك صلاحية تحديث هذا الإشعار' });
         }
 
@@ -138,11 +142,12 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // Authorization check
-        const sameBranch = notification.branchId && req.user.branchId && notification.branchId === req.user.branchId;
+        const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+        const canAccess = notification.branchId && authorizedIds.includes(notification.branchId);
         const sameUser = notification.userId && notification.userId === req.user.id;
-        const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role);
+        const isAdmin = isGlobalRole(req.user.role);
 
-        if (!(sameBranch || sameUser || isAdmin)) {
+        if (!(canAccess || sameUser || isAdmin)) {
             return res.status(403).json({ error: 'لا تملك صلاحية حذف هذا الإشعار' });
         }
 

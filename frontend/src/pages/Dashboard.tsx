@@ -13,7 +13,10 @@ import {
     Monitor,
     Smartphone,
     ArrowRightLeft,
-    FileBarChart
+    FileBarChart,
+    Calendar,
+    DollarSign,
+    Clock
 } from 'lucide-react';
 import {
     AreaChart,
@@ -35,15 +38,51 @@ import { PerformanceReportModal } from '../components/PerformanceReportModal';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
+// Period options
+const PERIODS = [
+    { value: 'month', label: 'الشهر الحالي' },
+    { value: 'quarter', label: 'ربع السنة الحالي' },
+    { value: 'year', label: 'السنة الحالية' }
+];
+
+// Months for dropdown
+const MONTHS = [
+    { value: 0, label: 'يناير' },
+    { value: 1, label: 'فبراير' },
+    { value: 2, label: 'مارس' },
+    { value: 3, label: 'أبريل' },
+    { value: 4, label: 'مايو' },
+    { value: 5, label: 'يونيو' },
+    { value: 6, label: 'يوليو' },
+    { value: 7, label: 'أغسطس' },
+    { value: 8, label: 'سبتمبر' },
+    { value: 9, label: 'أكتوبر' },
+    { value: 10, label: 'نوفمبر' },
+    { value: 11, label: 'ديسمبر' }
+];
+
+// Quarters for dropdown
+const QUARTERS = [
+    { value: 0, label: 'الربع الأول (يناير - مارس)' },
+    { value: 1, label: 'الربع الثاني (أبريل - يونيو)' },
+    { value: 2, label: 'الربع الثالث (يوليو - سبتمبر)' },
+    { value: 3, label: 'الربع الرابع (أكتوبر - ديسمبر)' }
+];
+
 import PageHeader from '../components/PageHeader';
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, activeBranchId } = useAuth();
     const [filterBranchId, setFilterBranchId] = useState('');
+    const [period, setPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(new Date().getMonth() / 3));
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [showPerformanceReport, setShowPerformanceReport] = useState(false);
-    const isAdmin = !user?.branchId;
+    const isAdmin = !user?.branchId || ['SUPER_ADMIN', 'MANAGEMENT'].includes(user?.role as string);
     const isAffairs = user?.role === ROLES.ADMIN_AFFAIRS;
+    const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH'].includes(user?.role as any);
 
     // Only these roles can perform front-office operations like creating requests or payments
     const showOperationalButtons = [
@@ -52,9 +91,28 @@ export default function Dashboard() {
         ROLES.TECHNICIAN
     ].includes(user?.role as any);
 
+    // Build query params based on period
+    const getQueryParams = () => {
+        const params: any = {};
+        if (activeBranchId) {
+            params.branchId = activeBranchId;
+        } else if (filterBranchId) {
+            params.branchId = filterBranchId;
+        }
+        params.period = period;
+        if (period === 'month') {
+            params.month = selectedMonth;
+        }
+        if (period === 'quarter') {
+            params.quarter = selectedQuarter;
+        }
+        params.year = selectedYear;
+        return params;
+    };
+
     const { data: stats, isLoading } = useQuery({
-        queryKey: ['dashboard-stats', filterBranchId],
-        queryFn: () => api.getDashboardStats({ branchId: filterBranchId }),
+        queryKey: ['dashboard-stats', activeBranchId, filterBranchId, period, selectedMonth, selectedQuarter, selectedYear],
+        queryFn: () => api.getDashboardStats(getQueryParams()),
         enabled: !!user,
         refetchInterval: 60000 // Refresh every minute
     });
@@ -90,6 +148,80 @@ export default function Dashboard() {
         { name: 'W3', value: 0 },
         { name: 'W4', value: 0 },
     ];
+
+    // Period label
+    const getPeriodLabel = () => {
+        switch (period) {
+            case 'month':
+                return `${MONTHS[selectedMonth].label} ${selectedYear}`;
+            case 'quarter':
+                return `${QUARTERS[selectedQuarter].label} ${selectedYear}`;
+            case 'year':
+                return `سنة ${selectedYear}`;
+            default:
+                return 'الشهر الحالي';
+        }
+    };
+
+    // Period filter component
+    const periodFilterElement = (
+        <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-[#0A2472]/10 px-3 py-2 shadow-sm hover:shadow-md transition-shadow">
+                <Calendar size={16} className="text-[#0A2472]/60" />
+                <select
+                    value={period}
+                    onChange={(e) => setPeriod(e.target.value as any)}
+                    className="bg-transparent outline-none text-sm font-bold min-w-[120px]"
+                >
+                    {PERIODS.map(p => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                </select>
+            </div>
+
+            {period === 'month' && (
+                <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-[#0A2472]/10 px-3 py-2 shadow-sm">
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                        className="bg-transparent outline-none text-sm font-bold"
+                    >
+                        {MONTHS.map(m => (
+                            <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {period === 'quarter' && (
+                <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-[#0A2472]/10 px-3 py-2 shadow-sm">
+                    <select
+                        value={selectedQuarter}
+                        onChange={(e) => setSelectedQuarter(parseInt(e.target.value))}
+                        className="bg-transparent outline-none text-sm font-bold"
+                    >
+                        {QUARTERS.map(q => (
+                            <option key={q.value} value={q.value}>{q.label}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-[#0A2472]/10 px-3 py-2 shadow-sm">
+                <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                    className="bg-transparent outline-none text-sm font-bold"
+                >
+                    {[selectedYear - 1, selectedYear, selectedYear + 1].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                    ))}
+                </select>
+            </div>
+
+            <span className="text-sm text-slate-500 font-medium">{getPeriodLabel()}</span>
+        </div>
+    );
 
     const filterElement = isAdmin ? (
         <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-[#0A2472]/10 px-4 py-2 shadow-sm hover:shadow-md transition-shadow flex-1 lg:flex-none">
@@ -140,17 +272,24 @@ export default function Dashboard() {
     );
 
     return (
-        <div className="px-4 lg:px-8 pt-4 pb-8 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen animate-fade-in" dir="rtl">
+        <div className="px-3 lg:px-6 pt-3 pb-6 bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen animate-fade-in" dir="rtl">
             <PageHeader
                 title="لوحة التحكم"
-                subtitle="ملخص احصائيات النظام والعمليات الحالية"
-                filter={filterElement}
+                subtitle={`إحصائيات ${getPeriodLabel()}`}
+                filter={periodFilterElement}
                 actions={actionElements}
             />
 
+            {/* Additional Filters Row for Admins */}
+            {isAdmin && (
+                <div className="mb-4">
+                    {filterElement}
+                </div>
+            )}
+
             {isAffairs ? (
                 // Admin Affairs Layout (3x2 Grid)
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8 animate-slide-up">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 animate-slide-up">
                     {/* Row 1 */}
                     <StatCard
                         title="مخزون الماكينات"
@@ -302,10 +441,10 @@ export default function Dashboard() {
                             // Standard Branch Widgets
                             <>
                                 <StatCard
-                                    title="الإيرادات (هذا الشهر)"
-                                    value={`${stats?.revenue?.monthly?.toLocaleString() || 0} ج.م`}
+                                    title={`الإيرادات (${getPeriodLabel()})`}
+                                    value={`${(stats?.revenue?.amount || 0).toLocaleString()} ج.م`}
                                     icon={<TrendingUp size={24} className="text-green-600" />}
-                                    trend={stats?.revenue?.monthly > 0 ? "+12%" : undefined}
+                                    trend={stats?.revenue?.amount > 0 ? "+12%" : undefined}
                                     color="green"
                                     className="animate-slide-up delay-75"
                                 />
@@ -319,9 +458,9 @@ export default function Dashboard() {
                                 />
                                 <StatCard
                                     title="أقساط مستحقة"
-                                    value={stats?.alerts?.overdueInstallments || 0}
+                                    value={stats?.pendingInstallments?.totalCount || 0}
                                     icon={<AlertCircle size={24} className="text-red-600" />}
-                                    subtext="متأخرة السداد"
+                                    subtext={`${(stats?.pendingInstallments?.totalAmount || 0).toLocaleString()} ج.م`}
                                     color="red"
                                     onClick={() => navigate('/receipts')}
                                     className="animate-slide-up delay-150"
@@ -340,19 +479,19 @@ export default function Dashboard() {
                     </div>
 
                     {/* Main Content Grid for Others */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Charts Section */}
-                        <div className="lg:col-span-2 space-y-8 animate-slide-up delay-300">
+                        <div className="lg:col-span-2 space-y-4 animate-slide-up delay-300">
                             {/* Revenue Chart */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="font-bold text-lg text-slate-800">تحليل الإيرادات</h3>
+                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-base text-slate-800">تحليل الإيرادات</h3>
                                     <select className="bg-slate-50 border-none text-sm rounded-lg p-2 text-slate-500 outline-none">
                                         <option>هذا الشهر</option>
                                         <option>آخر 3 شهور</option>
                                     </select>
                                 </div>
-                                <div className="h-[300px] w-full" dir="ltr">
+                                <div className="h-[250px] w-full" dir="ltr">
                                     <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                         <AreaChart data={revenueTrend}>
                                             <defs>
@@ -382,35 +521,37 @@ export default function Dashboard() {
                             </div>
 
                             {/* Recent Activity Table */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="font-bold text-lg text-slate-800">آخر العمليات</h3>
+                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-base text-slate-800">آخر العمليات</h3>
                                     <button onClick={() => navigate('/payments')} className="text-sm text-primary hover:underline">عرض الكل</button>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
                                         <thead>
                                             <tr className="text-right text-slate-400 text-sm border-b border-slate-50">
-                                                <th className="pb-3 font-normal">العميل</th>
-                                                <th className="pb-3 font-normal">العملية</th>
-                                                <th className="pb-3 font-normal">المبلغ</th>
-                                                <th className="pb-3 font-normal">التاريخ</th>
+                                                <th className="pb-2 font-normal">العميل</th>
+                                                <th className="pb-2 font-normal">العملية</th>
+                                                <th className="pb-2 font-normal">المبلغ</th>
+                                                <th className="pb-2 font-normal">التاريخ</th>
                                             </tr>
                                         </thead>
                                         <tbody className="text-sm">
                                             {stats?.recentActivity?.map((activity: any) => (
                                                 <tr key={activity.id} className="group hover:bg-slate-50 transition-colors">
-                                                    <td className="py-4 font-medium text-slate-700">{activity.customerName || 'عميل نقدي'}</td>
-                                                    <td className="py-4 text-slate-500">{activity.reason}</td>
-                                                    <td className="py-4 font-bold text-slate-900">{activity.amount.toLocaleString()} ج.م</td>
-                                                    <td className="py-4 text-slate-400 text-xs">
+                                                    <td className="py-2 font-medium text-slate-700">{activity.customerName || 'عميل نقدي'}</td>
+                                                    <td className="py-2 text-slate-500">{activity.reason}</td>
+                                                    <td className="py-2 font-bold text-slate-900">{activity.amount.toLocaleString()} ج.م</td>
+                                                    <td className="py-2 text-slate-400 text-xs">
                                                         {new Date(activity.createdAt).toLocaleDateString('ar-EG')}
                                                     </td>
                                                 </tr>
                                             ))}
-                                            {(!stats?.recentActivity || stats.recentActivity.length === 0) && (
+                                            {!stats?.recentActivity?.length && (
                                                 <tr>
-                                                    <td colSpan={4} className="py-8 text-center text-slate-400">لا توجد عمليات حديثة</td>
+                                                    <td colSpan={4} className="py-4 text-center text-slate-400">
+                                                        لا توجد عمليات حديثة
+                                                    </td>
                                                 </tr>
                                             )}
                                         </tbody>
@@ -420,19 +561,19 @@ export default function Dashboard() {
                         </div>
 
                         {/* Side Section */}
-                        <div className="space-y-8">
+                        <div className="space-y-4">
                             {/* Requests Status Pie Chart */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                                <h3 className="font-bold text-lg text-slate-800 mb-6">حالة الطلبات</h3>
-                                <div className="h-[200px] w-full relative">
+                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                <h3 className="font-bold text-base text-slate-800 mb-4">حالة الطلبات</h3>
+                                <div className="h-[180px] w-full relative">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
                                                 data={requestData}
                                                 cx="50%"
                                                 cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={80}
+                                                innerRadius={50}
+                                                outerRadius={70}
                                                 paddingAngle={5}
                                                 dataKey="value"
                                             >
@@ -444,16 +585,16 @@ export default function Dashboard() {
                                         </PieChart>
                                     </ResponsiveContainer>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                        <span className="text-3xl font-bold text-slate-800">{(stats?.requests?.open || 0) + (stats?.requests?.inProgress || 0)}</span>
+                                        <span className="text-2xl font-bold text-slate-800">{(stats?.requests?.open || 0) + (stats?.requests?.inProgress || 0)}</span>
                                         <span className="text-xs text-slate-500">نشط</span>
                                     </div>
                                 </div>
-                                <div className="mt-4 space-y-2">
+                                <div className="mt-3 space-y-1">
                                     {requestData.map((entry: any, index: number) => (
                                         <div key={entry.name} className="flex justify-between items-center text-sm">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                                                <span className="text-slate-600">{entry.name}</span>
+                                                <span className="text-slate-600 text-sm">{entry.name}</span>
                                             </div>
                                             <span className="font-bold text-slate-800">{entry.value}</span>
                                         </div>
@@ -461,20 +602,80 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
+                            {/* Pending Installments Section - Hidden for Center Roles */}
+                            {!isCenterRole && (
+                                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
+                                            <DollarSign size={18} className="text-orange-500" />
+                                            الأقساط المستحقة ({getPeriodLabel()})
+                                        </h3>
+                                    </div>
+
+                                    {/* Summary Cards */}
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                        <div className="bg-orange-50 p-2 rounded-lg text-center">
+                                            <div className="text-xl font-bold text-orange-600">
+                                                {stats?.pendingInstallments?.totalCount || 0}
+                                            </div>
+                                            <div className="text-xs text-orange-700">قسط مستحق</div>
+                                        </div>
+                                        <div className="bg-red-50 p-2 rounded-lg text-center">
+                                            <div className="text-base font-bold text-red-600">
+                                                {(stats?.pendingInstallments?.totalAmount || 0).toLocaleString()}
+                                            </div>
+                                            <div className="text-xs text-red-700">ج.م الإجمالي</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Installments List */}
+                                    <div className="space-y-1 max-h-[150px] overflow-y-auto">
+                                        {stats?.pendingInstallments?.installments?.map((inst: any) => (
+                                            <div key={inst.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-sm text-slate-700 truncate">{inst.sale?.customer?.client_name || 'عميل'}</div>
+                                                    <div className="text-xs text-slate-500">قسط {inst.installmentNumber || 1}/{inst.totalInstallments || 1}</div>
+                                                </div>
+                                                <div className="text-left mr-2">
+                                                    <div className="font-bold text-sm text-slate-800">{inst.amount.toLocaleString()} ج.م</div>
+                                                    <div className="text-xs text-orange-500">
+                                                        <Clock size={10} className="inline ml-1" />
+                                                        {new Date(inst.dueDate).toLocaleDateString('ar-EG')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {(!stats?.pendingInstallments?.installments || stats.pendingInstallments.installments.length === 0) && (
+                                            <div className="text-center py-3 text-slate-500 text-sm">
+                                                <CheckCircle2 size={24} className="mx-auto text-green-500 mb-2" />
+                                                لا توجد أقساط مستحقة
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        onClick={() => navigate('/receipts')}
+                                        className="w-full mt-2 text-sm text-primary hover:underline"
+                                    >
+                                        عرض كل الأقساط →
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Low Stock Alert List */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                                        <AlertCircle size={20} className="text-red-500" />
+                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
+                                        <AlertCircle size={18} className="text-red-500" />
                                         نواقص المخزون
                                     </h3>
                                 </div>
-                                <div className="space-y-3">
-                                    {stats?.inventory?.lowStock?.map((item: any) => (
-                                        <div key={item.id} className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-white p-2 rounded-lg shadow-sm">
-                                                    <Package size={16} className="text-red-500" />
+                                <div className="space-y-2">
+                                    {stats?.inventory?.lowStock?.slice(0, 5).map((item: any) => (
+                                        <div key={item.id} className="flex items-center justify-between p-2 bg-red-50 rounded-lg border border-red-100">
+                                            <div className="flex items-center gap-2">
+                                                <div className="bg-white p-1.5 rounded shadow-sm">
+                                                    <Package size={14} className="text-red-500" />
                                                 </div>
                                                 <div>
                                                     <div className="font-bold text-slate-800 text-sm">{item.part?.name}</div>
@@ -490,9 +691,14 @@ export default function Dashboard() {
                                         </div>
                                     ))}
                                     {(!stats?.inventory?.lowStock || stats.inventory.lowStock.length === 0) && (
-                                        <div className="text-center py-4 text-slate-500 text-sm">
-                                            <CheckCircle2 size={32} className="mx-auto text-green-500 mb-2" />
+                                        <div className="text-center py-3 text-slate-500 text-sm">
+                                            <CheckCircle2 size={28} className="mx-auto text-green-500 mb-2" />
                                             المخزون في حالة جيدة
+                                        </div>
+                                    )}
+                                    {stats?.inventory?.lowStock && stats.inventory.lowStock.length > 5 && (
+                                        <div className="text-center text-xs text-slate-400">
+                                            و {stats.inventory.lowStock.length - 5} أصناف أخرى
                                         </div>
                                     )}
                                 </div>
