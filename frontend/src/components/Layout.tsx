@@ -30,7 +30,8 @@ import {
     Wrench,
     Eye,
     Truck,
-    TrendingUp
+    TrendingUp,
+    Database
 } from 'lucide-react';
 import { Menu } from 'lucide-react';
 
@@ -94,7 +95,16 @@ const allNavItems: NavItem[] = [
             { path: '/receive-orders', label: 'استلام الأذونات', icon: Package },
         ]
     },
-    // 5. الإدارة والتقارير
+    // 5. الشئون الإدارية
+    {
+        label: 'الشئون الإدارية',
+        icon: Building,
+        children: [
+            { path: '/admin-store', label: 'المخزن الإداري', icon: Package },
+            { path: '/admin-store/settings', label: 'الإعدادات الإدارية', icon: Settings },
+        ]
+    },
+    // 6. الإدارة والتقارير
     {
         label: 'الإدارة والتقارير',
         icon: Settings,
@@ -102,6 +112,7 @@ const allNavItems: NavItem[] = [
             { path: '/reports', label: 'التقارير', icon: BarChart3 },
             { path: '/technicians', label: 'المستخدمين', icon: UserCircle },
             { path: '/approvals', label: 'الموافقات', icon: CheckCircle },
+            { path: '/admin/backups', label: 'النسخ الاحتياطية', icon: Database },
             { path: '/branches', label: 'الفروع', icon: Building },
             { path: '/settings', label: 'الإعدادات', icon: Settings },
         ]
@@ -126,19 +137,49 @@ export default function Layout({ children }: LayoutProps) {
     // Filter nav items based on user role
     const navItems = useMemo(() => {
         const userRole = user?.role || null;
-        return allNavItems.map(item => {
+
+        // Initial filtering based on permissions
+        let items = allNavItems.map(item => {
             if ('children' in item) {
                 const filteredChildren = item.children.filter(child =>
                     canAccessRoute(userRole, child.path)
                 );
                 if (filteredChildren.length === 0) return null;
-                return { ...item, children: filteredChildren };
+                return { ...item, children: [...filteredChildren] };
             }
             if ('path' in item) {
-                return canAccessRoute(userRole, item.path) ? item : null;
+                return canAccessRoute(userRole, (item as SingleNavItem).path) ? item : null;
             }
             return null;
         }).filter((item): item is NavItem => item !== null);
+
+        // Specialized structural regrouping for Administrative Affairs role
+        if (userRole === 'ADMIN_AFFAIRS') {
+            const adminGroup = items.find(i => i.label === 'مركز الإدارة والمخازن' || i.label === 'الشئون الإدارية') as NavGroup;
+            const warehouseGroup = items.find(i => i.label === 'المخازن والنقل') as NavGroup;
+
+            if (adminGroup && warehouseGroup) {
+                adminGroup.label = 'مركز الإدارة والمخازن';
+                adminGroup.children = [
+                    { path: '/', label: 'لوحة التحكم الإدارية', icon: LayoutDashboard },
+                    { path: '/admin-store', label: 'المخزن الإداري (الرئيسي)', icon: Package },
+                    { path: '/transfer-orders', label: 'أذونات الصرف والتحويل', icon: FileText },
+                    { path: '/admin-store/settings', label: 'الإعدادات والتصنيفات', icon: Settings },
+                ];
+                // Remove the redundant general warehouse group
+                return items.filter(i => i.label !== 'المخازن والنقل');
+            }
+        }
+
+        // Limit sidebar for SUPER_ADMIN as requested
+        if (userRole === 'SUPER_ADMIN') {
+            return items.filter(i =>
+                i.label === 'لوحات التحكم' ||
+                i.label === 'الإدارة والتقارير'
+            );
+        }
+
+        return items;
     }, [user?.role]);
 
     // State for expanded groups
@@ -311,14 +352,14 @@ export default function Layout({ children }: LayoutProps) {
 
                                     {showBadge && (
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg ${isActive ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'}`}>
+                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg ${isActive ? 'bg-white/20 text-white' : 'bg-destructive text-destructive-foreground'}`}>
                                                 {activeReqCount}
                                             </span>
                                         </div>
                                     )}
                                     {/* Mini Badge for Collapsed State */}
                                     {showBadge && (
-                                        <div className="absolute top-2 left-2 w-2 h-2 bg-rose-500 rounded-full lg:group-hover:hidden animate-pulse ring-2 ring-card" />
+                                        <div className="absolute top-2 left-2 w-2 h-2 bg-destructive rounded-full lg:group-hover:hidden animate-pulse ring-2 ring-card" />
                                     )}
                                 </Link>
                             );
@@ -384,7 +425,7 @@ export default function Layout({ children }: LayoutProps) {
                             {isProfileOpen && (
                                 <>
                                     <div className="fixed inset-0 z-30" onClick={() => setIsProfileOpen(false)} />
-                                    <div className="absolute left-0 mt-3 w-64 bg-card rounded-2xl shadow-2xl border border-border p-2 z-999 animate-slide-up">
+                                    <div className="absolute left-0 mt-3 w-64 bg-card rounded-xl shadow-2xl border border-border p-2 z-999 animate-slide-up">
                                         <div className="p-4 mb-2 border-b border-border/50 text-right">
                                             <p className="text-sm font-black text-foreground">{user?.displayName}</p>
                                             <p className="text-[10px] text-muted-foreground font-bold uppercase mt-0.5">{user?.role}</p>
@@ -400,7 +441,7 @@ export default function Layout({ children }: LayoutProps) {
                                             </Link>
                                             <button
                                                 onClick={() => { logout(); navigate('/login'); }}
-                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-destructive hover:bg-destructive/10 rounded-xl transition-all"
                                             >
                                                 <LogOut size={16} />
                                                 <span>تسجيل الخروج</span>

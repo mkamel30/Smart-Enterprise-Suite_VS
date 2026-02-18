@@ -1,16 +1,13 @@
 /**
- * Shared Constants
- * Single source of truth for roles, machine statuses, and branch types.
- * Import these everywhere instead of using hardcoded strings.
+ * System-wide Constants and Enums
  */
 
-// ===================== USER ROLES =====================
 const ROLES = {
     SUPER_ADMIN: 'SUPER_ADMIN',
     MANAGEMENT: 'MANAGEMENT',
+    BRANCH_ADMIN: 'BRANCH_ADMIN',
+    ACCOUNTANT: 'ACCOUNTANT',
     ADMIN_AFFAIRS: 'ADMIN_AFFAIRS',
-    CENTER_MANAGER: 'CENTER_MANAGER',
-    CENTER_TECH: 'CENTER_TECH',
     BRANCH_MANAGER: 'BRANCH_MANAGER',
     CS_SUPERVISOR: 'CS_SUPERVISOR',
     CS_AGENT: 'CS_AGENT',
@@ -18,95 +15,89 @@ const ROLES = {
     TECHNICIAN: 'TECHNICIAN'
 };
 
-// Roles that bypass branch filtering (global visibility)
-const GLOBAL_ROLES = [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT];
-
-// Roles that manage the maintenance center
-const CENTER_ROLES = [ROLES.CENTER_MANAGER, ROLES.CENTER_TECH];
-
-// All roles with elevated privileges
-const PRIVILEGED_ROLES = [...GLOBAL_ROLES, ROLES.CENTER_MANAGER, ROLES.CS_SUPERVISOR];
-
-// ===================== BRANCH TYPES =====================
 const BRANCH_TYPES = {
     BRANCH: 'BRANCH',
     MAINTENANCE_CENTER: 'MAINTENANCE_CENTER',
     ADMIN_AFFAIRS: 'ADMIN_AFFAIRS'
 };
 
-// ===================== MACHINE STATUSES =====================
+const REQUEST_STATUS = {
+    OPEN: 'Open',
+    IN_PROGRESS: 'In Progress',
+    PENDING: 'Pending',
+    DONE: 'Done',
+    CLOSED: 'Closed',
+    CANCELLED: 'Cancelled'
+};
+
+const TRANSFER_STATUS = {
+    PENDING: 'PENDING',
+    IN_TRANSIT: 'IN_TRANSIT',
+    COMPLETED: 'COMPLETED',
+    RECEIVED: 'RECEIVED', // System supports RECEIVED as well
+    CANCELLED: 'CANCELLED',
+    REJECTED: 'REJECTED'
+};
+
+const DEBT_STATUS = {
+    PENDING: 'PENDING',
+    PAID: 'PAID',
+    CANCELLED: 'CANCELLED'
+};
+
 const MACHINE_STATUS = {
     NEW: 'NEW',
     STANDBY: 'STANDBY',
-    DEPLOYED: 'DEPLOYED',
-    CLIENT_REPAIR: 'CLIENT_REPAIR',
-    AT_CENTER: 'AT_CENTER',
-    EXTERNAL_REPAIR: 'EXTERNAL_REPAIR',
-    UNDER_INSPECTION: 'UNDER_INSPECTION',
-    REPAIRING: 'REPAIRING',
-    REPAIRED: 'REPAIRED',
-    WAITING_APPROVAL: 'WAITING_APPROVAL',
-    APPROVED: 'APPROVED',
-    REJECTED: 'REJECTED',
-    TOTAL_LOSS: 'TOTAL_LOSS',
-    RETURNED: 'RETURNED',
-    SOLD: 'SOLD',
-    SCRAPPED: 'SCRAPPED'
-};
-
-// ===================== REQUEST STATUSES =====================
-const REQUEST_STATUS = {
-    NEW: 'NEW',
     ASSIGNED: 'ASSIGNED',
-    IN_PROGRESS: 'IN_PROGRESS',
-    COMPLETED: 'COMPLETED',
-    CLOSED: 'CLOSED',
-    CANCELLED: 'CANCELLED'
+    UNDER_MAINTENANCE: 'UNDER_MAINTENANCE',
+    REPAIRED: 'REPAIRED',
+    READY_FOR_PICKUP: 'READY_FOR_PICKUP',
+    TOTAL_LOSS: 'TOTAL_LOSS',
+    SCRAPPED: 'SCRAPPED',
+    SOLD: 'SOLD',
+    DISPOSED: 'DISPOSED',
+    IN_TRANSIT: 'IN_TRANSIT',
+    LOST: 'LOST',
+    STOLEN: 'STOLEN'
 };
 
-// ===================== TRANSFER STATUSES =====================
-const TRANSFER_STATUS = {
+const APPROVAL_STATUS = {
     PENDING: 'PENDING',
     APPROVED: 'APPROVED',
-    SHIPPED: 'SHIPPED',
-    RECEIVED: 'RECEIVED',
-    REJECTED: 'REJECTED',
-    CANCELLED: 'CANCELLED'
+    REJECTED: 'REJECTED'
 };
 
-// ===================== HELPER FUNCTIONS =====================
+const ASSET_STATUS = {
+    IN_ADMIN_STORE: 'IN_ADMIN_STORE',
+    TRANSFERRED: 'TRANSFERRED',
+    DISPOSED: 'DISPOSED',
+    IN_USE: 'IN_USE'
+};
 
 /**
- * Check if a role has global (cross-branch) access
+ * Check if a role is a global/admin role (authorized for all branches)
+ * @param {string} role - User role string
+ * @returns {boolean}
  */
-function isGlobalRole(role) {
-    return GLOBAL_ROLES.includes(role);
-}
-
-/**
- * Check if a role is a maintenance center role
- */
-function isCenterRole(role) {
-    return CENTER_ROLES.includes(role);
-}
-
-/**
- * Check if a role is privileged (Admin/Management/CenterManager/Supervisor)
- */
-function isPrivilegedRole(role) {
-    return PRIVILEGED_ROLES.includes(role);
-}
+const isGlobalRole = (role) => {
+    return [
+        ROLES.SUPER_ADMIN,
+        ROLES.MANAGEMENT,
+        ROLES.BRANCH_ADMIN,
+        ROLES.ACCOUNTANT,
+        ROLES.ADMIN_AFFAIRS,
+        ROLES.CS_SUPERVISOR
+    ].includes(role);
+};
 
 module.exports = {
     ROLES,
-    GLOBAL_ROLES,
-    CENTER_ROLES,
-    PRIVILEGED_ROLES,
     BRANCH_TYPES,
-    MACHINE_STATUS,
     REQUEST_STATUS,
     TRANSFER_STATUS,
-    isGlobalRole,
-    isCenterRole,
-    isPrivilegedRole
+    DEBT_STATUS,
+    MACHINE_STATUS,
+    APPROVAL_STATUS,
+    ASSET_STATUS,
+    isGlobalRole
 };

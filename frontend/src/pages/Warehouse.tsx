@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Package, Download, Upload, ArrowDownCircle, ArrowUpCircle, History, Search, FileSpreadsheet } from 'lucide-react';
+import { Package, Download, Upload, ArrowDownCircle, ArrowUpCircle, History, Search, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 import { useAuth } from '../context/AuthContext';
@@ -14,13 +14,23 @@ import {
     DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import PageHeader from '../components/PageHeader';
+import { Button } from '../components/ui/button';
 
 export default function Warehouse() {
     const { user, activeBranchId } = useAuth();
-    const isAdmin = !user?.branchId;
+    const isAdmin = !user?.branchId || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGEMENT' || user?.role === 'ADMIN_AFFAIRS';
     const [filterBranchId, setFilterBranchId] = useState('');
     const [activeTab, setActiveTab] = useState<'inventory' | 'movements'>('inventory');
     const queryClient = useQueryClient();
+
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const [limit] = useState(50);
+
+    // Filter State
+    const [selectedModel, setSelectedModel] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+
     const [movementFilters, setMovementFilters] = useState({
         startDate: '',
         endDate: '',
@@ -29,7 +39,18 @@ export default function Warehouse() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showImportDialog, setShowImportDialog] = useState(false);
-    const [importData, setImportData] = useState<any[]>([]);
+    const [importData, setImportData] = useState<unknown[]>([]);
+
+    // ESC key handler for modals
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowImportDialog(false);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
 
     const handleConfirmImport = async () => {
         // TODO: Implement import logic
@@ -76,22 +97,36 @@ export default function Warehouse() {
         reader.readAsBinaryString(file);
     };
 
-    const { data: inventory, isLoading } = useQuery({
-        queryKey: ['inventory', activeBranchId, filterBranchId],
-        queryFn: () => api.getInventory({ branchId: activeBranchId || filterBranchId }),
-        enabled: !!user
+    // Server-side Pagination Query
+    const { data: inventoryData, isLoading } = useQuery<any>({
+        queryKey: ['inventory', activeBranchId, filterBranchId, page, limit, searchQuery, selectedModel],
+        queryFn: () => api.getInventory({
+            branchId: activeBranchId || filterBranchId,
+            page,
+            limit,
+            search: searchQuery,
+            model: selectedModel
+        }),
+        enabled: !!user,
+        placeholderData: keepPreviousData // Keep data while fetching new page (TanStack Query v5)
     });
+
+    // Unpack inventory data (handle array vs paginated object)
+    const inventoryItems = inventoryData?.data || (Array.isArray(inventoryData) ? inventoryData : []);
+    const totalItems = inventoryData?.pagination?.total || inventoryItems.length;
+    const totalPages = Math.ceil(totalItems / limit);
 
     const { data: branches } = useQuery({
         queryKey: ['branches'],
-        queryFn: api.getBranches,
+        queryFn: api.getBranchesLookup,
         enabled: isAdmin
     });
 
     const { data: movements, isLoading: isMovementsLoading } = useQuery({
-        queryKey: ['stock-movements', activeBranchId, filterBranchId, movementFilters],
+        queryKey: ['stock-movements', activeBranchId, filterBranchId, movementFilters, selectedModel],
         queryFn: () => api.getStockMovements({
             branchId: activeBranchId || filterBranchId,
+            model: selectedModel,
             ...movementFilters
         }),
         enabled: !!user
@@ -102,56 +137,15 @@ export default function Warehouse() {
         queryFn: api.getMachineParameters
     });
 
-    // Model filter state
-    const [selectedModel, setSelectedModel] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-
-    // Filter inventory logic
-    const filteredInventory = useMemo(() => {
-        let result = inventory || [];
-
-        // Filter by Model
-        if (selectedModel) {
-            result = result.filter((item: any) => {
-                const models = item.part?.compatibleModels || '';
-                return models.includes(selectedModel);
-            });
-        }
-
-        // Filter by Search Query
-        if (searchQuery) {
-            const lowerQuery = searchQuery.toLowerCase();
-            result = result.filter((item: any) =>
-                item.name?.toLowerCase().includes(lowerQuery) ||
-                item.partNumber?.toLowerCase().includes(lowerQuery) ||
-                item.part?.compatibleModels?.toLowerCase().includes(lowerQuery)
-            );
-        }
-
-        return result;
-    }, [inventory, selectedModel, searchQuery]);
-
-    // Get available models from parameters AND inventory
+    // Get available models from parameters (Master List)
+    // Note: We don't merge with inventory results because paginated results are incomplete
     const availableModels = useMemo(() => {
         const modelsSet = new Set<string>();
-
-        // 1. From Machine Parameters (The Master List)
         if (machineParams) {
             machineParams.forEach(p => modelsSet.add(p.model));
         }
-
-        // 2. From Inventory (Legacy/Existing usage)
-        if (inventory) {
-            inventory.forEach((item: any) => {
-                const modelsStr = item.part?.compatibleModels;
-                if (modelsStr && typeof modelsStr === 'string') {
-                    modelsStr.split(',').forEach(m => modelsSet.add(m.trim()));
-                }
-            });
-        }
-
         return Array.from(modelsSet).sort();
-    }, [inventory, machineParams]);
+    }, [machineParams]);
 
     const handleExportMovements = () => {
         if (!movements?.length) return;
@@ -161,6 +155,7 @@ export default function Warehouse() {
             'القطعة': mov.partName,
             'رقم القطعة': mov.partNumber,
             'الكمية': mov.quantity,
+            'حالة الدفع': ['OUT', 'STOCK_OUT'].includes(mov.type) ? (mov.isPaid ? `بمقابل ${mov.receiptNumber ? `(${mov.receiptNumber})` : ''}` : 'بدون مقابل') : '-',
             'السبب': mov.reason,
             'كود العميل': mov.customerBkCode || '',
             'سيريال الماكينة': mov.machineSerial || '',
@@ -175,11 +170,12 @@ export default function Warehouse() {
         XLSX.writeFile(wb, `movements_log_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
-    // Export current inventory
+    // Export current inventory - Note: Exports only current page or needs new export endpoint
+    // For now, exporting current view is acceptable, or we should implementing full export
     const handleExport = () => {
-        if (!inventory?.length) return;
+        if (!inventoryItems?.length) return;
 
-        const exportData = inventory.map((item: any) => ({
+        const exportData = inventoryItems.map((item: any) => ({
             'الكود': item.partNumber,
             'اسم القطعة': item.name,
             'الموديلات المتوافقة': item.compatibleModels,
@@ -194,7 +190,7 @@ export default function Warehouse() {
         XLSX.writeFile(wb, `current_stock_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
-    if (isLoading) {
+    if (isLoading && !inventoryData) {
         return <div className="flex h-full items-center justify-center p-8">جاري التحميل...</div>;
     }
 
@@ -207,8 +203,8 @@ export default function Warehouse() {
                     type="text"
                     placeholder="بحث (اسم، كود...)"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-10 pl-4 py-2 border-2 border-primary/10 rounded-xl outline-none focus:border-primary/30 font-bold text-sm w-full md:w-48 transition-all focus:md:w-64 bg-white"
+                    onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                    className="pr-10 pl-4 py-2 border-2 border-primary/10 rounded-xl outline-none focus:border-primary/30 font-bold text-sm w-full md:w-48 transition-all focus:md:w-64 bg-white text-right"
                 />
             </div>
 
@@ -218,11 +214,11 @@ export default function Warehouse() {
                     <Filter size={18} className="text-slate-400" />
                     <select
                         value={filterBranchId}
-                        onChange={(e) => setFilterBranchId(e.target.value)}
+                        onChange={(e) => { setFilterBranchId(e.target.value); setPage(1); }}
                         className="bg-transparent outline-none text-sm font-bold min-w-[120px]"
                     >
                         <option value="">كل الفروع</option>
-                        {(branches as any[])?.map((branch: any) => (
+                        {Array.isArray(branches) && branches.map((branch: any) => (
                             <option key={branch.id} value={branch.id}>{branch.name}</option>
                         ))}
                     </select>
@@ -234,11 +230,11 @@ export default function Warehouse() {
                 <label className="text-xs font-black text-primary/60">الموديل:</label>
                 <select
                     value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
+                    onChange={(e) => { setSelectedModel(e.target.value); setPage(1); }}
                     className="bg-transparent outline-none text-sm font-bold min-w-[100px]"
                 >
                     <option value="">(الكل)</option>
-                    {availableModels.map((model: any) => (
+                    {Array.isArray(availableModels) && availableModels.map((model: any) => (
                         <option key={model} value={model}>{model}</option>
                     ))}
                 </select>
@@ -265,7 +261,7 @@ export default function Warehouse() {
                     <div className="h-px bg-slate-100 my-1" />
                     <DropdownMenuItem onClick={handleExport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-emerald-700">
                         <Download size={16} />
-                        تصدير المخزون الحالي
+                        تصدير الصفحة الحالية
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -301,12 +297,57 @@ export default function Warehouse() {
             </div>
 
             {activeTab === 'inventory' && (
-                <div className="bg-white rounded-2xl border-2 border-primary/10 shadow-xl overflow-hidden">
+                <div className="bg-white rounded-2xl border-2 border-primary/10 shadow-xl overflow-hidden flex flex-col">
                     <div className="p-4 border-b flex justify-between items-center bg-slate-50/5">
                         <p className="font-black text-primary flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            إجمالي الأصناف المتوفرة: {filteredInventory?.length || 0}
+                            إجمالي الأصناف: {totalItems}
                         </p>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center gap-2" dir="rtl">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(1)}
+                                    disabled={page === 1}
+                                    className="h-8 w-8 p-0"
+                                >
+                                    <ChevronsRight size={16} />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="h-8 w-8 p-0"
+                                >
+                                    <ChevronRight size={16} />
+                                </Button>
+                                <span className="text-sm font-bold mx-2">
+                                    صفحة {page} من {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages}
+                                    className="h-8 w-8 p-0"
+                                >
+                                    <ChevronLeft size={16} />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(totalPages)}
+                                    disabled={page === totalPages}
+                                    className="h-8 w-8 p-0"
+                                >
+                                    <ChevronsLeft size={16} />
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="overflow-x-auto">
@@ -322,9 +363,16 @@ export default function Warehouse() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {filteredInventory?.map((item: any) => (
+                                {inventoryItems?.map((item: any) => (
                                     <InventoryRow key={item.id} item={item} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['inventory'] })} />
                                 ))}
+                                {inventoryItems.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="p-12 text-center text-slate-400 font-bold">
+                                            لا توجد أصناف في المخزن
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -383,12 +431,13 @@ export default function Warehouse() {
                                         <th className="text-right p-4 font-black">النوع</th>
                                         <th className="text-right p-4 font-black">القطعة</th>
                                         <th className="text-right p-4 font-black">الكمية</th>
+                                        <th className="text-right p-4 font-black">حالة الدفع</th>
                                         <th className="text-right p-4 font-black">التفاصيل / العميل</th>
                                         <th className="text-right p-4 font-black">التاريخ</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {movements?.map((mov: any) => (
+                                    {Array.isArray(movements) && movements.map((mov: any) => (
                                         <tr key={mov.id} className="border-t hover:bg-slate-50 transition-colors">
                                             <td className="p-4">
                                                 {mov.type === 'IN' ? (
@@ -410,6 +459,28 @@ export default function Warehouse() {
                                             <td className="p-4">
                                                 <span className="text-lg font-black">{mov.quantity}</span>
                                             </td>
+                                            <td className="p-4 text-xs font-bold text-slate-500">
+                                                {['OUT', 'STOCK_OUT'].includes(mov.type) ? (
+                                                    <div className="flex flex-col items-start gap-1">
+                                                        {mov.isPaid ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-bold text-[10px] border border-amber-200">
+                                                                بمقابل
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold text-[10px] border border-slate-200">
+                                                                بدون مقابل
+                                                            </span>
+                                                        )}
+                                                        {mov.receiptNumber && mov.receiptNumber !== '-' && (
+                                                            <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                                                #{mov.receiptNumber}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-300">-</span>
+                                                )}
+                                            </td>
                                             <td className="p-4">
                                                 <div className="text-sm font-medium text-slate-700">{mov.reason || '-'}</div>
                                                 {(mov.customerBkCode || mov.machineSerial) && (
@@ -430,7 +501,7 @@ export default function Warehouse() {
                                     ))}
                                     {(!movements?.length) && (
                                         <tr>
-                                            <td colSpan={5} className="p-12 text-center text-slate-400 font-bold">
+                                            <td colSpan={6} className="p-12 text-center text-slate-400 font-bold">
                                                 لا توجد حركات مطابقة للبحث
                                             </td>
                                         </tr>
@@ -444,42 +515,62 @@ export default function Warehouse() {
 
             {/* Import Dialog */}
             {showImportDialog && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">تأكيد إضافة الكميات</h2>
-
-                        {isAdmin && (
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium mb-1">إضافة إلى فرع:</label>
-                                <select
-                                    className="w-full border rounded p-2"
-                                    value={filterBranchId || ''}
-                                    onChange={(e) => setFilterBranchId(e.target.value)}
-                                >
-                                    <option value="">-- اختر الفرع --</option>
-                                    {(branches as any[])?.map((branch: any) => (
-                                        <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                    ))}
-                                </select>
-                                {!filterBranchId && <p className="text-xs text-red-500 mt-1">يجب اختيار الفرع لإتمام العملية</p>}
+                <div className="modal-overlay" onClick={() => setShowImportDialog(false)}>
+                    <div className="modal-container modal-sm" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <div className="modal-header-content">
+                                <Upload className="modal-icon text-primary" size={24} />
+                                <h2 className="modal-title">تأكيد إضافة الكميات</h2>
                             </div>
-                        )}
-
-                        <p className="text-slate-600 mb-2">سيتم إضافة الكميات التالية للمخزون:</p>
-                        <div className="max-h-48 overflow-y-auto border rounded p-2 mb-4">
-                            {importData.map((item, i) => (
-                                <div key={i} className="py-2 border-b last:border-0 flex justify-between">
-                                    <span>{item.name}</span>
-                                    <span className="text-green-600 font-bold">+{item.quantity}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={handleConfirmImport} className="flex-1 bg-green-600 text-white py-2 rounded-lg">
-                                تأكيد الإضافة
+                            <button type="button" className="modal-close" onClick={() => setShowImportDialog(false)}>
+                                <X size={20} />
                             </button>
-                            <button onClick={() => { setShowImportDialog(false); setImportData([]); }} className="flex-1 border py-2 rounded-lg">
+                        </div>
+                        <div className="modal-body space-y-6">
+                            {isAdmin && (
+                                <div className="modal-form-field">
+                                    <label className="modal-form-label required">إضافة إلى فرع</label>
+                                    <select
+                                        className="smart-select"
+                                        value={filterBranchId || ''}
+                                        onChange={(e) => setFilterBranchId(e.target.value)}
+                                    >
+                                        <option value="">-- اختر الفرع --</option>
+                                        {Array.isArray(branches) && branches.map((branch: any) => (
+                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                        ))}
+                                    </select>
+                                    {!filterBranchId && <p className="text-[10px] text-red-500 mt-1 font-bold">يرجى اختيار الفرع لإتمام العملية</p>}
+                                </div>
+                            )}
+
+                            <div>
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 pr-2">سيتم إضافة الكميات التالية:</p>
+                                <div className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50/50">
+                                    <div className="max-h-48 overflow-y-auto custom-scroll p-2 space-y-1">
+                                        {Array.isArray(importData) && importData.map((item: any, i) => (
+                                            <div key={i} className="bg-white p-3 rounded-lg border border-slate-100 flex justify-between items-center shadow-sm">
+                                                <span className="font-bold text-slate-700 text-sm">{item.name}</span>
+                                                <span className="text-green-600 font-black">+{item.quantity}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button
+                                onClick={() => { setShowImportDialog(false); setImportData([]); }}
+                                className="smart-btn-secondary"
+                            >
                                 إلغاء
+                            </button>
+                            <button
+                                onClick={handleConfirmImport}
+                                className="smart-btn-primary"
+                                disabled={isAdmin && !filterBranchId}
+                            >
+                                تأكيد الإضافة للمخزون
                             </button>
                         </div>
                     </div>
@@ -503,6 +594,8 @@ function InventoryRow({ item, onUpdate }: { item: any; onUpdate: () => void }) {
             }
         } catch (error) {
             console.error('Failed to update:', error);
+            const errorMessage = (error as Error).message || 'فشل التحديث';
+            toast.error(errorMessage);
         }
     };
 

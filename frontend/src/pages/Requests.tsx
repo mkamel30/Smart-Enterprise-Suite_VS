@@ -3,7 +3,8 @@ import { api } from '../api/client';
 import { useState, useEffect } from 'react';
 import type { MaintenanceRequest, Technician } from '../lib/types';
 import { useLocation } from 'react-router-dom';
-import { Plus, Trash2, UserCheck, Eye, Printer, CheckCircle, Filter, DollarSign, Search, FileDown, Calendar, Clock, CheckCheck } from 'lucide-react';
+import { cn } from '../lib/utils';
+import { Plus, Trash2, UserCheck, Eye, Printer, CheckCircle, Filter, DollarSign, Search, FileDown, Calendar, Clock, CheckCheck, X, CheckCircle2 } from 'lucide-react';
 import { FaHistory } from 'react-icons/fa';
 import AuditLogModal from '../components/AuditLogModal';
 import { CloseRequestModal } from '../components/CloseRequestModal';
@@ -100,7 +101,7 @@ export default function Requests() {
 
     const { data: spareParts } = useQuery<any[]>({
         queryKey: ['spare-parts-inventory'],
-        queryFn: () => (api.getInventory() as any),
+        queryFn: () => (api.getInventoryLite() as any),
         enabled: !!user
     });
 
@@ -128,11 +129,21 @@ export default function Requests() {
 
     const closeMutation = useApiMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => api.closeRequest(id, data),
-        successMessage: 'تم إغلاق الطلب بنجاح',
+        successMessage: 'تم إغلاق الطلب وفتح التقرير',
         errorMessage: 'فشل إغلاق الطلب',
-        onSuccess: async () => {
+        onSuccess: async (data: any) => {
+            // Immediately invalidate queries
             await queryClient.invalidateQueries({ queryKey: ['requests'] });
             setShowCloseDialog(false);
+
+            // Use the returned data (the newly closed request) for printing
+            // This avoids the "without parts" error caused by stale local state
+            if (data) {
+                // Small delay to ensure browser doesn't block the new tab
+                setTimeout(() => {
+                    handlePrint(data);
+                }, 300);
+            }
         }
     });
 
@@ -185,8 +196,10 @@ export default function Requests() {
         } catch (e) { }
 
         // Fetch monthly repair count for this machine
+        const serialNumber = request.posMachine?.serialNumber || request.serialNumber;
         let monthlyRepairCount = 1;
-        if (request.posMachine?.serialNumber) {
+
+        if (serialNumber) {
             try {
                 // If closed, check count for the month it was closed.
                 // If open, check count for current month.
@@ -194,7 +207,7 @@ export default function Requests() {
                     ? request.closingTimestamp
                     : new Date().toISOString();
 
-                const res = await api.getMonthlyRepairCount(request.posMachine.serialNumber, checkDate);
+                const res = await api.getMonthlyRepairCount(serialNumber, checkDate);
 
                 // If request is already closed, the count includes it (because we filter by <= month of closing).
                 // If request is open/in-progress, we add 1 to include the current one being processed/printed.
@@ -244,7 +257,7 @@ export default function Requests() {
                         onChange={(e) => setFilterBranchId(e.target.value)}
                         className="bg-transparent outline-none text-sm text-slate-700 font-bold min-w-[120px]">
                         <option value="">كل الفروع</option>
-                        {(branches as any[])?.map((branch: any) => (
+                        {Array.isArray(branches) && branches.map((branch: any) => (
                             <option key={branch.id} value={branch.id}>{branch.name}</option>
                         ))}
                     </select>
@@ -257,7 +270,7 @@ export default function Requests() {
                     placeholder="بحث بـ (العميل، السيريال، الشكوى)..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-white border-2 border-primary/10 rounded-xl pr-10 pl-4 py-2.5 outline-none focus:border-primary/30 focus:shadow-lg focus:shadow-primary/5 transition-all w-full md:w-[300px] text-sm font-bold"
+                    className="bg-white border-2 border-primary/10 rounded-xl pr-10 pl-4 py-2.5 outline-none focus:border-primary/30 focus:shadow-lg focus:shadow-primary/5 transition-all w-full md:w-[300px] text-sm font-bold text-right"
                 />
             </div>
         </div>
@@ -373,7 +386,7 @@ export default function Requests() {
                             </tr>
                         </thead>
                         <tbody>
-                            {requests?.filter((r: any) => activeTab === 'open' ? r.status !== 'Closed' : r.status === 'Closed').map((request: any) => (
+                            {Array.isArray(requests) && requests.filter((r: any) => activeTab === 'open' ? r.status !== 'Closed' : r.status === 'Closed').map((request: any) => (
                                 <tr key={request.id} className="border-t border-slate-100 hover:bg-primary/5 transition-colors">
                                     <td className="p-4 text-center">
                                         <div className="flex flex-col items-center">
@@ -381,7 +394,7 @@ export default function Requests() {
                                             <span className="text-[10px] text-slate-400 font-mono mt-0.5">{request.customer?.bkcode || '-'}</span>
                                         </div>
                                     </td>
-                                    <td className="p-4 font-mono font-medium text-primary text-center">{request.posMachine?.serialNumber || '-'}</td>
+                                    <td className="p-4 font-mono font-medium text-primary text-center">{request.posMachine?.serialNumber || request.serialNumber || '-'}</td>
                                     <td className="p-4 max-w-xs truncate text-center">{request.complaint || '-'}</td>
                                     <td className="p-4 text-center">
                                         <span className={`px-3 py-1.5 rounded-xl text-sm font-black ${getStatusBadge(request.status)}`}>
@@ -420,15 +433,6 @@ export default function Requests() {
                                                     title="إغلاق الطلب"
                                                 >
                                                     <CheckCircle size={18} />
-                                                </button>
-                                            )}
-                                            {request.status === 'In Progress' && !request.approvalId && user?.branchType === 'MAINTENANCE_CENTER' && (
-                                                <button
-                                                    onClick={() => { setSelectedRequestId(request.id); setShowApprovalDialog(true); }}
-                                                    className="p-2 text-[#E86B3A] hover:bg-[#E86B3A]/10 rounded-lg transition-all"
-                                                    title="طلب موافقة"
-                                                >
-                                                    <DollarSign size={18} />
                                                 </button>
                                             )}
                                             <button
@@ -485,24 +489,24 @@ export default function Requests() {
 
             {/* Assign Technician Modal */}
             <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-                <DialogContent className="p-0 border-0 flex flex-col max-h-[85vh] w-full max-w-md overflow-hidden" dir="rtl">
-                    <DialogHeader className="bg-slate-50 p-6 pb-4 border-b shrink-0 text-right sm:text-right">
-                        <DialogTitle>تعيين فني</DialogTitle>
-                        <DialogDescription className="text-sm text-slate-500">
+                <DialogContent className="p-0 border-0 flex flex-col max-h-[85vh] h-auto w-full max-w-sm overflow-hidden rounded-2xl shadow-2xl bg-white [&>button]:hidden" dir="rtl">
+                    <DialogHeader className="bg-slate-50/50 p-4 md:p-5 border-b shrink-0 text-right">
+                        <DialogTitle className="text-base font-black text-slate-900">تعيين فني</DialogTitle>
+                        <DialogDescription className="text-[10px] text-slate-500 font-bold">
                             {selectedRequest && <>طلب: {selectedRequest.customer?.client_name}</>}
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-[200px]">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">اختر الفني</label>
+                    <div className="flex-1 p-4 md:p-5 space-y-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">الفني المختص</label>
                             <select
                                 value={selectedTechnician}
                                 onChange={(e) => setSelectedTechnician(e.target.value)}
-                                className="w-full border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                className="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all bg-white"
                             >
                                 <option value="">اختر فني...</option>
-                                {technicians?.map((t: Technician) => {
+                                {Array.isArray(technicians) && technicians.map((t: Technician) => {
                                     const roleName = {
                                         'Technician': 'فني',
                                         'CustomerService': 'خدمة عملاء',
@@ -517,21 +521,21 @@ export default function Requests() {
                         </div>
                     </div>
 
-                    <DialogFooter className="p-6 border-t bg-slate-50/50 shrink-0 gap-2">
+                    <div className="p-4 border-t bg-slate-50 flex items-center gap-2">
                         <button
                             onClick={() => setShowAssignDialog(false)}
-                            className="flex-1 border border-slate-200 py-2.5 rounded-xl hover:bg-slate-50 font-medium transition-colors"
+                            className="h-10 px-4 border border-slate-200 text-slate-500 font-bold text-xs rounded-lg hover:bg-slate-100 transition-all"
                         >
                             إلغاء
                         </button>
                         <button
                             onClick={handleAssignSubmit}
-                            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold shadow-lg shadow-purple-200 transition-all"
+                            className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs shadow-lg shadow-indigo-100 transition-all disabled:opacity-50"
                             disabled={!selectedTechnician}
                         >
-                            تعيين الفني
+                            تأكيد التعيين
                         </button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
@@ -555,7 +559,8 @@ export default function Requests() {
                             const parsed = typeof selectedRequest.usedParts === 'string'
                                 ? JSON.parse(selectedRequest.usedParts || '{}')
                                 : selectedRequest.usedParts || {};
-                            if (parsed.parts) partsData = parsed;
+                            if (parsed.parts && Array.isArray(parsed.parts)) partsData = parsed;
+                            else if (parsed.parts) partsData = { ...parsed, parts: [] };
                             else if (Array.isArray(parsed)) partsData = { parts: parsed, totalCost: 0 };
                         } catch (e) { }
 
@@ -617,7 +622,7 @@ function RequestDetailsModalContent({ request, partsData, onClose }: { request: 
     const [showHistory, setShowHistory] = useState(false);
 
     return (
-        <>
+        <div dir="rtl" className="text-right flex flex-col h-full overflow-hidden">
             <AuditLogModal
                 isOpen={showHistory}
                 onClose={() => setShowHistory(false)}
@@ -626,106 +631,128 @@ function RequestDetailsModalContent({ request, partsData, onClose }: { request: 
                 title={`طلب صيانة ${request.customer?.client_name}`}
             />
 
-            <DialogHeader className="bg-slate-50 p-6 pb-4 border-b shrink-0 flex flex-row items-center justify-between">
-                <DialogTitle>تفاصيل الطلب</DialogTitle>
-                <button
-                    onClick={() => setShowHistory(true)}
-                    className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full hover:bg-indigo-200 transition-colors flex items-center gap-1 mr-auto"
-                >
-                    <FaHistory size={12} />
-                    سجل الحركة
-                </button>
+            <DialogHeader className="bg-slate-50/50 p-4 md:p-5 border-b shrink-0 flex flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                        <Eye size={16} />
+                    </div>
+                    <div>
+                        <DialogTitle className="text-base font-black text-slate-900 leading-tight">تفاصيل الطلب</DialogTitle>
+                        <DialogDescription className="text-[10px] text-slate-400 font-bold mt-0.5">مراجعة كامل بيانات بلاغ الصيانة</DialogDescription>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowHistory(true)}
+                        className="h-8 px-3 bg-white text-indigo-600 border border-indigo-100 rounded-lg text-[9px] font-black hover:bg-indigo-50 transition-all flex items-center gap-1.5 shadow-sm"
+                    >
+                        <FaHistory size={10} />
+                        سجل الحركة
+                    </button>
+                    <button onClick={onClose} className="p-1.5 bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all rounded-lg">
+                        <X size={14} />
+                    </button>
+                </div>
             </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scroll">
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">العميل</p>
-                            <p className="font-bold text-slate-800">{request.customer?.client_name}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">الماكينة</p>
-                            <p className="font-mono">{request.posMachine?.serialNumber}</p>
+            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 custom-scroll">
+                <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 w-16 h-16 bg-slate-50 rounded-full blur-2xl -mr-8 -mt-8"></div>
+                    <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 relative z-10">
+                        <Printer size={20} />
+                    </div>
+                    <div className="relative z-10 flex-1">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">العميل</span>
+                        <h3 className="text-sm font-black text-slate-900 leading-none mb-1">{request.customer?.client_name}</h3>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-indigo-500 font-mono">{request.customer?.bkcode}</span>
+                            <span className="text-[9px] text-slate-400 font-bold"> - </span>
+                            <span className="text-[10px] font-mono text-slate-700 font-black tracking-tight">{request.posMachine?.serialNumber || request.serialNumber || '-'}</span>
                         </div>
                     </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">الحالة</p>
+                        <span className={cn(
+                            "px-2 py-0.5 rounded text-[9px] font-black border",
+                            request.status === 'Closed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"
+                        )}>
+                            {request.status}
+                        </span>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">التاريخ</p>
+                        <p className="text-[11px] font-bold text-slate-700">{new Date(request.createdAt).toLocaleDateString('ar-EG')}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">الفرع</p>
+                        <p className="text-[11px] font-bold text-slate-700">{request.branch?.name || 'غير محدد'}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">الفني</p>
+                        <p className="text-[11px] font-bold text-slate-700">{request.technician || 'غير معين'}</p>
+                    </div>
+                </div>
+
                 <div className="space-y-3">
-                    <div>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">الشكوى</p>
-                        <p className="text-sm bg-red-50 text-red-700 p-3 rounded-lg border border-red-100">{request.complaint}</p>
+                    <div className="bg-rose-50/30 p-3 rounded-xl border border-rose-100/50">
+                        <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                            <Clock size={10} />
+                            الشكوى الأساسية
+                        </p>
+                        <p className="text-xs font-bold text-rose-900 leading-relaxed italic">{request.complaint}</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">الحالة</p>
-                            <p className="text-sm font-medium">{request.status}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">الفرع</p>
-                            <p className="text-sm font-medium">{request.branch?.name || 'غير محدد'}</p>
-                        </div>
+                    <div className="bg-indigo-50/30 p-3 rounded-xl border border-indigo-100/50">
+                        <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                            <CheckCircle size={10} />
+                            الإجراء المتخذ
+                        </p>
+                        <p className="text-xs font-bold text-indigo-900 leading-relaxed">{request.actionTaken || 'لا يوجد إجراء مسجل بعد'}</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">الفني</p>
-                            <p className="text-sm font-medium">{request.technician || 'غير معين'}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">التاريخ</p>
-                            <p className="text-sm font-medium">{new Date(request.createdAt).toLocaleDateString('ar-EG')}</p>
-                        </div>
-                    </div>
-
-                    <div>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">الإجراء المتخذ</p>
-                        <p className="text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">{request.actionTaken || '-'}</p>
-                    </div>
-
-                    {/* Used Parts */}
                     {partsData.parts.length > 0 && (
-                        <div className="border-t border-dashed pt-4 mt-2">
-                            <p className="font-bold mb-2 flex justify-between items-center text-sm">
-                                <span>قطع الغيار المستخدمة</span>
+                        <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between mb-3 border-b border-slate-50 pb-2">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">قطع الغيار / {partsData.parts.length} ق</p>
                                 {partsData.totalCost > 0 && (
-                                    <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">
-                                        {partsData.totalCost} ج.م
-                                    </span>
+                                    <span className="text-emerald-600 font-black text-[11px]">{partsData.totalCost} ج.م</span>
                                 )}
-                            </p>
-                            <div className="bg-slate-50 rounded-lg p-2 space-y-2 border border-slate-100">
+                            </div>
+                            <div className="space-y-2">
                                 {partsData.parts.map((part: any, i: number) => (
-                                    <div key={i} className="flex justify-between items-center text-sm border-b last:border-0 border-slate-100 pb-1 last:pb-0">
+                                    <div key={i} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100/50">
                                         <div className="flex items-center gap-2">
-                                            <span className="w-5 h-5 bg-slate-200 rounded-full flex items-center justify-center text-[10px] font-bold">{part.quantity}</span>
-                                            <span className="text-slate-700">{part.name}</span>
+                                            <span className="w-5 h-5 bg-white rounded-md flex items-center justify-center text-[10px] font-black text-indigo-600 shadow-sm">{part.quantity}</span>
+                                            <span className="text-[10px] font-bold text-slate-700">{part.name}</span>
                                         </div>
-                                        <span className={part.isPaid ? 'text-slate-600 font-medium' : 'text-green-600 font-medium text-xs'}>
-                                            {part.isPaid ? `${part.cost * part.quantity} ج.م` : 'مجاني/ضمان'}
+                                        <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded", part.isPaid ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600')}>
+                                            {part.isPaid ? `${part.cost * part.quantity} ج.م` : 'مجاني'}
                                         </span>
                                     </div>
                                 ))}
                             </div>
                             {request.receiptNumber && (
-                                <p className="text-blue-600 font-medium text-xs mt-2 text-center bg-blue-50 p-1.5 rounded-lg">
-                                    رقم الإيصال: {request.receiptNumber}
-                                </p>
+                                <div className="mt-3 pt-3 border-t border-dashed border-slate-100 text-center">
+                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">رقم الإيصال: {request.receiptNumber}</span>
+                                </div>
                             )}
                         </div>
                     )}
                 </div>
             </div>
 
-            <DialogFooter className="p-6 border-t bg-slate-50/50 shrink-0">
+            <div className="p-4 md:p-5 border-t bg-slate-50 flex items-center gap-2 shrink-0">
                 <button
                     onClick={onClose}
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-bold shadow-lg shadow-slate-200 transition-all"
+                    className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-black text-xs shadow-lg shadow-slate-200 transition-all flex items-center justify-center gap-2"
                 >
-                    إغلاق
+                    <CheckCircle2 size={14} />
+                    إغلاق العرض
                 </button>
-            </DialogFooter>
-        </>
+            </div>
+        </div>
     );
 }

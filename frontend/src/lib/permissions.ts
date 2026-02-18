@@ -8,6 +8,8 @@ export const ROLES = {
     // إدارة النظام
     SUPER_ADMIN: 'SUPER_ADMIN',       // مدير النظام - كل الصلاحيات
     MANAGEMENT: 'MANAGEMENT',          // الإدارة العليا
+    BRANCH_ADMIN: 'BRANCH_ADMIN',      // إدارة الفروع
+    ACCOUNTANT: 'ACCOUNTANT',          // الحسابات
 
     // الشئون الإدارية
     ADMIN_AFFAIRS: 'ADMIN_AFFAIRS',    // موظف الشئون الإدارية
@@ -52,7 +54,8 @@ export const BRANCH_TYPES = {
 const ALL_BRANCH_ROLES = [ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH];
 const SUPERVISOR_AND_ABOVE = [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR];
 const ALL_SYSTEM_ROLES = [
-    ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.ADMIN_AFFAIRS,
+    ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN, ROLES.ACCOUNTANT,
+    ROLES.ADMIN_AFFAIRS,
     ROLES.CENTER_MANAGER, ROLES.CENTER_TECH,
     ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
 ];
@@ -63,7 +66,7 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
     '/': ALL_SYSTEM_ROLES,
 
     // Executive Dashboard - Management only
-    '/executive-dashboard': [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT],
+    '/executive-dashboard': [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN],
 
     // Maintenance requests - branches and supervisors only
     '/requests': [
@@ -141,9 +144,13 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
         ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
     ],
 
+    // Admin Store - Administrative Affairs
+    '/admin-store': [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.ADMIN_AFFAIRS],
+    '/admin-store/settings': [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.ADMIN_AFFAIRS],
+
     // Finance - Sales & Receipts (Branches only)
-    '/receipts': ALL_BRANCH_ROLES,
-    '/payments': ALL_BRANCH_ROLES,
+    '/receipts': [...ALL_BRANCH_ROLES, ROLES.ACCOUNTANT, ROLES.SUPER_ADMIN],
+    '/payments': [...ALL_BRANCH_ROLES, ROLES.ACCOUNTANT, ROLES.SUPER_ADMIN],
 
     // Reports - everyone except Admin Affairs
     '/reports': ALL_SYSTEM_ROLES.filter(role => role !== ROLES.ADMIN_AFFAIRS),
@@ -152,7 +159,10 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
     '/technicians': [ROLES.SUPER_ADMIN],
     '/approvals': [ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER],
     '/branches': [ROLES.SUPER_ADMIN],
-    '/settings': [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR]
+    '/settings': [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
+
+    // Backups - SUPER_ADMIN only
+    '/admin/backups': [ROLES.SUPER_ADMIN]
 };
 
 // Action-level permissions (for UI buttons)
@@ -264,7 +274,11 @@ export const isBranchUser = (role: string | undefined | null): boolean => {
  */
 export const isSupervisorOrAbove = (role: string | undefined | null): boolean => {
     const normalizedRole = normalizeRole(role);
-    return [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CENTER_MANAGER].includes(normalizedRole as any);
+    return [
+        ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN,
+        ROLES.ACCOUNTANT, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR,
+        ROLES.CENTER_MANAGER
+    ].includes(normalizedRole as any);
 };
 
 /**
@@ -274,6 +288,8 @@ export const getRoleDisplayName = (role: string | undefined | null): string => {
     const roleNames: Record<string, string> = {
         [ROLES.SUPER_ADMIN]: 'مدير النظام',
         [ROLES.MANAGEMENT]: 'الإدارة',
+        [ROLES.BRANCH_ADMIN]: 'إدارة الفروع',
+        [ROLES.ACCOUNTANT]: 'الحسابات',
         [ROLES.ADMIN_AFFAIRS]: 'الشئون الإدارية',
         [ROLES.CENTER_MANAGER]: 'مدير مركز الصيانة',
         [ROLES.CENTER_TECH]: 'فني مركز الصيانة',
@@ -297,6 +313,8 @@ export const getAvailableRoles = () => [
     { value: ROLES.CENTER_TECH, label: 'فني مركز الصيانة' },
     { value: ROLES.CENTER_MANAGER, label: 'مدير مركز الصيانة' },
     { value: ROLES.ADMIN_AFFAIRS, label: 'الشئون الإدارية' },
+    { value: ROLES.ACCOUNTANT, label: 'الحسابات' },
+    { value: ROLES.BRANCH_ADMIN, label: 'إدارة الفروع' },
     { value: ROLES.MANAGEMENT, label: 'الإدارة' },
     { value: ROLES.SUPER_ADMIN, label: 'مدير النظام' }
 ];
