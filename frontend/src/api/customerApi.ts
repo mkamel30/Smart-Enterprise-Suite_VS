@@ -60,5 +60,9 @@ export const customerApi = {
             method: 'POST',
             body: formData,
         });
+    },
+
+    exportCustomers: () => {
+        return downloadFile('/customers/export', 'customers_export.xlsx');
     }
 };

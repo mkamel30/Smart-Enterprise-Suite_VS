@@ -197,86 +197,12 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ===================== API ROUTES =====================
 
-// Auth & User Routes (login endpoint has a stricter rate limiter)
-app.use('/api/auth', loginLimiter, require('./routes/auth'));
-app.use('/api/mfa', require('./routes/mfa'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/user', require('./routes/user-preferences'));
+// Load all modules via centralized module loader
+const apiModules = require('./src/modules/index');
+app.use('/api', apiModules);
 
-// Main Routes
-app.use('/api/dashboard', require('./routes/dashboard'));
-app.use('/api/executive-dashboard', require('./routes/executive-dashboard'));
-app.use('/api/customers', require('./routes/customers'));
-app.use('/api/technicians', require('./routes/technicians'));
-app.use('/api', require('./routes/requests'));
-app.use('/api/payments', require('./routes/payments'));
-app.use('/api/pending-payments', require('./routes/pending-payments'));
-app.use('/api/finance', require('./routes/finance')); // NEW: Finance Dashboard Routes
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/audit-logs', require('./routes/audit-logs'));
-
-// Settings & Configuration
-app.use('/api/branches', require('./routes/branches'));
-
-// Permissions management - full route
-app.use('/api/permissions', require('./routes/permissions'));
-
-// Inventory & Warehouse
-app.use('/api', require('./routes/inventory'));
-app.use('/api/spare-parts', require('./routes/warehouse'));
-app.use('/api/warehouse-machines', require('./routes/warehouse-machines'));
-app.use('/api/warehouse-sims', require('./routes/warehouseSims'));
-app.use('/api/admin-store', require('./routes/admin-store'));
-
-// Machines & SimCards
-app.use('/api', require('./routes/machines'));
-app.use('/api/machine-workflow', require('./routes/machine-workflow'));
-app.use('/api', require('./routes/machine-history'));
-app.use('/api', require('./routes/repair-count'));
-app.use('/api', require('./routes/stats'));
-
-// Mount settings at /api to expose /api/machine-parameters correctly
-app.use('/api', require('./routes/settings'));
-app.use('/api', require('./routes/simcards'));
-
-// Sales
-app.use('/api/sales', require('./routes/sales'));
-
-// Transfers
-app.use('/api/transfer-orders', require('./routes/transfer-orders'));
-
-// Maintenance workflows
-app.use('/api/maintenance', require('./routes/maintenance'));
-app.use('/api/maintenance-approvals', require('./routes/maintenance-approvals'));
-app.use('/api/maintenance', require('./routes/maintenance-reports'));
-app.use('/api/service-assignments', require('./routes/service-assignments'));
-app.use('/api/approvals', require('./routes/approvals'));
-app.use('/api/track-machines', require('./routes/track-machines'));
-app.use('/api/maintenance-center', require('./routes/maintenance-center'));
-
-// Notifications
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/push', require('./routes/push-notifications'));
-
-// Utilities
-app.use('/api/ai', require('./routes/ai'));
-app.use('/api/backup', require('./routes/backup'));
-app.use('/api/db', require('./routes/db'));
-app.use('/api/db-health', require('./routes/db-health'));
-
-// Self-test / Health-check route
-app.use('/api/dev/self-test', require('./routes/self-test'));
-
-// Redirect /api/reports/executive to /api/executive-dashboard for frontend compatibility
-app.get('/api/reports/executive', authenticateToken, (req, res) => {
-  res.redirect(307, `/api/executive-dashboard?${new URLSearchParams(req.query).toString()}`);
-});
-
-// ===================== HEALTH CHECK =====================
-
-app.use('/health', require('./routes/health'));
-app.use('/api/health', require('./routes/health'));
+// Root health check
+app.use('/health', require('./src/modules/system/health.routes'));
 
 // ===================== ERROR HANDLING =====================
 
@@ -318,7 +244,7 @@ socketManager.init(server, {
 // ===================== SCHEDULED TASKS =====================
 
 // Initialize metrics cache on startup
-const metricsCache = require('./services/metricsCache');
+const metricsCache = require('./src/modules/shared/metricsCache.service');
 metricsCache.initializeCache().catch(err => {
   logger.warn({ error: err.message }, 'Initial metrics cache failed - will retry on schedule');
 });
@@ -334,9 +260,9 @@ cron.schedule('*/5 * * * *', async () => {
   }
 });
 
-// Daily backup at 2 AM
+// Daily backup at 5:30 PM
 if (config.backup.enabled) {
-  cron.schedule(config.backup.schedule, async () => {
+  cron.schedule('30 17 * * *', async () => {
     logger.info('Running scheduled backup...');
     try {
       const backupService = require('./utils/backup');

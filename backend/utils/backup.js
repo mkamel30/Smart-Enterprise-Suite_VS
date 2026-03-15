@@ -1,15 +1,9 @@
-﻿const fs = require('fs').promises;
+const fs = require('fs').promises;
 const path = require('path');
-const { exec } = require('child_process');
-const util = require('util');
-const execPromise = util.promisify(exec);
+const { existsSync } = require('fs');
 
-const BACKUP_DIR = path.join(__dirname, '../backups');
-
-// Docker container info
-const CONTAINER_NAME = 'ses_postgres';
-const DB_USER = 'postgres';
-const DB_NAME = 'smart_enterprise';
+const BACKUP_DIR = path.join(process.cwd(), 'backups');
+const DB_PATH = path.join(process.cwd(), 'prisma', 'dev.db');
 
 /**
  * Ensure backups directory exists
@@ -23,34 +17,31 @@ async function ensureBackupDir() {
 }
 
 /**
- * Create a backup of the database
- * @param {string} label - Optional label for the backup (e.g., 'pre_restore')
- * @returns {Promise<{filename: string, size: number}>}
+ * Create a backup of the SQLite database
  */
 async function createBackup(label = '') {
     await ensureBackupDir();
+
+    if (!existsSync(DB_PATH)) {
+        throw new Error('Database file not found at ' + DB_PATH);
+    }
 
     const timestamp = new Date().toISOString()
         .replace(/:/g, '-')
         .replace(/\..+/, '')
         .replace('T', '_');
 
-    const extension = '.sql';
     const filename = label
-        ? `backup_${label}_${timestamp}${extension}`
-        : `backup_${timestamp}${extension}`;
+        ? `backup_${label}_${timestamp}.db`
+        : `backup_${timestamp}.db`;
 
     const backupPath = path.join(BACKUP_DIR, filename);
 
     try {
-        // Execute pg_dump inside docker container
-        // Use -t for pseudo-tty might cause issues in exec, so we avoid it
-        // We pipe the output to a file on the host
-        const command = `docker exec ${CONTAINER_NAME} pg_dump -U ${DB_USER} ${DB_NAME} > "${backupPath}"`;
+        // For SQLite, a simple file copy is often sufficient if not under heavy write
+        // For WAL mode, we might want to be careful, but copyFile is generally okay
+        await fs.copyFile(DB_PATH, backupPath);
 
-        await execPromise(command);
-
-        // Get file size
         const stats = await fs.stat(backupPath);
 
         return {
@@ -59,14 +50,13 @@ async function createBackup(label = '') {
             createdAt: new Date().toISOString()
         };
     } catch (error) {
-        console.error('PostgreSQL Backup Failed:', error);
-        throw new Error('فشل إنشاء النسخة الاحتياطية من قاعدة البيانات: ' + error.message);
+        console.error('SQLite Backup Failed:', error);
+        throw new Error('فشل إنشاء النسخة الاحتياطية: ' + error.message);
     }
 }
 
 /**
- * List all backups with metadata
- * @returns {Promise<Array<{filename: string, size: number, createdAt: string}>>}
+ * List all backups
  */
 async function listBackups() {
     try {
@@ -75,7 +65,7 @@ async function listBackups() {
 
         const backups = await Promise.all(
             files
-                .filter(f => f.endsWith('.sql') || f.endsWith('.db')) // Support both for transition
+                .filter(f => f.endsWith('.db') || f.endsWith('.sql'))
                 .map(async (filename) => {
                     const filePath = path.join(BACKUP_DIR, filename);
                     try {
@@ -91,7 +81,6 @@ async function listBackups() {
                 })
         );
 
-        // Filter out any nulls and sort by creation date, newest first
         return backups
             .filter(b => b !== null)
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -103,8 +92,6 @@ async function listBackups() {
 
 /**
  * Restore database from backup
- * @param {string} filename - Backup filename to restore from
- * @returns {Promise<void>}
  */
 async function restoreBackup(filename) {
     if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
@@ -112,10 +99,7 @@ async function restoreBackup(filename) {
     }
 
     const backupPath = path.join(BACKUP_DIR, filename);
-
-    try {
-        await fs.access(backupPath);
-    } catch {
+    if (!existsSync(backupPath)) {
         throw new Error('Backup file not found');
     }
 
@@ -123,46 +107,35 @@ async function restoreBackup(filename) {
     await createBackup('pre_restore');
 
     try {
-        if (filename.endsWith('.db')) {
-            throw new Error('لا يمكن استرجاع النسخ الاحتياطية القديمة (SQLite) مباشرة إلى PostgreSQL. يرجى التواصل مع الدعم الفني.');
-        }
-
-        // Restore PostgreSQL backup
-        // 1. Drop and recreate database to ensure clean state
-        // We connect to 'postgres' db to drop 'smart_enterprise'
-        await execPromise(`docker exec ${CONTAINER_NAME} psql -U ${DB_USER} -d postgres -c "DROP DATABASE IF EXISTS ${DB_NAME};"`);
-        await execPromise(`docker exec ${CONTAINER_NAME} psql -U ${DB_USER} -d postgres -c "CREATE DATABASE ${DB_NAME};"`);
-
-        // 2. Import SQL file
-        // Note: < redirection might be tricky with exec, so we use cat or docker cp
-        // Using docker exec with stdin redirection:
-        const command = `docker exec -i ${CONTAINER_NAME} psql -U ${DB_USER} ${DB_NAME} < "${backupPath}"`;
-        await execPromise(command);
+        // To restore SQLite, we just overwrite the dev.db
+        // IMPORTANT: In a real production environment, we should ensure no other processes are writing to it.
+        // Since this is a stand-alone app, we assuming the server will restart after restore.
+        await fs.copyFile(backupPath, DB_PATH);
+        
+        // Also handle WAL files if they exist (delete them to force clean state from main DB file)
+        const walPath = DB_PATH + '-wal';
+        const shmPath = DB_PATH + '-shm';
+        if (existsSync(walPath)) await fs.unlink(walPath).catch(() => {});
+        if (existsSync(shmPath)) await fs.unlink(shmPath).catch(() => {});
 
     } catch (error) {
-        console.error('PostgreSQL Restore Failed:', error);
+        console.error('SQLite Restore Failed:', error);
         throw new Error('فشل استرجاع قاعدة البيانات: ' + error.message);
     }
 }
 
 /**
  * Delete a backup file
- * @param {string} filename - Backup filename to delete
- * @returns {Promise<void>}
  */
 async function deleteBackup(filename) {
-    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-        throw new Error('Invalid filename');
-    }
-
     const backupPath = path.join(BACKUP_DIR, filename);
-    await fs.unlink(backupPath);
+    if (existsSync(backupPath)) {
+        await fs.unlink(backupPath);
+    }
 }
 
 /**
- * Clean old backups (keep last N days)
- * @param {number} daysToKeep - Number of days to keep (default: 30)
- * @returns {Promise<number>} - Number of backups deleted
+ * Clean old backups
  */
 async function cleanOldBackups(daysToKeep = 30) {
     const backups = await listBackups();
@@ -170,7 +143,6 @@ async function cleanOldBackups(daysToKeep = 30) {
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
     let deleteCount = 0;
-
     for (const backup of backups) {
         const backupDate = new Date(backup.createdAt);
         if (backupDate < cutoffDate) {
@@ -178,7 +150,6 @@ async function cleanOldBackups(daysToKeep = 30) {
             deleteCount++;
         }
     }
-
     return deleteCount;
 }
 

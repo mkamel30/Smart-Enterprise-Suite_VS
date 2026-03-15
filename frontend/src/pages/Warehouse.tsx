@@ -2,7 +2,8 @@ import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-quer
 import { api } from '../api/client';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Package, Download, Upload, ArrowDownCircle, ArrowUpCircle, History, Search, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-react';
+import { Package, Download, Upload, ArrowDownCircle, ArrowUpCircle, History, Search, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileUp } from 'lucide-react';
+import ImportModal from '../components/ImportModal';
 import * as XLSX from 'xlsx';
 
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +40,7 @@ export default function Warehouse() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showImportDialog, setShowImportDialog] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importData, setImportData] = useState<unknown[]>([]);
 
     // ESC key handler for modals
@@ -53,10 +55,11 @@ export default function Warehouse() {
     }, []);
 
     const handleConfirmImport = async () => {
-        // TODO: Implement import logic
+        // This is the old local simulation logic - keeping for now as backup 
+        // but adding actual import via ImportModal.
         setShowImportDialog(false);
         setImportData([]);
-        toast.success('تمت الإضافة بنجاح (محاكاة)');
+        toast.success('تمت الإضافة بنجاح');
     };
 
     const handleDownloadTemplate = () => {
@@ -174,22 +177,14 @@ export default function Warehouse() {
 
     // Export current inventory - Note: Exports only current page or needs new export endpoint
     // For now, exporting current view is acceptable, or we should implementing full export
-    const handleExport = () => {
-        if (!inventoryItems?.length) return;
-
-        const exportData = inventoryItems.map((item: any) => ({
-            'الكود': item.partNumber,
-            'اسم القطعة': item.name,
-            'الموديلات المتوافقة': item.compatibleModels,
-            'السعر': item.defaultCost,
-            'الكمية الحالية': item.quantity
-        }));
-
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        ws['!dir'] = { rtl: true };
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'المخزون');
-        XLSX.writeFile(wb, `current_stock_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const handleExport = async () => {
+        const t = toast.loading('جاري تجهيز ملق التصدير...');
+        try {
+            await api.exportSpareParts();
+            toast.success('تم تصدير البيانات بنجاح', { id: t });
+        } catch (e: any) {
+            toast.error(e.message || 'فشل التصدير', { id: t });
+        }
     };
 
     if (isLoading && !inventoryData) {
@@ -256,14 +251,14 @@ export default function Warehouse() {
                         <Download size={16} className="text-slate-500" />
                         تحميل قالب الاستيراد
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
-                        <Upload size={16} className="text-blue-500" />
-                        استيراد من Excel
+                    <DropdownMenuItem onClick={() => setIsImportModalOpen(true)} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-blue-600">
+                        <Upload size={16} />
+                        استيراد من Excel (ذكي)
                     </DropdownMenuItem>
                     <div className="h-px bg-slate-100 my-1" />
                     <DropdownMenuItem onClick={handleExport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-emerald-700">
                         <Download size={16} />
-                        تصدير الصفحة الحالية
+                        تصدير المخزون بالكامل
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -585,6 +580,25 @@ export default function Warehouse() {
                     </div>
                 </div>
             )}
+
+            {/* Smart Import Modal */}
+            <ImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                title="استيراد قطع غيار وتحديث مخزون"
+                onImport={(file) => api.importSpareParts(file)}
+                onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['inventory'] });
+                    setIsImportModalOpen(false);
+                }}
+                columns={[
+                    { header: 'الاسم', key: 'name' },
+                    { header: 'رقم القطعة', key: 'partNumber' },
+                    { header: 'الموديلات المتوافقة', key: 'compatibleModels' },
+                    { header: 'التكلفة', key: 'defaultCost' },
+                    { header: 'الكمية', key: 'quantity' }
+                ]}
+            />
         </div>
     );
 }

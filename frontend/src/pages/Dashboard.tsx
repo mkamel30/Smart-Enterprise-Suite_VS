@@ -9,8 +9,6 @@ import {
     Wrench,
     TrendingUp,
     Filter,
-    Monitor,
-    Smartphone,
     ArrowRightLeft,
     FileBarChart,
     Calendar,
@@ -30,6 +28,7 @@ import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../lib/permissions';
 import { PerformanceReportModal } from '../components/PerformanceReportModal';
 import PageHeader from '../components/PageHeader';
+import TutorialHints from '../components/TutorialHints';
 
 // Components
 import StatCard from '../components/dashboard/StatCard';
@@ -69,10 +68,8 @@ export default function Dashboard() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [showPerformanceReport, setShowPerformanceReport] = useState(false);
 
-    const isAdmin = !user?.branchId || ['SUPER_ADMIN', 'MANAGEMENT'].includes(user?.role as string);
-    const isAffairs = user?.role === ROLES.ADMIN_AFFAIRS;
-    const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH'].includes(user?.role as any);
-    const showOperationalButtons = [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.TECHNICIAN].includes(user?.role as any);
+    const isAdmin = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'MANAGEMENT'].includes(user?.role as string);
+    const showOperationalButtons = [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.TECHNICIAN].includes(user?.role as any);
 
     const getQueryParams = () => {
         const params: any = { period, year: selectedYear };
@@ -168,15 +165,13 @@ export default function Dashboard() {
                             </button>
                         </>
                     )}
-                    {!isAffairs && (
-                        <button onClick={() => setShowPerformanceReport(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-success text-white px-4 py-2 rounded-xl hover:shadow-lg font-bold">
-                            <FileBarChart size={20} /> <span className="whitespace-nowrap">تقرير أداء الصيانة</span>
-                        </button>
-                    )}
+                    <button onClick={() => setShowPerformanceReport(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-success text-white px-4 py-2 rounded-xl hover:shadow-lg font-bold">
+                        <FileBarChart size={20} /> <span className="whitespace-nowrap">تقرير أداء الصيانة</span>
+                    </button>
                 </>}
             />
 
-            {isAdmin && (
+            {isAdmin && branches && branches.length > 1 && (
                 <div className="mb-4">
                     <div className="relative flex items-center gap-2 bg-white rounded-xl border-2 border-primary/10 px-4 py-2 shadow-sm flex-1 lg:flex-none">
                         <Filter size={18} className="text-primary/60" />
@@ -188,28 +183,13 @@ export default function Dashboard() {
                 </div>
             )}
 
+            <TutorialHints />
+
             <div className="smart-grid lg:grid-cols-4 mb-8">
-                {isCenterRole ? (
-                    <>
-                        <StatCard title="إيرادات الصيانة" value={`${stats?.maintenanceStats?.revenue?.toLocaleString() || 0} ج.م`} icon={<TrendingUp size={24} className="text-success" />} subtext="من قطع الغيار فقط" color="green" />
-                        <StatCard title="قطع غيار مدفوعة" value={stats?.maintenanceStats?.paidCount || 0} icon={<CheckCircle2 size={24} className="text-primary" />} subtext="تم تغييرها بمقابل" color="blue" />
-                        <StatCard title="قطع غيار مجانية" value={stats?.maintenanceStats?.freeCount || 0} icon={<Package size={24} className="text-warning" />} subtext="تم تغييرها بدون مقابل" color="orange" />
-                        <StatCard title="تنبيهات المخزون" value={stats?.inventory?.lowStock?.length || 0} icon={<Package size={24} className="text-destructive" />} subtext="قطع أوشكت على النفاد" color="red" onClick={() => navigate('/warehouse')} />
-                    </>
-                ) : isAffairs ? (
-                    <>
-                        <StatCard title="مخزون الماكينات" value={stats?.inventory?.machines || 0} icon={<Monitor size={24} className="text-primary" />} subtext="ماكينة في المخزن" color="blue" onClick={() => navigate('/warehouse-machines')} />
-                        <StatCard title="مخزون الشرائح" value={stats?.inventory?.sims || 0} icon={<Smartphone size={24} className="text-info" />} subtext="شريحة متاحة" color="purple" onClick={() => navigate('/warehouse-sims')} />
-                        <StatCard title="أذونات معلقة" value={stats?.alerts?.pendingTransfers || 0} icon={<ArrowRightLeft size={24} className="text-warning" />} subtext="تحتاج مراجعة" color="orange" onClick={() => navigate('/transfer-orders')} />
-                    </>
-                ) : (
-                    <>
-                        <StatCard title={`الإيرادات (${getPeriodLabel()})`} value={`${(stats?.revenue?.amount || 0).toLocaleString()} ج.م`} icon={<TrendingUp size={24} className="text-success" />} color="green" />
-                        <StatCard title="طلبات مفتوحة" value={stats?.requests?.open || 0} icon={<Wrench size={24} className="text-warning" />} subtext={`${stats?.requests?.inProgress || 0} جاري العمل`} color="orange" />
-                        <StatCard title="أقساط مستحقة" value={stats?.pendingInstallments?.totalCount || 0} icon={<AlertCircle size={24} className="text-destructive" />} subtext={`${(stats?.pendingInstallments?.totalAmount || 0).toLocaleString()} ج.م`} color="red" onClick={() => navigate('/receipts')} />
-                        <StatCard title="تنبيهات المخزون" value={stats?.inventory?.lowStock?.length || 0} icon={<Package size={24} className="text-info" />} subtext="قطع أوشكت على النفاد" color="purple" onClick={() => navigate('/warehouse')} />
-                    </>
-                )}
+                <StatCard title={`الإيرادات (${getPeriodLabel()})`} value={`${(stats?.revenue?.amount || 0).toLocaleString()} ج.م`} icon={<TrendingUp size={24} className="text-success" />} color="green" />
+                <StatCard title="طلبات مفتوحة" value={stats?.requests?.open || 0} icon={<Wrench size={24} className="text-warning" />} subtext={`${stats?.requests?.inProgress || 0} جاري العمل`} color="orange" />
+                <StatCard title="أقساط مستحقة" value={stats?.pendingInstallments?.totalCount || 0} icon={<AlertCircle size={24} className="text-destructive" />} subtext={`${(stats?.pendingInstallments?.totalAmount || 0).toLocaleString()} ج.م`} color="red" onClick={() => navigate('/receipts')} />
+                <StatCard title="تنبيهات المخزون" value={stats?.inventory?.lowStock?.length || 0} icon={<Package size={24} className="text-info" />} subtext="قطع أوشكت على النفاد" color="purple" onClick={() => navigate('/warehouse')} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -279,7 +259,7 @@ export default function Dashboard() {
 
                 <div className="space-y-4">
                     <RequestStatusPie data={requestData} totalActive={(stats?.requests?.open || 0) + (stats?.requests?.inProgress || 0)} colors={COLORS} />
-                    {!isCenterRole && <PendingInstallmentsCard installmentsData={stats?.pendingInstallments} periodLabel={getPeriodLabel()} />}
+                    <PendingInstallmentsCard installmentsData={stats?.pendingInstallments} periodLabel={getPeriodLabel()} />
                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                         <h3 className="font-bold text-base text-slate-800 flex items-center gap-2 mb-3">
                             <AlertCircle size={18} className="text-destructive" /> نواقص المخزون

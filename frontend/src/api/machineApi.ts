@@ -50,6 +50,13 @@ export const machineApi = {
 
     // Template & Import
     getWarehouseMachineTemplate: () => downloadFile('/warehouse-machines/template', 'warehouse_machines_template.xlsx'),
+    exportWarehouseMachines: (status?: string, branchId?: string) => {
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (branchId) params.append('branchId', branchId);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return downloadFile(`/warehouse-machines/export${query}`, `warehouse_machines_${status || 'all'}.xlsx`);
+    },
     importWarehouseMachines: (machines: any[], branchId: string, performedBy: string): Promise<any> =>
         request('/warehouse-machines/import', {
             method: 'POST',

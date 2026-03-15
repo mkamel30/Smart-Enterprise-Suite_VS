@@ -27,23 +27,9 @@ import SimWarehouse from './pages/SimWarehouse';
 import BranchesSettings from './pages/BranchesSettings';
 import TransferOrders from './pages/TransferOrders';
 import ReceiveOrders from './pages/ReceiveOrders';
-import Approvals from './pages/Approvals';
-// Service Center Workflow Pages
-import TechnicianDashboard from './pages/TechnicianDashboard';
-import MaintenanceShipments from './pages/MaintenanceShipments';
-import ShipmentDetail from './pages/ShipmentDetail';
-import MaintenanceApprovals from './pages/MaintenanceApprovals';
-import TrackMachines from './pages/TrackMachines';
 import PendingPayments from './pages/PendingPayments';
-import ExecutiveDashboard from './pages/ExecutiveDashboard';
 import ProductionReports from './pages/ProductionReports';
-// Maintenance Center Pages
-import MaintenanceCenter from './pages/MaintenanceCenter';
-import MaintenanceMachineDetail from './pages/MaintenanceMachineDetail';
 import AdminBackups from './pages/AdminBackups';
-import AdminStoreInventory from './pages/AdminStoreInventory';
-import AdminStoreSettings from './pages/AdminStoreSettings';
-import AdminAffairsDashboard from './pages/AdminAffairsDashboard';
 import AccountantDashboard from './pages/AccountantDashboard';
 import MonthlyClosing from './pages/MonthlyClosing';
 
@@ -78,8 +64,7 @@ function AppContent() {
                 <Route path="/" element={
                   ['SUPER_ADMIN', 'BRANCH_ADMIN'].includes(user?.role || '') ? <AdminDashboard /> :
                     user?.role === 'ACCOUNTANT' ? <AccountantDashboard /> :
-                      user?.role === 'ADMIN_AFFAIRS' ? <AdminAffairsDashboard /> :
-                        <Dashboard />
+                      <Dashboard />
                 } />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/customers" element={<Customers />} />
@@ -89,7 +74,7 @@ function AppContent() {
                 <Route path="/warehouse" element={<Warehouse />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/payments" element={
-                  <ProtectedRoute allowedRoles={['ACCOUNTANT', 'SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS', 'BRANCH_MANAGER']}>
+                  <ProtectedRoute allowedRoles={['ACCOUNTANT', 'SUPER_ADMIN', 'MANAGEMENT', 'BRANCH_MANAGER']}>
                     {user?.role === 'ACCOUNTANT' || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGEMENT' ? <AccountantDashboard /> : <Payments />}
                   </ProtectedRoute>
                 } />
@@ -99,51 +84,11 @@ function AppContent() {
                 <Route path="/branches" element={<BranchesSettings />} />
                 <Route path="/transfer-orders" element={<TransferOrders />} />
                 <Route path="/receive-orders" element={<ReceiveOrders />} />
-                <Route path="/approvals" element={<Approvals />} />
-                <Route path="/admin-store" element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS']}>
-                    <AdminStoreInventory />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin-store/settings" element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS']}>
-                    <AdminStoreSettings />
-                  </ProtectedRoute>
-                } />
-                {/* Service Center Workflow Routes */}
-                <Route path="/maintenance/shipments" element={
-                  <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN']}>
-                    <MaintenanceShipments />
-                  </ProtectedRoute>
-                } />
-                <Route path="/maintenance/shipments/:id" element={
-                  <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN']}>
-                    <ShipmentDetail />
-                  </ProtectedRoute>
-                } />
-                {/* Maintenance Center Routes */}
-                <Route path="/maintenance-center" element={
-                  <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN', 'MANAGEMENT']}>
-                    <MaintenanceCenter />
-                  </ProtectedRoute>
-                } />
-                <Route path="/maintenance-center/machine/:id" element={
-                  <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN', 'MANAGEMENT']}>
-                    <MaintenanceMachineDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/maintenance-approvals" element={<MaintenanceApprovals />} />
-                <Route path="/track-machines" element={<TrackMachines />} />
                 <Route path="/pending-payments" element={<PendingPayments />} />
-                <Route path="/executive-dashboard" element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT']}>
-                    <ExecutiveDashboard />
-                  </ProtectedRoute>
-                } />
                 <Route path="/production-reports" element={<ProductionReports />} />
                 <Route path="/monthly-closing" element={<MonthlyClosing />} />
                 <Route path="/admin/backups" element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT', 'BRANCH_ADMIN']}>
                     <AdminBackups />
                   </ProtectedRoute>
                 } />

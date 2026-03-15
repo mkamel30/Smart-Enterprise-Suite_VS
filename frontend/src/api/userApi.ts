@@ -1,5 +1,5 @@
 
-import { request } from './baseClient';
+import { request, downloadFile } from './baseClient';
 import type { Technician } from '../lib/types';
 
 export const userApi = {
@@ -19,4 +19,15 @@ export const userApi = {
 
     resetUserPassword: (id: string, newPassword: string) =>
         request(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ newPassword }) }),
+
+    importUsers: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return request<any>('/users/import', { method: 'POST', body: formData });
+    },
+
+    exportUsers: (params?: { branchId?: string; role?: string; isActive?: boolean }) => {
+        const query = new URLSearchParams(params as any).toString();
+        return downloadFile(`/users/export?${query}`, 'users_export.xlsx');
+    }
 };

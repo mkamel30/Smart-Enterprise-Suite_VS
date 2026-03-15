@@ -3,17 +3,17 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
   id                 String            @id @default(cuid())
-  uid                String?
-  email              String?
+  uid                String?           @unique
+  username           String?           @unique
+  email              String?           @unique
   displayName        String?
   role               String?           @default("CS_AGENT")
-  canDoMaintenance   Boolean           @default(false)
   password           String?
   theme              String?           @default("light")
   fontFamily         String?           @default("sans-serif")
@@ -55,11 +55,9 @@ model Branch {
   address                                         String?
   type                                            String                @default("BRANCH")
   isActive                                        Boolean               @default(true)
+  phone                                           String?
   parentBranchId                                  String?
-  maintenanceCenterId                             String?
   createdAt                                       DateTime              @default(now())
-  maintenanceCenter                               Branch?               @relation("Branch_maintenanceCenterIdToBranch", fields: [maintenanceCenterId], references: [id])
-  servicedBranches                                Branch[]              @relation("Branch_maintenanceCenterIdToBranch")
   parentBranch                                    Branch?               @relation("BranchHierarchy", fields: [parentBranchId], references: [id])
   childBranches                                   Branch[]              @relation("BranchHierarchy")
   customers                                       Customer[]
@@ -67,12 +65,10 @@ model Branch {
   inventory                                       InventoryItem[]
   machineMovementLogs                             MachineMovementLog[]
   machineSales                                    MachineSale[]
-  maintenanceApprovals                            MaintenanceApproval[]
   requests                                        MaintenanceRequest[]
   notifications                                   Notification[]
   payments                                        Payment[]
   posMachines                                     PosMachine[]
-  repairVouchers                                  RepairVoucher[]
   simCards                                        SimCard[]
   simMovementLogs                                 SimMovementLog[]
   stockMovements                                  StockMovement[]
@@ -83,8 +79,6 @@ model Branch {
   users                                           User[]
   warehouseMachines                               WarehouseMachine[]
   warehouseSims                                   WarehouseSim[]
-  adminStoreAssets                                AdminStoreAsset[]
-  adminStoreStocks                                AdminStoreStock[]
 }
 
 model Customer {
@@ -174,11 +168,9 @@ model MaintenanceRequest {
   usedParts           String?
   receiptNumber       String?
   totalCost           Float?               @default(0)
-  approval            MaintenanceApproval?
   branch              Branch?              @relation(fields: [branchId], references: [id])
   customer            Customer             @relation(fields: [customerId], references: [id])
   posMachine          PosMachine?          @relation(fields: [posMachineId], references: [id])
-  vouchers            RepairVoucher[]
   payments            Payment[]
   stockMovements      StockMovement[]
   warehouseMachines   WarehouseMachine[]
@@ -312,35 +304,6 @@ model SystemLog {
   branch      Branch?  @relation(fields: [branchId], references: [id])
 }
 
-model MaintenanceApproval {
-  id          String             @id @default(cuid())
-  requestId   String             @unique
-  cost        Float
-  parts       String
-  status      String             @default("PENDING")
-  notes       String?
-  branchId    String?
-  createdAt   DateTime           @default(now())
-  respondedAt DateTime?
-  respondedBy String?
-  branch      Branch?            @relation(fields: [branchId], references: [id])
-  request     MaintenanceRequest @relation(fields: [requestId], references: [id])
-}
-
-model RepairVoucher {
-  id        String             @id @default(cuid())
-  code      String             @unique
-  requestId String
-  type      String
-  parts     String
-  totalCost Float
-  branchId  String?
-  createdAt DateTime           @default(now())
-  createdBy String?
-  branch    Branch?            @relation(fields: [branchId], references: [id])
-  request   MaintenanceRequest @relation(fields: [requestId], references: [id])
-}
-
 model PasswordHistory {
   id           String   @id @default(cuid())
   userId       String
@@ -384,7 +347,7 @@ model BranchDebt {
   paidBy           String?
   paidByUserId     String?
   createdAt        DateTime  @default(now())
-  updatedAt        DateTime
+  updatedAt        DateTime  @updatedAt
 
   @@index([creditorBranchId, status])
   @@index([debtorBranchId, status])
@@ -430,30 +393,6 @@ model MachineSale {
   customer     Customer      @relation(fields: [customerId], references: [id])
 }
 
-model MaintenanceApprovalRequest {
-  id              String    @id @default(cuid())
-  assignmentId    String    @unique
-  machineSerial   String
-  customerId      String?
-  customerName    String
-  proposedParts   String
-  proposedTotal   Float
-  diagnosis       String?
-  notes           String?
-  status          String    @default("PENDING")
-  rejectionReason String?
-  respondedBy     String?
-  respondedById   String?
-  respondedAt     DateTime?
-  centerBranchId  String
-  originBranchId  String
-  createdAt       DateTime           @default(now())
-  assignment      ServiceAssignment @relation(fields: [assignmentId], references: [id])
-
-  @@index([centerBranchId, status])
-  @@index([originBranchId, status])
-}
-
 model Notification {
   id        String   @id @default(cuid())
   userId    String?
@@ -491,54 +430,6 @@ model RolePermission {
   createdAt      DateTime @default(now())
 
   @@unique([role, permissionType, permissionKey])
-}
-
-model ServiceAssignment {
-  id                   String                 @id @default(cuid())
-  machineId            String
-  serialNumber         String
-  technicianId         String
-  technicianName       String
-  status               String                 @default("UNDER_MAINTENANCE")
-  proposedParts        String?
-  proposedTotal        Float                  @default(0)
-  usedParts            String?
-  totalCost            Float                  @default(0)
-  needsApproval        Boolean                @default(false)
-  approvedAt           DateTime?
-  rejectedAt           DateTime?
-  rejectionReason      String?
-  actionTaken          String?
-  resolution           String?
-  assignedAt           DateTime               @default(now())
-  startedAt            DateTime?
-  completedAt          DateTime?
-  customerId           String?
-  customerName         String?
-  requestId            String?
-  branchId             String?
-  centerBranchId       String?
-  originBranchId       String
-  machine              WarehouseMachine            @relation(fields: [machineId], references: [id])
-  approvalRequest      MaintenanceApprovalRequest?
-  logs                 ServiceAssignmentLog[]
-
-  @@index([centerBranchId, status])
-  @@index([machineId, status])
-  @@index([originBranchId, status])
-}
-
-model ServiceAssignmentLog {
-  id                String            @id @default(cuid())
-  assignmentId      String
-  action            String
-  details           String?
-  performedBy       String
-  performedById     String?
-  performedAt       DateTime          @default(now())
-  assignment        ServiceAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-
-  @@index([assignmentId, performedAt])
 }
 
 model SimCard {
@@ -582,17 +473,6 @@ model WarehouseMachine {
   customerName          String?
   customerBkcode        String?
   readyForPickup        Boolean             @default(false)
-  currentAssignmentId   String?
-  currentTechnicianId   String?
-  currentTechnicianName String?
-  originBranchId        String?
-  proposedParts         String?
-  proposedRepairNotes   String?
-  proposedTotalCost     Float?              @default(0)
-  repairNotes           String?
-  totalCost             Float?              @default(0)
-  usedParts             String?
-  serviceAssignments    ServiceAssignment[]
   branch                Branch?             @relation(fields: [branchId], references: [id])
   customer              Customer?           @relation(fields: [customerId], references: [id])
   maintenanceRequest    MaintenanceRequest? @relation(fields: [requestId], references: [id])
@@ -621,103 +501,4 @@ model SystemSettings {
   sessionTimeout         Int      @default(3600)
   passwordExpirationDays Int      @default(90)
   updatedAt              DateTime @updatedAt
-}
-
-// --- Administrative Affairs Store Models ---
-
-
-model AdminStoreItemType {
-  id           String             @id @default(cuid())
-  code         String             @unique
-  name         String
-  description  String?
-  category     String             @default("MACHINE") // MACHINE, SIM, CONSUMABLE
-  isActive     Boolean            @default(true)
-  defaultUnit  String             @default("وحدة")
-  trackingMode String             @default("SERIAL_BASED") // SERIAL_BASED, QUANTITY_BASED
-  createdBy    String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  assets       AdminStoreAsset[]
-  cartons      AdminStoreCarton[]
-  stocks       AdminStoreStock[]  @relation("ItemStocks")
-  stockMovements AdminStoreStockMovement[] @relation("ItemStockMovements")
-}
-
-model AdminStoreCarton {
-  id                 String            @id @default(cuid())
-  cartonCode         String            @unique
-  itemTypeCode       String
-  itemType           AdminStoreItemType @relation(fields: [itemTypeCode], references: [code])
-  machinesCount      Int
-  isSerialContinuous Boolean           @default(false)
-  firstSerialNumber  String?
-  lastSerialNumber   String?
-  notes              String?
-  createdBy          String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  assets             AdminStoreAsset[]
-}
-
-model AdminStoreAsset {
-  id             String             @id @default(cuid())
-  itemTypeCode   String
-  itemType       AdminStoreItemType @relation(fields: [itemTypeCode], references: [code])
-  serialNumber   String             @unique
-  model          String?
-  manufacturer   String?
-  // SIM Card specific fields
-  simProvider    String?            // Vodafone, Orange, Etisalat, WE
-  simNetworkType String?            // 2G, 3G, 4G
-  
-  cartonCode     String?
-  carton         AdminStoreCarton?  @relation(fields: [cartonCode], references: [cartonCode])
-  status         String             @default("IN_ADMIN_STORE") // IN_ADMIN_STORE, TRANSFERRED, DISPOSED
-  branchId       String?            // Current location if transferred
-  branch         Branch?            @relation(fields: [branchId], references: [id])
-  notes          String?
-  createdBy      String?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  movements      AdminStoreMovement[]
-}
-
-model AdminStoreMovement {
-  id           String          @id @default(cuid())
-  assetId      String
-  asset        AdminStoreAsset @relation(fields: [assetId], references: [id])
-  type         String          // TRANSFER, STATUS_CHANGE, IMPORT
-  fromBranchId String?
-  toBranchId   String?
-  fromStatus   String?
-  toStatus     String?
-  notes        String?
-  performedBy  String?
-  createdAt    DateTime        @default(now())
-}
-
-model AdminStoreStock {
-  id           String             @id @default(cuid())
-  itemTypeCode String
-  itemType     AdminStoreItemType @relation("ItemStocks", fields: [itemTypeCode], references: [code])
-  branchId     String?            // NULL for Admin Store, or Branch ID if transferred
-  branch       Branch?            @relation(fields: [branchId], references: [id])
-  quantity     Int                @default(0)
-  updatedAt    DateTime           @updatedAt
-  
-  @@unique([itemTypeCode, branchId]) // One record per item type per location
-}
-
-model AdminStoreStockMovement {
-  id           String             @id @default(cuid())
-  itemTypeCode String
-  itemType     AdminStoreItemType @relation("ItemStockMovements", fields: [itemTypeCode], references: [code])
-  type         String             // IMPORT, TRANSFER, CONSUME
-  quantity     Int
-  fromBranchId String?
-  toBranchId   String?
-  notes        String?
-  performedBy  String?
-  createdAt    DateTime           @default(now())
 }

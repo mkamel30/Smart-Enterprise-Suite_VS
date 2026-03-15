@@ -125,6 +125,8 @@ class ApiClient {
     updateUser = userApi.updateUser;
     deleteUser = userApi.deleteUser;
     resetUserPassword = userApi.resetUserPassword;
+    importUsers = userApi.importUsers;
+    exportUsers = userApi.exportUsers;
 
     // Settings & Configuration
     getMachineParameters = settingsApi.getMachineParameters;
@@ -194,6 +196,7 @@ class ApiClient {
     getAvailableWarehouseMachines = machineApi.getAvailableWarehouseMachines;
     getWarehouseMachineTemplate = machineApi.getWarehouseMachineTemplate;
     importWarehouseMachines = machineApi.importWarehouseMachines;
+    exportWarehouseMachines = machineApi.exportWarehouseMachines;
     returnMachineToCustomer = machineApi.returnMachineToCustomer;
     repairMachineToStandby = machineApi.repairMachineToStandby;
     transitionMachineState = machineApi.transitionMachineState;
@@ -209,6 +212,9 @@ class ApiClient {
     deliverMachineToCustomer = warehouseApi.deliverMachineToCustomer;
     getReadyForPickupCount = warehouseApi.getReadyForPickupCount;
     bulkTransferMachines = warehouseApi.bulkTransferMachines;
+    importSpareParts = warehouseApi.importSpareParts;
+    exportSpareParts = warehouseApi.exportSpareParts;
+    downloadSparePartsTemplate = warehouseApi.downloadTemplate;
 
     // Transfers
     getTransferOrders = transferApi.getTransferOrders;

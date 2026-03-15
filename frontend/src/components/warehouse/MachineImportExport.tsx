@@ -10,12 +10,14 @@ import {
 interface MachineImportExportProps {
     onOpenImportModal: () => void;
     onDownloadTemplate: () => void;
+    onExport: () => void;
     isCenterManager: boolean;
 }
 
 export const MachineImportExport: React.FC<MachineImportExportProps> = ({
     onOpenImportModal,
     onDownloadTemplate,
+    onExport,
     isCenterManager
 }) => {
     if (isCenterManager) return null;
@@ -44,6 +46,16 @@ export const MachineImportExport: React.FC<MachineImportExportProps> = ({
                     >
                         <Upload size={16} />
                         استيراد من Excel
+                    </DropdownMenuItem>
+
+                    <div className="h-px bg-slate-100 my-1" />
+
+                    <DropdownMenuItem
+                        onClick={onExport}
+                        className="rounded-lg gap-2 cursor-pointer py-2 focus:bg-emerald-50 text-emerald-700"
+                    >
+                        <FileSpreadsheet size={16} />
+                        تصدير البيانات
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>

@@ -210,6 +210,16 @@ export default function MachineWarehouse() {
                     <MachineImportExport
                         onOpenImportModal={() => setModals(prev => ({ ...prev, import: true }))}
                         onDownloadTemplate={downloadTemplate}
+                        onExport={async () => {
+                            const t = toast.loading('جاري تجهيز الملف...');
+                            try {
+                                // For warehouse, we export based on current tab/status
+                                await api.exportWarehouseMachines(activeTab, filterBranchId || (activeBranchId as string));
+                                toast.success('تم التصدير بنجاح', { id: t });
+                            } catch (e: any) {
+                                toast.error(e.message || 'فشل التصدير', { id: t });
+                            }
+                        }}
                         isCenterManager={isCenterManager}
                     />
 

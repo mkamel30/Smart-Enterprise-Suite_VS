@@ -166,6 +166,15 @@ export default function Customers() {
                 branches={branches || []}
                 onImport={() => setModals({ ...modals, import: true })}
                 onDownloadTemplate={async () => { try { await api.getCustomerTemplate(); } catch (e: any) { toast.error(e.message); } }}
+                onExport={async () => {
+                    const t = toast.loading('جاري تجهيز ملف التصدير...');
+                    try {
+                        await api.exportCustomers();
+                        toast.success('تم تصدير البيانات بنجاح', { id: t });
+                    } catch (e: any) {
+                        toast.error(e.message || 'فشل التصدير', { id: t });
+                    }
+                }}
             />
 
             <Tabs value={viewTab} onValueChange={(v: any) => setViewTab(v)} className="space-y-8">

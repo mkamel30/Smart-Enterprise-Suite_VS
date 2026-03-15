@@ -30,7 +30,6 @@ import {
     Wrench,
     Eye,
     Truck,
-    TrendingUp,
     Database,
     CalendarCheck
 } from 'lucide-react';
@@ -56,10 +55,7 @@ const allNavItems: NavItem[] = [
     {
         label: 'لوحات التحكم',
         icon: LayoutDashboard,
-        children: [
-            { path: '/', label: 'لوحة التحكم الرئيسية', icon: LayoutDashboard },
-            { path: '/executive-dashboard', label: 'لوحة الإدارة العليا', icon: TrendingUp },
-        ]
+        path: '/'
     },
     // 2. الصيانة
     {
@@ -67,11 +63,6 @@ const allNavItems: NavItem[] = [
         icon: Wrench,
         children: [
             { path: '/requests', label: 'طلبات الصيانة', icon: ClipboardList },
-            { path: '/maintenance/shipments', label: 'الشحنات الواردة', icon: Truck },
-            { path: '/maintenance-center', label: 'مركز الصيانة', icon: Wrench },
-            { path: '/maintenance-approvals', label: 'موافقات الصيانة', icon: CheckCircle },
-            { path: '/track-machines', label: 'متابعة الماكينات', icon: Eye },
-            { path: '/pending-payments', label: 'المستحقات المعلقة', icon: Wallet },
         ]
     },
     // 3. العملاء والمبيعات
@@ -96,16 +87,7 @@ const allNavItems: NavItem[] = [
             { path: '/receive-orders', label: 'استلام الأذونات', icon: Package },
         ]
     },
-    // 5. الشئون الإدارية
-    {
-        label: 'الشئون الإدارية',
-        icon: Building,
-        children: [
-            { path: '/admin-store', label: 'المخزن الإداري', icon: Package },
-            { path: '/admin-store/settings', label: 'الإعدادات الإدارية', icon: Settings },
-        ]
-    },
-    // 6. الإدارة والتقارير
+    // 5. الإدارة والتقارير
     {
         label: 'الإدارة والتقارير',
         icon: Settings,
@@ -113,7 +95,6 @@ const allNavItems: NavItem[] = [
             { path: '/reports', label: 'التقارير', icon: BarChart3 },
             { path: '/monthly-closing', label: 'إقفال الشهر', icon: CalendarCheck },
             { path: '/technicians', label: 'المستخدمين', icon: UserCircle },
-            { path: '/approvals', label: 'الموافقات', icon: CheckCircle },
             { path: '/admin/backups', label: 'النسخ الاحتياطية', icon: Database },
             { path: '/branches', label: 'المكاتب والفروع', icon: Building },
             { path: '/settings', label: 'الإعدادات', icon: Settings },
@@ -140,8 +121,7 @@ export default function Layout({ children }: LayoutProps) {
     const navItems = useMemo(() => {
         const userRole = user?.role || null;
 
-        // Initial filtering based on permissions
-        const items = allNavItems.map(item => {
+        return allNavItems.map(item => {
             if ('children' in item) {
                 const filteredChildren = item.children.filter(child =>
                     canAccessRoute(userRole, child.path)
@@ -154,34 +134,6 @@ export default function Layout({ children }: LayoutProps) {
             }
             return null;
         }).filter((item): item is NavItem => item !== null);
-
-        // Specialized structural regrouping for Administrative Affairs role
-        if (userRole === 'ADMIN_AFFAIRS') {
-            const adminGroup = items.find(i => i.label === 'مركز الإدارة والمخازن' || i.label === 'الشئون الإدارية') as NavGroup;
-            const warehouseGroup = items.find(i => i.label === 'المخازن والنقل') as NavGroup;
-
-            if (adminGroup && warehouseGroup) {
-                adminGroup.label = 'مركز الإدارة والمخازن';
-                adminGroup.children = [
-                    { path: '/', label: 'لوحة التحكم الإدارية', icon: LayoutDashboard },
-                    { path: '/admin-store', label: 'المخزن الإداري (الرئيسي)', icon: Package },
-                    { path: '/transfer-orders', label: 'أذونات الصرف والتحويل', icon: FileText },
-                    { path: '/admin-store/settings', label: 'الإعدادات والتصنيفات', icon: Settings },
-                ];
-                // Remove the redundant general warehouse group
-                return items.filter(i => i.label !== 'المخازن والنقل');
-            }
-        }
-
-        // Limit sidebar for SUPER_ADMIN as requested
-        if (userRole === 'SUPER_ADMIN') {
-            return items.filter(i =>
-                i.label === 'لوحات التحكم' ||
-                i.label === 'الإدارة والتقارير'
-            );
-        }
-
-        return items;
     }, [user?.role]);
 
     // State for expanded groups
@@ -202,12 +154,11 @@ export default function Layout({ children }: LayoutProps) {
     });
 
     // Fetch pending transfer orders count for badge
-    // Fetch pending transfer orders count for badge
     const { data: pendingOrders } = useQuery({
-        queryKey: ['pending-orders', activeBranchId], // Include branchId in key
+        queryKey: ['pending-orders', activeBranchId],
         queryFn: () => api.getPendingTransferOrders(activeBranchId || user?.branchId),
         refetchInterval: 30000,
-        enabled: !!(user && (activeBranchId || user?.branchId)) // Only fetch if we have a target branch
+        enabled: !!(user && (activeBranchId || user?.branchId))
     });
 
     const pendingOrdersCount = pendingOrders?.length || 0;
@@ -328,7 +279,6 @@ export default function Layout({ children }: LayoutProps) {
                             }
 
                             // Handle Single Item
-                            // Explicitly check for 'path' property to satisfy TypeScript
                             if (!('path' in item)) return null;
 
                             const isActive = location.pathname === item.path;

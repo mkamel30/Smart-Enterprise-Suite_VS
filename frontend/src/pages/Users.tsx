@@ -2,7 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Trash2, UserPlus, Key, Filter, Building, Pencil, Check, X, Mail, Lock, Shield, Briefcase } from 'lucide-react';
+import { Trash2, UserPlus, Key, Filter, Building, Pencil, Check, X, Mail, Lock, Shield, Briefcase, Download, Upload } from 'lucide-react';
+import ImportModal from '../components/ImportModal';
 import { useAuth } from '../context/AuthContext';
 import { useApiMutation } from '../hooks/useApiMutation';
 import { ROLES, BRANCH_TYPES, getRoleDisplayName, getAvailableRoles } from '../lib/permissions';
@@ -17,6 +18,7 @@ export default function Users() {
     const [showAddForm, setShowAddForm] = useState(false);
     const [userToDelete, setUserToDelete] = useState<any>(null);
     const [userToEdit, setUserToEdit] = useState<any>(null);
+    const [showImportModal, setShowImportModal] = useState(false);
 
     // New User State
     const [newUser, setNewUser] = useState({
@@ -50,10 +52,7 @@ export default function Users() {
 
     const allBranches = Array.isArray(branchesData) ? branchesData : ((branchesData as any)?.data || []);
 
-    // Derived lists for dropdowns
-    const branchesOnly = allBranches.filter((b: any) => b.type === BRANCH_TYPES.BRANCH);
-    const maintenanceCenters = allBranches.filter((b: any) => b.type === BRANCH_TYPES.MAINTENANCE_CENTER);
-    const adminAffairs = allBranches.filter((b: any) => b.type === BRANCH_TYPES.ADMIN_AFFAIRS);
+    const branchesOnly = allBranches.filter((b: any) => b.type === BRANCH_TYPES.BRANCH || !b.type);
 
     // Reset Password State
     const [resetPasswordState, setResetPasswordState] = useState<{ userId: string | null, displayName: string, show: boolean }>({ userId: null, displayName: '', show: false });
@@ -121,22 +120,26 @@ export default function Users() {
         }
     });
 
+    const handleImport = async (file: File) => {
+        return api.importUsers(file);
+    };
+
+    const handleExport = () => {
+        api.exportUsers({
+            branchId: filterBranchId || undefined
+        });
+    };
+
+    const userColumns = [
+        { header: 'الاسم', key: 'displayName' },
+        { header: 'البريد', key: 'email' },
+        { header: 'الدور', key: 'role' },
+        { header: 'كود الفرع', key: 'branchCode' },
+        { header: 'فني (نعم/لا)', key: 'canDoMaintenance' }
+    ];
+
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Validate based on role
-        if (([ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH] as string[]).includes(newUser.role) && !newUser.branchId) {
-            toast.error('يرجى اختيار الفرع');
-            return;
-        }
-        if (([ROLES.CENTER_MANAGER, ROLES.CENTER_TECH] as string[]).includes(newUser.role) && !newUser.branchId) {
-            toast.error('يرجى اختيار مركز الصيانة');
-            return;
-        }
-        if (newUser.role === ROLES.ADMIN_AFFAIRS && !newUser.branchId) {
-            toast.error('يرجى اختيار فرع الشئون الإدارية');
-            return;
-        }
 
         createMutation.mutate(newUser);
     };
@@ -158,35 +161,17 @@ export default function Users() {
             return null; // Global roles don't need branch
         }
 
-        let options: any[] = [];
-        let label = '';
-        let placeholder = '';
-
-        if (([ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH] as string[]).includes(role)) {
-            options = branchesOnly;
-            label = 'الفرع';
-            placeholder = 'اختر الفرع';
-        } else if (([ROLES.CENTER_MANAGER, ROLES.CENTER_TECH] as string[]).includes(role)) {
-            options = maintenanceCenters;
-            label = 'مركز الصيانة';
-            placeholder = 'اختر المركز';
-        } else if (role === ROLES.ADMIN_AFFAIRS) {
-            options = adminAffairs;
-            label = 'مكتب الشئون الإدارية';
-            placeholder = 'اختر المكتب';
-        }
-
         return (
             <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-primary mb-2 mr-1">{label}</label>
+                <label className="block text-xs font-black uppercase tracking-widest text-primary mb-2 mr-1">الفرع</label>
                 <select
                     value={newUser.branchId}
                     onChange={(e) => setNewUser({ ...newUser, branchId: e.target.value })}
                     className="smart-select"
                     required
                 >
-                    <option value="">{placeholder}</option>
-                    {options.map((b: any) => (
+                    <option value="">اختر الفرع</option>
+                    {branchesOnly.map((b: any) => (
                         <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                 </select>
@@ -201,35 +186,17 @@ export default function Users() {
             return null;
         }
 
-        let options: any[] = [];
-        let label = '';
-        let placeholder = '';
-
-        if (([ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH] as string[]).includes(role)) {
-            options = branchesOnly;
-            label = 'الفرع';
-            placeholder = 'اختر الفرع';
-        } else if (([ROLES.CENTER_MANAGER, ROLES.CENTER_TECH] as string[]).includes(role)) {
-            options = maintenanceCenters;
-            label = 'مركز الصيانة';
-            placeholder = 'اختر المركز';
-        } else if (role === ROLES.ADMIN_AFFAIRS) {
-            options = adminAffairs;
-            label = 'مكتب الشئون الإدارية';
-            placeholder = 'اختر المكتب';
-        }
-
         return (
             <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-primary mb-2 mr-1">{label}</label>
+                <label className="block text-xs font-black uppercase tracking-widest text-primary mb-2 mr-1">الفرع</label>
                 <select
                     value={userToEdit.branchId || ''}
                     onChange={(e) => setUserToEdit({ ...userToEdit, branchId: e.target.value })}
                     className="smart-select"
                     required
                 >
-                    <option value="">{placeholder}</option>
-                    {options.map((b: any) => (
+                    <option value="">اختر الفرع</option>
+                    {branchesOnly.map((b: any) => (
                         <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                 </select>
@@ -255,6 +222,20 @@ export default function Users() {
 
     const actionElements = (
         <div className="flex items-center gap-3">
+            <button
+                onClick={handleExport}
+                className="flex items-center gap-2 bg-white text-emerald-600 border-2 border-emerald-100 px-4 py-2 rounded-xl hover:bg-emerald-50 transition-all font-black text-xs"
+            >
+                <Download size={18} />
+                تصدير
+            </button>
+            <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-2 bg-white text-blue-600 border-2 border-blue-100 px-4 py-2 rounded-xl hover:bg-blue-50 transition-all font-black text-xs"
+            >
+                <Upload size={18} />
+                استيراد
+            </button>
             <span className="hidden sm:inline-flex bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-black border border-blue-200">
                 {users?.length || 0} مستخدم
             </span>
@@ -588,7 +569,7 @@ export default function Users() {
                                         </div>
                                     </div>
 
-                                    {([ROLES.CENTER_TECH, ROLES.BRANCH_TECH, ROLES.CS_AGENT, ROLES.CS_SUPERVISOR] as string[]).includes(newUser.role) && (
+                                    {([ROLES.BRANCH_TECH, ROLES.CS_AGENT, ROLES.CS_SUPERVISOR] as string[]).includes(newUser.role) && (
                                         <div
                                             className={`group flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-sm hover:shadow-md ${newUser.canDoMaintenance
                                                 ? 'bg-blue-50/50 border-primary/30 ring-4 ring-primary/5'
@@ -734,7 +715,7 @@ export default function Users() {
                                         </div>
                                     </div>
 
-                                    {([ROLES.CENTER_TECH, ROLES.BRANCH_TECH, ROLES.CS_AGENT, ROLES.CS_SUPERVISOR] as string[]).includes(userToEdit.role) && (
+                                    {([ROLES.BRANCH_TECH, ROLES.CS_AGENT, ROLES.CS_SUPERVISOR] as string[]).includes(userToEdit.role) && (
                                         <div
                                             className={`group flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-sm hover:shadow-md ${userToEdit.canDoMaintenance
                                                 ? 'bg-blue-50/50 border-primary/30 ring-4 ring-primary/5'
@@ -903,6 +884,18 @@ export default function Users() {
                 }}
                 onCancel={() => setUserToDelete(null)}
                 type="danger"
+            />
+
+            <ImportModal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                title="استيراد مستخدمين من Excel"
+                onImport={handleImport}
+                onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['users'] });
+                    setShowImportModal(false);
+                }}
+                columns={userColumns}
             />
         </div>
     );

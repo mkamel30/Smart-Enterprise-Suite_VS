@@ -8,18 +8,11 @@ export const ROLES = {
     // إدارة النظام
     SUPER_ADMIN: 'SUPER_ADMIN',       // مدير النظام - كل الصلاحيات
     MANAGEMENT: 'MANAGEMENT',          // الإدارة العليا
-    BRANCH_ADMIN: 'BRANCH_ADMIN',      // إدارة الفروع
+    BRANCH_ADMIN: 'BRANCH_ADMIN',      // إدارة الفرع (أدمن الفرع)
     ACCOUNTANT: 'ACCOUNTANT',          // الحسابات
 
-    // الشئون الإدارية
-    ADMIN_AFFAIRS: 'ADMIN_AFFAIRS',    // موظف الشئون الإدارية
-
-    // مركز الصيانة
-    CENTER_MANAGER: 'CENTER_MANAGER',  // مدير مركز الصيانة
-    CENTER_TECH: 'CENTER_TECH',        // فني مركز الصيانة
-
     // الفرع - Customer Service
-    BRANCH_MANAGER: 'BRANCH_MANAGER',  // مدير الفرع (Legacy - يُعامل كـ مشرف خدمة عملاء)
+    BRANCH_MANAGER: 'BRANCH_MANAGER',  // مدير الفرع
     CS_SUPERVISOR: 'CS_SUPERVISOR',    // مشرف خدمة العملاء
     CS_AGENT: 'CS_AGENT',              // موظف خدمة العملاء
     BRANCH_TECH: 'BRANCH_TECH',        // فني الفرع
@@ -31,10 +24,13 @@ export const ROLES = {
 // Legacy role mapping
 export const LEGACY_ROLE_MAP: Record<string, string> = {
     'Admin': ROLES.SUPER_ADMIN,
-    'Technician': ROLES.CS_AGENT, // Map old technicians to CS_AGENT
+    'Technician': ROLES.CS_AGENT,
     'admin': ROLES.SUPER_ADMIN,
     'technician': ROLES.CS_AGENT,
-    'TECHNICIAN': ROLES.CS_AGENT
+    'TECHNICIAN': ROLES.CS_AGENT,
+    'CENTER_MANAGER': ROLES.BRANCH_ADMIN,
+    'CENTER_TECH': ROLES.BRANCH_TECH,
+    'ADMIN_AFFAIRS': ROLES.BRANCH_ADMIN
 };
 
 // Normalize role (handle legacy roles)
@@ -45,18 +41,14 @@ export const normalizeRole = (role?: string | null): string => {
 
 // Branch types
 export const BRANCH_TYPES = {
-    BRANCH: 'BRANCH',
-    MAINTENANCE_CENTER: 'MAINTENANCE_CENTER',
-    ADMIN_AFFAIRS: 'ADMIN_AFFAIRS'
+    BRANCH: 'BRANCH'
 } as const;
 
-// All branch/CS roles (for easier permission management)
-const ALL_BRANCH_ROLES = [ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH];
-const SUPERVISOR_AND_ABOVE = [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR];
+// All branch roles
+const ALL_BRANCH_ROLES = [ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH];
+const SUPERVISOR_AND_ABOVE = [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR];
 const ALL_SYSTEM_ROLES = [
     ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN, ROLES.ACCOUNTANT,
-    ROLES.ADMIN_AFFAIRS,
-    ROLES.CENTER_MANAGER, ROLES.CENTER_TECH,
     ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
 ];
 
@@ -65,110 +57,44 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
     // Dashboard - everyone
     '/': ALL_SYSTEM_ROLES,
 
-    // Executive Dashboard - Management only
-    '/executive-dashboard': [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN],
+    // Maintenance requests
+    '/requests': ALL_BRANCH_ROLES,
 
-    // Maintenance requests - branches and supervisors only
-    '/requests': [
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
-
-    // Maintenance Shipments - Center only
-    '/maintenance/shipments': [
-        ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ROLES.CENTER_TECH
-    ],
-
-    // Maintenance Center - Center only (replaces maintenance-board)
-    '/maintenance-center': [
-        ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ROLES.CENTER_TECH
-    ],
-    '/maintenance-center/machine/:id': [
-        ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ROLES.CENTER_TECH
-    ],
-
-    // Assignments - Center only (all center users)
-    '/assignments': [
-        ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ROLES.CENTER_TECH
-    ],
-
-    // Maintenance Approvals - Branches only
-    '/maintenance-approvals': [
-        ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR
-    ],
-
-    // Track Machines - Branches only (to track their machines at center)
-    '/track-machines': [
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
-
-    // Pending Payments - Branches Only
-    '/pending-payments': [
-        ROLES.SUPER_ADMIN,
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR
-    ],
-
-    // Customers - branches
-    '/customers': [
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
+    // Customers
+    '/customers': ALL_BRANCH_ROLES,
 
     // Warehouse - Spare parts
-    '/warehouse': [
-        ROLES.CENTER_MANAGER, ROLES.CENTER_TECH,
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
+    '/warehouse': ALL_BRANCH_ROLES,
 
     // Warehouse - Machines
-    '/warehouse-machines': [
-        ROLES.ADMIN_AFFAIRS,
-        ROLES.CENTER_MANAGER,
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
+    '/warehouse-machines': ALL_BRANCH_ROLES,
 
-    // Warehouse - SIMs (not for maintenance center)
-    '/warehouse-sims': [
-        ROLES.ADMIN_AFFAIRS,
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
+    // Warehouse - SIMs
+    '/warehouse-sims': ALL_BRANCH_ROLES,
 
-    // Monthly Closing Report - all branch employees + management
-    '/monthly-closing': [
-        ROLES.SUPER_ADMIN, ROLES.MANAGEMENT,
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
+    // Monthly Closing Report
+    '/monthly-closing': ALL_SYSTEM_ROLES,
 
-    // Transfer orders - create
-    '/transfer-orders': [
-        ROLES.ADMIN_AFFAIRS,
-        ROLES.CENTER_MANAGER,
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
+    // Transfer orders
+    '/transfer-orders': ALL_BRANCH_ROLES,
 
     // Transfer orders - receive
-    '/receive-orders': [
-        ROLES.CENTER_MANAGER,
-        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
-    ],
+    '/receive-orders': ALL_BRANCH_ROLES,
 
-    // Admin Store - Administrative Affairs
-    '/admin-store': [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.ADMIN_AFFAIRS],
-    '/admin-store/settings': [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.ADMIN_AFFAIRS],
-
-    // Finance - Sales & Receipts (Branches only)
+    // Finance - Sales & Receipts
     '/receipts': [...ALL_BRANCH_ROLES, ROLES.ACCOUNTANT, ROLES.SUPER_ADMIN],
     '/payments': [...ALL_BRANCH_ROLES, ROLES.ACCOUNTANT, ROLES.SUPER_ADMIN],
 
-    // Reports - everyone except Admin Affairs
-    '/reports': ALL_SYSTEM_ROLES.filter(role => role !== ROLES.ADMIN_AFFAIRS),
+    // Reports
+    '/reports': ALL_SYSTEM_ROLES,
 
-    // Admin section - Management only
-    '/technicians': [ROLES.SUPER_ADMIN],
-    '/approvals': [ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER],
+    // Admin section
+    '/technicians': [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN],
     '/branches': [ROLES.SUPER_ADMIN],
-    '/settings': [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
+    '/settings': [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
 
-    // Backups - SUPER_ADMIN only
-    '/admin/backups': [ROLES.SUPER_ADMIN]
+    // Backups
+    '/admin/backups': [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN]
 };
 
 // Action-level permissions (for UI buttons)
@@ -176,36 +102,36 @@ export const ACTION_PERMISSIONS = {
     // Requests
     CREATE_REQUEST: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ...ALL_BRANCH_ROLES],
     CLOSE_REQUEST: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ...ALL_BRANCH_ROLES],
-    DELETE_REQUEST: [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
+    DELETE_REQUEST: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
 
     // Machines
     EXCHANGE_MACHINE: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ...ALL_BRANCH_ROLES],
     RETURN_MACHINE: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ...ALL_BRANCH_ROLES],
-    SELL_MACHINE: [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
-    ADD_MACHINE: [ROLES.SUPER_ADMIN, ROLES.ADMIN_AFFAIRS, ROLES.CENTER_MANAGER],
-    DELETE_MACHINE: [ROLES.SUPER_ADMIN, ROLES.ADMIN_AFFAIRS],
+    SELL_MACHINE: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
+    ADD_MACHINE: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN],
+    DELETE_MACHINE: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN],
 
     // SIMs
     EXCHANGE_SIM: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ...ALL_BRANCH_ROLES],
-    ADD_SIM: [ROLES.SUPER_ADMIN, ROLES.ADMIN_AFFAIRS],
-    DELETE_SIM: [ROLES.SUPER_ADMIN, ROLES.ADMIN_AFFAIRS],
+    ADD_SIM: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN],
+    DELETE_SIM: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN],
 
     // Transfer Orders
-    CREATE_TRANSFER: [ROLES.SUPER_ADMIN, ROLES.ADMIN_AFFAIRS, ROLES.CENTER_MANAGER, ...ALL_BRANCH_ROLES],
-    RECEIVE_TRANSFER: [ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ...ALL_BRANCH_ROLES],
-    REJECT_TRANSFER: [ROLES.SUPER_ADMIN, ROLES.CENTER_MANAGER, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
+    CREATE_TRANSFER: [ROLES.SUPER_ADMIN, ...ALL_BRANCH_ROLES],
+    RECEIVE_TRANSFER: [ROLES.SUPER_ADMIN, ...ALL_BRANCH_ROLES],
+    REJECT_TRANSFER: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
 
     // Customers
     ADD_CUSTOMER: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ...ALL_BRANCH_ROLES],
     EDIT_CUSTOMER: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ...ALL_BRANCH_ROLES],
-    DELETE_CUSTOMER: [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
+    DELETE_CUSTOMER: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
 
     // Financial
     VIEW_PAYMENTS: SUPERVISOR_AND_ABOVE,
-    ADD_PAYMENT: [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
+    ADD_PAYMENT: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR],
 
     // System
-    MANAGE_USERS: [ROLES.SUPER_ADMIN],
+    MANAGE_USERS: [ROLES.SUPER_ADMIN, ROLES.BRANCH_ADMIN],
     MANAGE_BRANCHES: [ROLES.SUPER_ADMIN],
     VIEW_ALL_BRANCHES: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT],
     VIEW_EXECUTIVE_SUMMARY: [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT],
@@ -234,7 +160,7 @@ export const canPerformAction = (role: string | undefined | null, action: keyof 
 };
 
 /**
- * Get visible menu items for a role
+ * Check if user can find menu items
  */
 export const getVisibleMenuItems = (role: string | undefined | null) => {
     const normalizedRole = normalizeRole(role);
@@ -248,7 +174,8 @@ export const getVisibleMenuItems = (role: string | undefined | null) => {
  * Check if user is admin
  */
 export const isAdmin = (role: string | undefined | null): boolean => {
-    return normalizeRole(role) === ROLES.SUPER_ADMIN;
+    const normalizedRole = normalizeRole(role);
+    return normalizedRole === ROLES.SUPER_ADMIN || normalizedRole === ROLES.BRANCH_ADMIN;
 };
 
 /**
@@ -260,11 +187,10 @@ export const isManagement = (role: string | undefined | null): boolean => {
 };
 
 /**
- * Check if user works in maintenance center
+ * Check if user is maintenance center (NOT USED in branch app, but keeping for compatibility)
  */
-export const isMaintenanceCenter = (role: string | undefined | null): boolean => {
-    const normalizedRole = normalizeRole(role);
-    return normalizedRole === ROLES.CENTER_MANAGER || normalizedRole === ROLES.CENTER_TECH;
+export const isMaintenanceCenter = (_role: string | undefined | null): boolean => {
+    return false;
 };
 
 /**
@@ -272,7 +198,7 @@ export const isMaintenanceCenter = (role: string | undefined | null): boolean =>
  */
 export const isBranchUser = (role: string | undefined | null): boolean => {
     const normalizedRole = normalizeRole(role);
-    return [ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT].includes(normalizedRole as any);
+    return ALL_BRANCH_ROLES.includes(normalizedRole as any);
 };
 
 /**
@@ -280,11 +206,7 @@ export const isBranchUser = (role: string | undefined | null): boolean => {
  */
 export const isSupervisorOrAbove = (role: string | undefined | null): boolean => {
     const normalizedRole = normalizeRole(role);
-    return [
-        ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN,
-        ROLES.ACCOUNTANT, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR,
-        ROLES.CENTER_MANAGER
-    ].includes(normalizedRole as any);
+    return SUPERVISOR_AND_ABOVE.includes(normalizedRole as any);
 };
 
 /**
@@ -293,9 +215,7 @@ export const isSupervisorOrAbove = (role: string | undefined | null): boolean =>
 export const isGlobalRole = (role: string | undefined | null): boolean => {
     const normalizedRole = normalizeRole(role);
     return [
-        ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN,
-        ROLES.ACCOUNTANT, ROLES.ADMIN_AFFAIRS, ROLES.CS_SUPERVISOR,
-        ROLES.CENTER_MANAGER
+        ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.ACCOUNTANT
     ].includes(normalizedRole as any);
 };
 
@@ -304,14 +224,11 @@ export const isGlobalRole = (role: string | undefined | null): boolean => {
  */
 export const getRoleDisplayName = (role: string | undefined | null): string => {
     const roleNames: Record<string, string> = {
-        [ROLES.SUPER_ADMIN]: 'مدير النظام',
-        [ROLES.MANAGEMENT]: 'الإدارة',
-        [ROLES.BRANCH_ADMIN]: 'إدارة الفروع',
-        [ROLES.ACCOUNTANT]: 'الحسابات',
-        [ROLES.ADMIN_AFFAIRS]: 'الشئون الإدارية',
-        [ROLES.CENTER_MANAGER]: 'مدير مركز الصيانة',
-        [ROLES.CENTER_TECH]: 'فني مركز الصيانة',
-        [ROLES.BRANCH_MANAGER]: 'مدير فرع',
+        [ROLES.SUPER_ADMIN]: 'مدير النظام الرئيسي',
+        [ROLES.MANAGEMENT]: 'الإدارة العليا',
+        [ROLES.BRANCH_ADMIN]: 'مدير الفرع (أدمن)',
+        [ROLES.ACCOUNTANT]: 'المحاسب المالي',
+        [ROLES.BRANCH_MANAGER]: 'رئيس الفرع',
         [ROLES.CS_SUPERVISOR]: 'مشرف خدمة العملاء',
         [ROLES.CS_AGENT]: 'موظف خدمة العملاء',
         [ROLES.BRANCH_TECH]: 'فني الفرع',
@@ -327,12 +244,9 @@ export const getAvailableRoles = () => [
     { value: ROLES.CS_AGENT, label: 'موظف خدمة العملاء' },
     { value: ROLES.BRANCH_TECH, label: 'فني الفرع' },
     { value: ROLES.CS_SUPERVISOR, label: 'مشرف خدمة العملاء' },
-    { value: ROLES.BRANCH_MANAGER, label: 'مدير فرع' },
-    { value: ROLES.CENTER_TECH, label: 'فني مركز الصيانة' },
-    { value: ROLES.CENTER_MANAGER, label: 'مدير مركز الصيانة' },
-    { value: ROLES.ADMIN_AFFAIRS, label: 'الشئون الإدارية' },
-    { value: ROLES.ACCOUNTANT, label: 'الحسابات' },
-    { value: ROLES.BRANCH_ADMIN, label: 'إدارة الفروع' },
-    { value: ROLES.MANAGEMENT, label: 'الإدارة' },
-    { value: ROLES.SUPER_ADMIN, label: 'مدير النظام' }
+    { value: ROLES.BRANCH_MANAGER, label: 'رئيس الفرع' },
+    { value: ROLES.BRANCH_ADMIN, label: 'مدير الفرع (أدمن)' },
+    { value: ROLES.ACCOUNTANT, label: 'المحاسب المالي' },
+    { value: ROLES.MANAGEMENT, label: 'الإدارة العليا' },
+    { value: ROLES.SUPER_ADMIN, label: 'مدير النظام الرئيسي' }
 ];

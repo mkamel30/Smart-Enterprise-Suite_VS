@@ -1,4 +1,4 @@
-﻿const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('@prisma/client');
 const logger = require('./utils/logger');
 const config = require('./config');
 
@@ -45,5 +45,12 @@ prisma.$on('error', (e) => {
 
 // Attach security extension (Automatic Branch Filtering)
 const db = prisma.$extends(securityExtension);
+
+// Enable SQLite WAL mode for better concurrency
+if (config.database?.url?.startsWith('file:')) {
+  prisma.$executeRaw`PRAGMA journal_mode=WAL;`
+    .then(() => logger.info({ context: 'Prisma' }, 'SQLite WAL mode enabled'))
+    .catch(err => logger.error({ context: 'Prisma', err }, 'Failed to enable SQLite WAL mode'));
+}
 
 module.exports = db;

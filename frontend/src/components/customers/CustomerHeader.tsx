@@ -15,6 +15,7 @@ interface CustomerHeaderProps {
     branches: any[];
     onImport: () => void;
     onDownloadTemplate: () => void;
+    onExport: () => void;
 }
 
 
@@ -24,7 +25,8 @@ export default function CustomerHeader({
     setFilterBranchId,
     branches,
     onImport,
-    onDownloadTemplate
+    onDownloadTemplate,
+    onExport
 }: CustomerHeaderProps) {
     const filterElement = isAdmin ? (
         <div className="flex items-center gap-3 bg-card border border-border px-5 py-3 rounded-3xl shadow-lg hover:shadow-xl transition-all focus-within:ring-4 focus-within:ring-primary/10">
@@ -57,6 +59,11 @@ export default function CustomerHeader({
                 <DropdownMenuItem onClick={onImport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
                     <Upload size={16} className="text-blue-500" />
                     استيراد بيانات
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={onExport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-emerald-700">
+                    <FileSpreadsheet size={16} />
+                    تصدير إلى Excel
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

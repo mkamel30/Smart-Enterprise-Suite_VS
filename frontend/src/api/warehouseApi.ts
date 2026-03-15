@@ -1,5 +1,5 @@
 
-import { request } from './baseClient';
+import { request, downloadFile } from './baseClient';
 import type { SparePart } from '../lib/types';
 
 export const warehouseApi = {
@@ -37,4 +37,20 @@ export const warehouseApi = {
         performedBy?: string;
     }): Promise<any> =>
         request('/warehouse-machines/bulk-transfer', { method: 'POST', body: JSON.stringify(data) }),
+
+    // Templates & Import/Export
+    downloadTemplate: () => {
+        return request('/spare-parts/template/download', { method: 'GET' });
+    },
+    importSpareParts: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return request<any>('/spare-parts/import', {
+            method: 'POST',
+            body: formData
+        });
+    },
+    exportSpareParts: () => {
+        return downloadFile('/spare-parts/export', `spare_parts_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
 };
