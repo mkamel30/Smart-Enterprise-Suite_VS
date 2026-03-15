@@ -21,14 +21,14 @@ const ShipmentDetail: React.FC = () => {
     const { data: shipment, isLoading } = useQuery({
         queryKey: ['shipment', id],
         queryFn: async () => {
-            const res = await api.get('/maintenance/shipments');
-            return (res as any[]).find(s => s.id === id);
+            const res = await api.getShipments();
+            return res.find((s: any) => s.id === id);
         }
     });
 
     const receiveMutation = useMutation({
         mutationFn: async () => {
-            await api.post(`/maintenance/shipments/${id}/receive`);
+            await api.receiveShipment(id!);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['shipment', id] });
@@ -36,14 +36,13 @@ const ShipmentDetail: React.FC = () => {
         }
     });
 
-    const handleInspect = async (serial: string) => {
-        await api.post(`/maintenance/machine/${serial}/transition`, { action: 'INSPECT', data: {} });
+    const handleInspect = async (machineId: string) => {
+        await api.transitionMachineState(machineId, 'UNDER_INSPECTION');
         queryClient.invalidateQueries({ queryKey: ['shipment', id] });
     };
 
-    const handleStartWork = async (serial: string) => {
-        // نفس حركة البدء من لوحة الكانبان: نعتبره فحص مبدئي وينقل لـ UNDER_INSPECTION
-        await api.post(`/maintenance/machine/${serial}/transition`, { action: 'INSPECT', data: {} });
+    const handleStartWork = async (machineId: string) => {
+        await api.transitionMachineState(machineId, 'UNDER_INSPECTION');
         queryClient.invalidateQueries({ queryKey: ['shipment', id] });
     };
 
@@ -144,14 +143,14 @@ const ShipmentDetail: React.FC = () => {
                                 {!isPending && (
                                     <>
                                         {isAssigned && (
-                                            <Button size="sm" variant="default" onClick={() => handleStartWork(item.serialNumber)}>
+                                            <Button size="sm" variant="default" onClick={() => handleStartWork(item.id)}>
                                                 <AlertTriangle className="w-4 h-4 ml-1" />
                                                 بدء العمل
                                             </Button>
                                         )}
 
                                         {isInspection && (
-                                            <Button size="sm" variant="outline" onClick={() => handleInspect(item.serialNumber)}>
+                                            <Button size="sm" variant="outline" onClick={() => handleInspect(item.id)}>
                                                 <AlertTriangle className="w-4 h-4 ml-1" />
                                                 بدء الفحص
                                             </Button>
@@ -162,7 +161,7 @@ const ShipmentDetail: React.FC = () => {
                                                 size="sm"
                                                 variant="default"
                                                 onClick={() => {
-                                                    setSelectedMachine(item.serialNumber);
+                                                    setSelectedMachine(item);
                                                     setIsProcessingModalOpen(true);
                                                 }}
                                                 disabled={currentStatus === 'AWAITING_APPROVAL'}
@@ -171,13 +170,13 @@ const ShipmentDetail: React.FC = () => {
                                                 {currentStatus === 'AWAITING_APPROVAL' ? 'طلب موافقة (مرسل)' : 'إجراء / صيانة'}
                                             </Button>
                                         )}
-                                        
+
                                         {isCompleted && (
                                             <Button
                                                 size="sm"
                                                 variant="outline"
                                                 onClick={() => {
-                                                    setSelectedMachine(item.serialNumber);
+                                                    setSelectedMachine(item);
                                                     setIsDetailsModalOpen(true);
                                                 }}
                                             >
@@ -198,7 +197,7 @@ const ShipmentDetail: React.FC = () => {
                 <ProcessingModal
                     isOpen={isProcessingModalOpen}
                     onClose={() => setIsProcessingModalOpen(false)}
-                    serialNumber={selectedMachine}
+                    machine={selectedMachine}
                     onSuccess={() => {
                         queryClient.invalidateQueries({ queryKey: ['shipment', id] });
                         setIsProcessingModalOpen(false);

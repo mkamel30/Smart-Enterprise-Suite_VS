@@ -1,6 +1,7 @@
 import React from 'react';
 import { Edit3, Trash2 } from 'lucide-react';
 import { SimTypeBadge, SimStatusBadge } from './SimBadges';
+import { motion } from 'framer-motion';
 
 interface TableProps {
     isLoading: boolean;
@@ -14,7 +15,7 @@ interface TableProps {
 
 export function SimTable({
     isLoading,
-    sims,
+    sims = [],
     selectedSims,
     toggleSelectAll,
     toggleSelectSim,
@@ -22,72 +23,106 @@ export function SimTable({
     onDelete
 }: TableProps) {
     return (
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
                 <table className="w-full text-right text-sm whitespace-nowrap">
-                    <thead className="bg-slate-50 border-b">
+                    <thead className="bg-slate-50/50 border-b border-slate-200">
                         <tr>
-                            <th className="p-4 w-10">
-                                <input
-                                    type="checkbox"
-                                    checked={sims.length > 0 && selectedSims.size === sims.length}
-                                    onChange={toggleSelectAll}
-                                    className="rounded border-slate-300 w-4 h-4 cursor-pointer"
-                                />
+                            <th className="p-5 w-10">
+                                <div className="flex items-center justify-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={sims.length > 0 && selectedSims.size === sims.length}
+                                        onChange={toggleSelectAll}
+                                        className="rounded-lg border-slate-300 w-5 h-5 cursor-pointer text-indigo-600 focus:ring-indigo-500/20"
+                                    />
+                                </div>
                             </th>
-                            <th className="p-4 font-semibold text-slate-600">مسلسل الشريحة</th>
-                            <th className="p-4 font-semibold text-slate-600">نوع الشريحة</th>
-                            <th className="p-4 font-semibold text-slate-600">الحالة</th>
-                            <th className="p-4 font-semibold text-slate-600">ملاحظات</th>
-                            <th className="p-4 font-semibold text-slate-600">تاريخ الإضافة</th>
-                            <th className="p-4 font-semibold text-slate-600 w-24"></th>
+                            <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs">مسلسل الشريحة</th>
+                            <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs">الشركة المشغلة</th>
+                            <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs">الشبكة</th>
+                            <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs">الحالة</th>
+                            <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs">ملاحظات</th>
+                            <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs">تاريخ الإضافة</th>
+                            <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs w-24"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {isLoading ? (
-                            <tr><td colSpan={7} className="p-8 text-center text-slate-500">جاري التحميل...</td></tr>
-                        ) : sims.length === 0 ? (
-                            <tr><td colSpan={7} className="p-8 text-center text-slate-500">لا توجد شرائح</td></tr>
-                        ) : sims.map(sim => (
-                            <tr key={sim.id} className={`hover:bg-slate-50 transition-colors ${selectedSims.has(sim.id) ? 'bg-blue-50/50' : ''}`}>
-                                <td className="p-4">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedSims.has(sim.id)}
-                                        onChange={() => toggleSelectSim(sim.id)}
-                                        className="rounded border-slate-300 w-4 h-4 cursor-pointer"
-                                    />
+                            <tr>
+                                <td colSpan={8} className="p-12 text-center">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                        <span className="text-slate-500 font-medium">جاري تحميل البيانات...</span>
+                                    </div>
                                 </td>
-                                <td className="p-4 font-mono font-medium text-slate-900">{sim.serialNumber}</td>
-                                <td className="p-4">
+                            </tr>
+                        ) : sims.length === 0 ? (
+                            <tr>
+                                <td colSpan={8} className="p-12 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <p className="text-slate-400 font-bold text-lg">لا توجد شرائح متاحة</p>
+                                        <p className="text-slate-400 text-sm">قم بإضافة شرائح جديدة أو استيرادها</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : sims.map((sim, index) => (
+                            <motion.tr
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.03 }}
+                                key={sim.id}
+                                className={`group hover:bg-slate-50/80 transition-all ${selectedSims.has(sim.id) ? 'bg-indigo-50/40' : ''}`}
+                            >
+                                <td className="p-5">
+                                    <div className="flex items-center justify-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedSims.has(sim.id)}
+                                            onChange={() => toggleSelectSim(sim.id)}
+                                            className="rounded-lg border-slate-300 w-5 h-5 cursor-pointer text-indigo-600 focus:ring-indigo-500/20 transition-all group-hover:scale-110"
+                                        />
+                                    </div>
+                                </td>
+                                <td className="p-5">
+                                    <span className="font-mono font-black text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg text-xs">
+                                        {sim.serialNumber}
+                                    </span>
+                                </td>
+                                <td className="p-5">
                                     <SimTypeBadge type={sim.type} />
                                 </td>
-                                <td className="p-4">
+                                <td className="p-5">
+                                    <span className="font-bold text-slate-600 bg-white border border-slate-200 px-2.5 py-1 rounded-md text-xs shadow-sm">
+                                        {sim.networkType || <span className="text-slate-300">N/A</span>}
+                                    </span>
+                                </td>
+                                <td className="p-5">
                                     <SimStatusBadge status={sim.status} />
                                 </td>
-                                <td className="p-4 text-slate-500 max-w-xs truncate">{sim.notes || '-'}</td>
-                                <td className="p-4 font-mono text-xs text-slate-500">
-                                    {new Date(sim.importDate).toLocaleDateString('ar-EG')}
+                                <td className="p-5 text-slate-500 max-w-xs truncate font-medium">{sim.notes || '-'}</td>
+                                <td className="p-5 font-mono text-[10px] text-slate-400 font-bold">
+                                    {new Date(sim.importDate).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}
                                 </td>
-                                <td className="p-4">
-                                    <div className="flex gap-1 justify-end">
+                                <td className="p-5">
+                                    <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={() => onEdit(sim)}
-                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="تعديل"
+                                            className="p-2 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all hover:shadow-lg shadow-indigo-100"
+                                            title="تعديل الشريحة"
                                         >
                                             <Edit3 size={16} />
                                         </button>
                                         <button
                                             onClick={() => onDelete(sim.id)}
-                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="حذف"
+                                            className="p-2 text-red-600 hover:bg-red-600 hover:text-white rounded-xl transition-all hover:shadow-lg shadow-red-100"
+                                            title="حذف الشريحة"
                                         >
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
                                 </td>
-                            </tr>
+                            </motion.tr>
                         ))}
                     </tbody>
                 </table>

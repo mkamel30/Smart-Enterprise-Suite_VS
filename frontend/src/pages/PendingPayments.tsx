@@ -72,7 +72,8 @@ export default function PendingPayments() {
             const res = await fetch(`/api/pending-payments?${params}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
-            return res.json();
+            const data = await res.json();
+            return data.data || data;
         },
         enabled: userBranch !== undefined
     });
@@ -215,7 +216,7 @@ export default function PendingPayments() {
                     </div>
                 ) : (
                     <div className="divide-y">
-                        {payments.map((payment) => {
+                        {Array.isArray(payments) && payments.map((payment) => {
                             const parts = getParts(payment.partsDetails);
                             const isPending = payment.status === 'PENDING';
 
@@ -240,7 +241,7 @@ export default function PendingPayments() {
                                             {/* Parts */}
                                             {parts.length > 0 && (
                                                 <div className="mt-2 text-xs text-muted-foreground">
-                                                    القطع: {parts.map((p: any) => p.name).join('، ')}
+                                                    القطع: {Array.isArray(parts) && parts.map((p: any) => p.name).join('، ')}
                                                 </div>
                                             )}
 

@@ -131,6 +131,12 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
         ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
     ],
 
+    // Monthly Closing Report - all branch employees + management
+    '/monthly-closing': [
+        ROLES.SUPER_ADMIN, ROLES.MANAGEMENT,
+        ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH
+    ],
+
     // Transfer orders - create
     '/transfer-orders': [
         ROLES.ADMIN_AFFAIRS,
@@ -277,6 +283,18 @@ export const isSupervisorOrAbove = (role: string | undefined | null): boolean =>
     return [
         ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN,
         ROLES.ACCOUNTANT, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR,
+        ROLES.CENTER_MANAGER
+    ].includes(normalizedRole as any);
+};
+
+/**
+ * Check if user has global access (can view all branches)
+ */
+export const isGlobalRole = (role: string | undefined | null): boolean => {
+    const normalizedRole = normalizeRole(role);
+    return [
+        ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN,
+        ROLES.ACCOUNTANT, ROLES.ADMIN_AFFAIRS, ROLES.CS_SUPERVISOR,
         ROLES.CENTER_MANAGER
     ].includes(normalizedRole as any);
 };

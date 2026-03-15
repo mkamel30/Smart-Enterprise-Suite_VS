@@ -19,7 +19,7 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
     const warnings = [];
 
     if (!serialNumbers || serialNumbers.length === 0) {
-        errors.push('لا توجد أصناف للتحويل');
+        errors.push('No items to transfer');
         return { valid: false, errors, warnings };
     }
 
@@ -96,14 +96,22 @@ async function validateItemsForTransfer(serialNumbers, type, fromBranchId) {
             errors.push(`الماكينات التالية غير متاحة للتحويل:\n${details.join('\n')}`);
         }
 
+        // Rule: Only non-new machines to Maintenance Center
+        if (type === 'MAINTENANCE' || type === 'SEND_TO_CENTER') {
+            const newMachines = machines.filter(m => m.status === 'NEW');
+            if (newMachines.length > 0) {
+                errors.push(`لا يمكن تحويل ماكينات جديدة (NEW) لمركز الصيانة؛ العمرات والإصلاحات تتم للماكينات المستعملة فقط.`);
+            }
+        }
+
         // Warnings for machines with active maintenance requests
-        const activeMaintenance = await db.maintenanceRequest.findMany({
+        const activeMaintenance = (await db.maintenanceRequest.findMany({
             where: {
                 serialNumber: { in: serialNumbers },
                 status: { notIn: ['Closed', 'Cancelled', 'PENDING_TRANSFER'] },
                 branchId: fromBranchId
             }
-        });
+        })) || [];
 
         if (activeMaintenance.length > 0 && type !== 'MAINTENANCE') {
             const details = activeMaintenance.map(r =>
@@ -198,20 +206,47 @@ async function validateBranches(fromBranchId, toBranchId, type) {
 
     if (!fromBranch) {
         errors.push('فرع المصدر غير موجود');
+        return { valid: false, errors };
     } else if (!fromBranch.isActive) {
         errors.push('فرع المصدر غير نشط');
     }
 
     if (!toBranch) {
         errors.push('فرع الوجهة غير موجود');
+        return { valid: false, errors };
     } else if (!toBranch.isActive) {
         errors.push('فرع الوجهة غير نشط');
     }
 
-    // Validate type-specific branch requirements
-    if (type === 'MAINTENANCE' || type === 'SEND_TO_CENTER') {
-        if (toBranch && toBranch.type !== 'MAINTENANCE_CENTER') {
-            errors.push('التحويل للصيانة يجب أن يكون لمركز صيانة');
+    if (errors.length > 0) return { valid: false, errors };
+
+    // Rule 1 & 2: Admin Affairs Interactions
+    if (fromBranch.type === 'BRANCH' && toBranch.type === 'ADMIN_AFFAIRS') {
+        // Only Machines and SIM cards allowed
+        if (!['MACHINE', 'SIM', 'MAINTENANCE', 'SEND_TO_CENTER', 'ASSET'].includes(type)) {
+            errors.push('الفروع يمكنها تحويل الماكينات وشرائح البيانات فقط للشئون الإدارية');
+        }
+    }
+
+    // Rule 3: Branches to Maintenance Center
+    if (toBranch.type === 'MAINTENANCE_CENTER' && fromBranch.type === 'BRANCH') {
+        // Must be the assigned maintenance center
+        if (fromBranch.maintenanceCenterId !== toBranch.id) {
+            errors.push('لا يمكن التحويل إلا لمركز الصيانة التابع له الفرع');
+        }
+        // Only Machines allowed
+        if (type !== 'MACHINE' && type !== 'MAINTENANCE' && type !== 'SEND_TO_CENTER') {
+            errors.push('مراكز الصيانة تستقبل الماكينات فقط لإجراء العمرات والإصلاحات');
+        }
+    }
+
+    // Rule 4: Branch-to-Branch Transfers (In same hierarchy)
+    if (fromBranch.type === 'BRANCH' && toBranch.type === 'BRANCH') {
+        const isParent = fromBranch.id === toBranch.parentBranchId;
+        const isChild = fromBranch.parentBranchId === toBranch.id;
+
+        if (!isParent && !isChild) {
+            errors.push('التحويل المباشر بين الفروع مسموح فقط في حالة وجود علاقة تبعية (فرع رئيسي وفرع تابع)');
         }
     }
 
@@ -287,7 +322,9 @@ async function validateTransferOrder(data, user) {
     return {
         valid: allErrors.length === 0,
         errors: allErrors,
-        warnings: allWarnings
+        warnings: allWarnings,
+        fromBranch: branchCheck.fromBranch,
+        toBranch: branchCheck.toBranch
     };
 }
 

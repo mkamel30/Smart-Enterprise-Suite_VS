@@ -1,7 +1,10 @@
-﻿const db = require('../db');
+const db = require('../db');
+const { detectMachineParams } = require('../utils/machine-validation');
 const inventoryService = require('./inventoryService');
 const paymentService = require('./paymentService');
 const socketManager = require('../utils/socketManager');
+const { getBranchScope, userHasGlobalRole } = require('../utils/branchSecurity');
+const { REQUEST_STATUS, MACHINE_STATUS } = require('../utils/constants');
 
 /**
  * Create new maintenance request
@@ -21,8 +24,9 @@ async function createRequest(data, user) {
         }
 
         // Validate machine if provided - RULE 1: MUST include branchId
+        let machine = null;
         if (data.posMachineId) {
-            const machine = await tx.posMachine.findFirst({
+            machine = await tx.posMachine.findFirst({
                 where: { id: data.posMachineId, branchId: user.branchId || data.branchId }
             });
 
@@ -31,18 +35,34 @@ async function createRequest(data, user) {
             }
         }
 
+        // Resolve machine model/manufacturer if missing
+        let resolvedModel = data.machineModel || machine?.model;
+        let resolvedManufacturer = data.machineManufacturer || machine?.manufacturer;
+
+        if (!resolvedModel && (data.serialNumber || machine?.serialNumber)) {
+            const machineParams = await tx.machineParameter.findMany();
+            const detected = detectMachineParams(data.serialNumber || machine?.serialNumber, machineParams);
+            resolvedModel = detected.model;
+            resolvedManufacturer = detected.manufacturer;
+        }
+
         // Create request
         const request = await tx.maintenanceRequest.create({
             data: {
                 customerId: customer.id, // Use actual customer cuid
                 posMachineId: data.posMachineId || null,
                 customerName: customer.client_name,
-                machineModel: data.machineModel,
-                machineManufacturer: data.machineManufacturer,
-                serialNumber: data.serialNumber,
+                customerBkcode: customer.bkcode,
+                machineModel: resolvedModel,
+                machineManufacturer: resolvedManufacturer,
+                serialNumber: data.serialNumber || machine?.serialNumber,
                 complaint: data.complaint,
-                status: 'Pending',
+                status: REQUEST_STATUS.PENDING,
                 branchId: user.branchId || data.branchId
+            },
+            include: {
+                customer: true,
+                posMachine: true
             }
         });
 
@@ -76,14 +96,15 @@ async function createRequest(data, user) {
 
         // If taking machine to warehouse
         if (data.takeMachine && data.posMachineId) {
-            const machine = await tx.posMachine.findFirst({
+            const m = await tx.posMachine.findFirst({
                 where: { id: data.posMachineId, branchId: request.branchId }
             });
-            if (machine) {
+            if (m) {
                 await receiveMachineToWarehouse(tx, {
-                    serialNumber: machine.serialNumber,
+                    serialNumber: m.serialNumber,
                     customerId: customer.id, // Use actual customer cuid
                     customerName: customer.client_name,
+                    customerBkcode: customer.bkcode,
                     requestId: request.id,
                     branchId: request.branchId,
                     performedBy: user.name || user.displayName
@@ -107,21 +128,20 @@ async function createRequest(data, user) {
 async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumber = null) {
     return await db.$transaction(async (tx) => {
         // 1. Get request with customer - RULE 1: MUST check authorization
-        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
         const request = await tx.maintenanceRequest.findFirst({
             where: {
                 id: requestId,
-                branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds }
+                ...getBranchScope(user)
             },
             include: { customer: true }
         });
-        console.log('DEBUG: closeRequest fetched:', request);
+
 
         if (!request) {
             throw new Error('طلب الصيانة غير موجود');
         }
 
-        if (request.status === 'Closed') {
+        if (request.status === REQUEST_STATUS.CLOSED) {
             throw new Error('الطلب مغلق بالفعل');
         }
 
@@ -138,7 +158,7 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
         await tx.maintenanceRequest.updateMany({
             where: { id: requestId, branchId: request.branchId },
             data: {
-                status: 'Closed',
+                status: REQUEST_STATUS.CLOSED,
                 actionTaken: actionTaken,
                 usedParts: JSON.stringify({
                     parts: partsWithCosts,
@@ -152,16 +172,20 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
             }
         });
 
-        const updatedRequest = await tx.maintenanceRequest.findFirst({ where: { id: requestId, branchId: request.branchId } });
+        const updatedRequest = await tx.maintenanceRequest.findFirst({
+            where: { id: requestId, branchId: request.branchId },
+            include: { customer: true }
+        });
 
         // 4. Deduct inventory (VALIDATES inside)
-        // If fails â†’ ROLLBACK entire transaction
+        // If fails → ROLLBACK entire transaction
         if (usedParts.length > 0) {
             await inventoryService.deductParts(
                 usedParts,
                 requestId,
                 user.name,
                 request.branchId, // Pass branchId
+                receiptNumber, // Pass receiptNumber
                 tx // Pass transaction
             );
         }
@@ -221,6 +245,25 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
             vouchers.push(voucher);
         }
 
+        // 5.6 Create UsedPartLog for Technician Consumption Reports
+        if (partsWithCosts.length > 0) {
+            await tx.usedPartLog.create({
+                data: {
+                    requestId: requestId,
+                    customerId: request.customerId,
+                    customerName: request.customer.client_name,
+                    customerBkcode: request.customerBkcode || request.customer?.bkcode,
+                    posMachineId: request.posMachineId,
+                    technician: request.technician || request.closingUserName, // Use assigned technician if available
+                    closedByUserId: user.id,
+                    closedAt: new Date(),
+                    parts: JSON.stringify(partsWithCosts),
+                    receiptNumber: receiptNumber,
+                    branchId: request.branchId
+                }
+            });
+        }
+
         // 6. Log action
         await tx.systemLog.create({
             data: {
@@ -244,8 +287,9 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
 
         return { ...updatedRequest, vouchers };
     });
-    // If ANY step fails â†’ Everything rolls back! âœ…
+    // If ANY step fails → Everything rolls back! ✅
 }
+
 
 /**
  * Update request status
@@ -256,11 +300,10 @@ async function closeRequest(requestId, actionTaken, usedParts, user, receiptNumb
  */
 async function updateStatus(requestId, status, user) {
     return await db.$transaction(async (tx) => {
-        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
         const request = await tx.maintenanceRequest.findFirst({
             where: {
                 id: requestId,
-                branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds }
+                ...getBranchScope(user)
             }
         });
 
@@ -292,7 +335,7 @@ async function updateStatus(requestId, status, user) {
  * @param {Object} tx - Prisma transaction
  * @param {Object} data - Machine and customer info
  */
-async function receiveMachineToWarehouse(tx, { serialNumber, customerId, customerName, requestId, branchId, performedBy }) {
+async function receiveMachineToWarehouse(tx, { serialNumber, customerId, customerName, customerBkcode, requestId, branchId, performedBy }) {
     // 1. Find if machine exists in warehouse - RULE 1: MUST include branchId
     const existingWarehouse = await tx.warehouseMachine.findFirst({
         where: { serialNumber, branchId }
@@ -307,9 +350,10 @@ async function receiveMachineToWarehouse(tx, { serialNumber, customerId, custome
         await tx.warehouseMachine.updateMany({
             where: { id: existingWarehouse.id, branchId: branchId },
             data: {
-                status: 'EXTERNAL_REPAIR',
+                status: MACHINE_STATUS.UNDER_MAINTENANCE,
                 customerId,
                 customerName,
+                customerBkcode,
                 requestId,
                 branchId,
                 model: posMachine?.model || existingWarehouse.model,
@@ -320,9 +364,10 @@ async function receiveMachineToWarehouse(tx, { serialNumber, customerId, custome
         await tx.warehouseMachine.create({
             data: {
                 serialNumber,
-                status: 'EXTERNAL_REPAIR',
+                status: MACHINE_STATUS.UNDER_MAINTENANCE,
                 customerId,
                 customerName,
+                customerBkcode,
                 requestId,
                 branchId,
                 model: posMachine?.model || 'Unknown',
@@ -378,10 +423,346 @@ async function getMachineMonthlyRequestCount(serialNumber, months = 6) {
     return { count, trend };
 }
 
+/**
+ * Get paginated requests with filters
+ * @param {Object} filters - Query filters
+ * @param {Object} user - Authenticated user
+ * @returns {Promise<Object>} Requests and total count
+ */
+async function getRequests(filters = {}, user) {
+    const {
+        status,
+        serialNumber,
+        customerId,
+        branchId: filterBranchId,
+        includeRelations = false,
+        limit = 50,
+        offset = 0,
+        search
+    } = filters;
+
+    const where = {
+        ...getBranchScope(user)
+    };
+
+    if (status) where.status = status;
+    if (serialNumber) where.serialNumber = { contains: serialNumber };
+    if (customerId) where.customerId = customerId;
+    if (filterBranchId && userHasGlobalRole(user)) {
+        where.branchId = filterBranchId;
+    }
+
+    const include = includeRelations ? {
+        customer: true,
+        posMachine: true,
+        branch: { select: { id: true, name: true } }
+    } : undefined;
+
+    let requests;
+    let total;
+
+    if (search && includeRelations) {
+        // Search in customer names, serial numbers, and complaints
+        requests = await db.maintenanceRequest.findMany({
+            where: {
+                ...where,
+                OR: [
+                    { customerName: { contains: search, mode: 'insensitive' } },
+                    { serialNumber: { contains: search, mode: 'insensitive' } },
+                    { complaint: { contains: search, mode: 'insensitive' } }
+                ]
+            },
+            include,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: offset
+        });
+        total = await db.maintenanceRequest.count({
+            where: {
+                ...where,
+                OR: [
+                    { customerName: { contains: search, mode: 'insensitive' } },
+                    { serialNumber: { contains: search, mode: 'insensitive' } },
+                    { complaint: { contains: search, mode: 'insensitive' } }
+                ]
+            }
+        });
+    } else {
+        // Normal query without search
+        const result = await Promise.all([
+            db.maintenanceRequest.findMany({
+                where,
+                include,
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                skip: offset
+            }),
+            db.maintenanceRequest.count({ where })
+        ]);
+        requests = result[0];
+        total = result[1];
+    }
+
+    return { requests, total };
+}
+
+/**
+ * Get single request by ID
+ * @param {String} requestId - Request ID
+ * @param {Object} user - Authenticated user
+ * @returns {Promise<Object>} Request details
+ */
+async function getRequestById(requestId, user) {
+    const request = await db.maintenanceRequest.findFirst({
+        where: {
+            id: requestId,
+            ...getBranchScope(user)
+        },
+        include: {
+            customer: true,
+            posMachine: true,
+            branch: { select: { id: true, name: true } },
+            approval: true,
+            vouchers: true,
+            payments: true
+        }
+    });
+
+    if (!request) {
+        throw new Error('الطلب غير موجود');
+    }
+
+    return request;
+}
+
+/**
+ * Get request statistics with day/week/month breakdown
+ * @param {Object} user - Authenticated user
+ * @returns {Promise<Object>} Statistics by time period
+ */
+async function getRequestStats(user) {
+    const where = getBranchScope(user);
+    const now = new Date();
+
+    // Calculate date ranges
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Helper function to get stats for a date range
+    async function getStatsForRange(startDate, endDate) {
+        const rangeWhere = {
+            ...where,
+            createdAt: {
+                gte: startDate,
+                lte: endDate
+            }
+        };
+
+        const [open, inProgress, closed, total] = await Promise.all([
+            db.maintenanceRequest.count({
+                where: { ...rangeWhere, status: { in: ['Pending', 'Open'] } }
+            }),
+            db.maintenanceRequest.count({
+                where: { ...rangeWhere, status: 'In Progress' }
+            }),
+            db.maintenanceRequest.count({
+                where: { ...rangeWhere, status: 'Closed' }
+            }),
+            db.maintenanceRequest.count({ where: rangeWhere })
+        ]);
+
+        return { open, inProgress, closed, total };
+    }
+
+    // Get stats for each period
+    const [day, week, month] = await Promise.all([
+        getStatsForRange(today, now),
+        getStatsForRange(weekStart, now),
+        getStatsForRange(monthStart, now)
+    ]);
+
+    return { day, week, month };
+}
+
+/**
+ * Update maintenance request
+ * @param {String} requestId - Request ID
+ * @param {Object} data - Update data
+ * @param {Object} user - User performing update
+ * @returns {Promise<Object>} Updated request
+ */
+async function updateRequest(requestId, data, user) {
+    return await db.$transaction(async (tx) => {
+        const request = await tx.maintenanceRequest.findFirst({
+            where: {
+                id: requestId,
+                ...getBranchScope(user)
+            }
+        });
+
+        if (!request) throw new Error('الطلب غير موجود');
+
+        // Only allow updating certain fields
+        const updateData = {};
+        if (data.status) updateData.status = data.status;
+        if (data.priority) updateData.priority = data.priority;
+        if (data.complaint) updateData.complaint = data.complaint;
+        if (data.notes) updateData.notes = data.notes;
+        if (data.technicianId) {
+            const technician = await tx.user.findFirst({
+                where: { id: data.technicianId }
+            });
+            if (technician) {
+                updateData.technicianId = technician.id;
+                updateData.technician = technician.displayName || technician.name;
+            }
+        }
+
+        const updated = await tx.maintenanceRequest.update({
+            where: { id: requestId },
+            data: updateData
+        });
+
+        await tx.systemLog.create({
+            data: {
+                entityType: 'REQUEST',
+                entityId: requestId,
+                action: 'UPDATE',
+                details: `Updated request: ${Object.keys(updateData).join(', ')}`,
+                userId: user.id,
+                performedBy: user.name,
+                branchId: request.branchId
+            }
+        });
+
+        return updated;
+    });
+}
+
+/**
+ * Update request status (wrapper for updateStatus)
+ */
+async function updateRequestStatus(requestId, data, user) {
+    return await updateStatus(requestId, data.status, user);
+}
+
+/**
+ * Assign technician to request
+ */
+async function assignTechnician(requestId, technicianId, user) {
+    return await updateRequest(requestId, { technicianId, status: 'In Progress' }, user);
+}
+
+/**
+ * Delete maintenance request
+ * @param {String} requestId - Request ID
+ * @param {Object} user - User performing deletion
+ * @returns {Promise<Object>} Deleted request info
+ */
+async function deleteRequest(requestId, user) {
+    return await db.$transaction(async (tx) => {
+        // 1. Get request with dependencies - MUST filter by branch for isolation
+        const authorizedIds = user.authorizedBranchIds || (user.branchId ? [user.branchId] : []);
+
+        const request = await tx.maintenanceRequest.findFirst({
+            where: {
+                id: requestId,
+                ...getBranchScope(user)
+            },
+            include: {
+                approval: true,
+                vouchers: true
+            }
+        });
+
+        if (!request) {
+            throw new Error('الطلب غير موجود');
+        }
+
+        // 2. Permission check - only admin or the creating branch
+        const isCreator = authorizedIds.includes(request.branchId);
+        const isAdmin = userHasGlobalRole(user);
+
+        if (!isAdmin && !isCreator) {
+            throw new Error('غير مصرح لك بحذف هذا الطلب');
+        }
+
+        // 3. Status check - only allow deleting Open/Pending/In Progress requests
+        // If it's closed, it has history, payments, etc.
+        if (request.status === REQUEST_STATUS.CLOSED && !isAdmin) {
+            throw new Error('لا يمكن حذف الطلبات المغلقة');
+        }
+
+        // 4. Financial safety check - prevent deletion if payments exist
+        const payment = await tx.payment.findFirst({
+            where: {
+                requestId: requestId,
+                branchId: request.branchId // Isolation requirement
+            }
+        });
+        if (payment && !isAdmin) {
+            throw new Error('لا يمكن حذف الطلب لوجود مدفوعات مسجلة عليه. يرجى حذف المدفوعات أولاً.');
+        }
+
+        // 5. Handle related records
+        // Delete approval requests
+        if (request.approval) {
+            await tx.maintenanceApproval.deleteMany({
+                where: {
+                    requestId,
+                    branchId: request.branchId // Isolation requirement
+                }
+            });
+        }
+
+        // Delete vouchers
+        if (request.vouchers && request.vouchers.length > 0) {
+            await tx.repairVoucher.deleteMany({
+                where: {
+                    requestId,
+                    branchId: request.branchId // Isolation requirement
+                }
+            });
+        }
+
+        // 6. Delete the request
+        await tx.maintenanceRequest.deleteMany({
+            where: {
+                id: requestId,
+                branchId: request.branchId // Isolation requirement
+            }
+        });
+
+        // 7. Log deletion
+        await tx.systemLog.create({
+            data: {
+                entityType: 'REQUEST',
+                entityId: requestId,
+                action: 'DELETE',
+                details: `Deleted request for customer ${request.customerName} (Serial: ${request.serialNumber})`,
+                userId: user.id,
+                performedBy: user.name || user.displayName,
+                branchId: request.branchId
+            }
+        });
+
+        return request;
+    });
+}
+
 module.exports = {
     createRequest,
+    getRequests,
+    getRequestById,
+    getRequestStats,
+    updateRequest,
+    updateRequestStatus,
+    assignTechnician,
     closeRequest,
     updateStatus,
+    deleteRequest,
     receiveMachineToWarehouse,
     getMachineMonthlyRequestCount
 };

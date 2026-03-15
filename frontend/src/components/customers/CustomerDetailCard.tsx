@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AuditLogModal from '../AuditLogModal';
 import { Tabs, TabsContent } from '../ui/tabs';
+import CustomerEditModal from './CustomerEditModal';
 
 // Sub-components
 import CustomerDetailHeader from './details/CustomerDetailHeader';
@@ -23,7 +24,7 @@ interface CustomerDetailCardProps {
 }
 
 export default function CustomerDetailCard({
-    customer,
+    customer: initialCustomer,
     onClose,
     onCreateRequest,
     onExchange,
@@ -36,6 +37,23 @@ export default function CustomerDetailCard({
     onSimUpdate
 }: CustomerDetailCardProps) {
     const [showHistory, setShowHistory] = useState(false);
+    const [showEdit, setShowEdit] = useState(false);
+    const [fieldToFocus, setFieldToFocus] = useState<string | undefined>(undefined);
+    const [customer, setCustomer] = useState(initialCustomer);
+
+    const handleEdit = (field?: string) => {
+        setFieldToFocus(field);
+        setShowEdit(true);
+    };
+
+    const handleCloseEdit = () => {
+        setShowEdit(false);
+        setFieldToFocus(undefined);
+    };
+
+    useEffect(() => {
+        setCustomer(initialCustomer);
+    }, [initialCustomer]);
 
     return (
         <div className="bg-card rounded-[2rem] border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 max-w-5xl mx-auto">
@@ -46,6 +64,15 @@ export default function CustomerDetailCard({
                 entityType="CUSTOMER"
                 entityId={customer.bkcode}
                 title={customer.client_name}
+            />
+
+            {/* Edit Modal */}
+            <CustomerEditModal
+                isOpen={showEdit}
+                onClose={handleCloseEdit}
+                customer={customer}
+                onUpdate={(updated) => setCustomer({ ...customer, ...updated })}
+                fieldToFocus={fieldToFocus}
             />
 
             <CustomerDetailHeader
@@ -77,7 +104,9 @@ export default function CustomerDetailCard({
                     </TabsContent>
 
                     <TabsContent value="info" className="animate-in fade-in slide-in-from-bottom-4 duration-500 focus-visible:outline-none">
-                        <CustomerInfoTab customer={customer} />
+                        <CustomerInfoTab
+                            customer={customer}
+                        />
                     </TabsContent>
                 </Tabs>
             </div>

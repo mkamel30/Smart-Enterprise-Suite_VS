@@ -1,0 +1,36 @@
+
+================================
+FAIL: should successfully login with legacy password (123456)
+Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+Expected: {"data": {"password": "newHashedPassword", "passwordChangedAt": Any<Date>}, "where": {"id": "user-123"}}
+Received
+       1
+          Object {
+            "data": Object {
+              "password": "newHashedPassword",
+        -     "passwordChangedAt": Any<Date>,
+        +     "passwordChangedAt": 2026-02-24T12:07:06.463Z,
+            },
+            "where": Object {
+        +     "branchId": Object {
+        +       "not": null,
+        +     },
+
+================================
+FAIL: should update user with new password and reset mustChangePassword flag
+Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+- Expected
++ Received
+
+  Object {
+    "data": Object {
+      "mustChangePassword": false,
+      "password": "newHashedPassword",
+-     "passwordChangedAt": Any<Date>,
++     "passwordChangedAt": 2026-02-24T12:07:06.516Z,
+    },
+    "where": Object {
++     "branchId": Object {
++       "not": null,

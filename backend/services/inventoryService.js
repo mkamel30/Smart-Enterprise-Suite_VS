@@ -5,25 +5,50 @@ const { roundMoney } = require('./paymentService');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const socketManager = require('../utils/socketManager');
 
-async function getInventory(req) {
+/**
+ * Get inventory with pagination and filtering
+ */
+async function getInventory(req, { limit = 50, offset = 0, search, model, branchId } = {}) {
   const branchFilter = getBranchFilter(req);
   const authorizedIds = req.user?.authorizedBranchIds || (req.user?.branchId ? [req.user.branchId] : []);
+  const requestedBranchId = branchId || req.query?.branchId;
 
-  // If admin, strict checks are handled by getBranchFilter or they can see all
-  if (['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role)) {
-    if (Object.keys(branchFilter).length === 0) branchFilter._skipBranchEnforcer = true;
-  } else {
-    // For normal users, support hierarchy if no specific branch requested
+  if (requestedBranchId) {
+    branchFilter.branchId = requestedBranchId;
+  } else if (!['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role)) {
     if (!branchFilter.branchId && authorizedIds.length > 0) {
       branchFilter.branchId = authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds };
     }
   }
 
-  const parts = await db.sparePart.findMany({
-    include: { inventoryItems: { where: branchFilter } }
-  });
+  // Base where for SparePart
+  const where = {};
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { partNumber: { contains: search, mode: 'insensitive' } }
+    ];
+  }
+  if (model) {
+    where.compatibleModels = { contains: model, mode: 'insensitive' };
+  }
 
-  return parts.map(part => ({
+  const [parts, total] = await db.$transaction([
+    db.sparePart.findMany({
+      where,
+      include: {
+        inventoryItems: {
+          where: branchFilter
+        }
+      },
+      skip: offset,
+      take: limit,
+      orderBy: { name: 'asc' }
+    }),
+    db.sparePart.count({ where })
+  ]);
+
+  const items = parts.map(part => ({
     id: part.id,
     partNumber: part.partNumber,
     name: part.name,
@@ -33,6 +58,55 @@ async function getInventory(req) {
     minLevel: part.inventoryItems[0]?.minLevel || 0,
     allowsMultiple: part.allowsMultiple,
     inventoryItemId: part.inventoryItems[0]?.id
+  }));
+
+  return { items, total };
+}
+
+/**
+ * Lightweight inventory list for dropdowns
+ */
+async function getInventoryLite(req, { search, branchId } = {}) {
+  const branchFilter = getBranchFilter(req);
+  const authorizedIds = req.user?.authorizedBranchIds || (req.user?.branchId ? [req.user.branchId] : []);
+  const requestedBranchId = branchId || req.query?.branchId;
+
+  if (requestedBranchId) {
+    branchFilter.branchId = requestedBranchId;
+  } else if (!['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user?.role)) {
+    if (!branchFilter.branchId && authorizedIds.length > 0) {
+      branchFilter.branchId = authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds };
+    }
+  }
+
+  const where = {};
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { partNumber: { contains: search, mode: 'insensitive' } }
+    ];
+  }
+
+  const parts = await db.sparePart.findMany({
+    where,
+    include: {
+      inventoryItems: {
+        where: branchFilter
+      }
+    },
+    take: search ? 50 : 200,
+    orderBy: { name: 'asc' }
+  });
+
+  return parts.map(part => ({
+    id: part.id,
+    name: part.name,
+    partNumber: part.partNumber,
+    quantity: part.inventoryItems.reduce((sum, item) => sum + item.quantity, 0),
+    defaultCost: part.defaultCost || 0,
+    allowsMultiple: part.allowsMultiple || false,
+    isConsumable: part.isConsumable || false,
+    compatibleModels: part.compatibleModels || ''
   }));
 }
 
@@ -136,12 +210,26 @@ async function stockOut(req, { partId, quantity, reason, requestId, cost, custom
       data: { quantity: inventoryItem.quantity - quantity }
     });
     try {
-      await tx.stockMovement.create({ data: { branchId: bId, partId, type: 'OUT', quantity, reason: reason || 'صيانة ماكينة', requestId, createdAt: new Date(), userId, performedBy: userName } });
+      await tx.stockMovement.create({
+        data: {
+          branchId: bId,
+          partId,
+          type: 'OUT',
+          quantity,
+          reason: reason || 'صيانة ماكينة',
+          requestId,
+          createdAt: new Date(),
+          userId,
+          performedBy: userName,
+          isPaid: cost > 0,
+          receiptNumber: req.body.receiptNumber || null
+        }
+      });
     } catch (e) { }
 
     let payment = null;
     if (cost && cost > 0 && customerId) {
-      payment = await tx.payment.create({ data: { branchId: bId, customerId, customerName, requestId, amount: roundMoney(cost), type: 'MAINTENANCE', reason: 'قطع غيار صيانة', paymentPlace: 'ضامن', notes: reason || 'قطع غيار صيانة', userId, userName } });
+      payment = await tx.payment.create({ data: { branchId: bId, customerId, customerName, requestId, amount: roundMoney(cost), type: 'MAINTENANCE', reason: 'قطع غيار صيانة', paymentPlace: 'ضامن', notes: reason || 'قطع غيار صيانة', userId, userName, receiptNumber: req.body.receiptNumber } });
     }
 
     return { newQuantity: inventoryItem.quantity - quantity, payment };
@@ -149,6 +237,8 @@ async function stockOut(req, { partId, quantity, reason, requestId, cost, custom
 
   return result;
 }
+
+const { validateBranches } = require('../utils/transfer-validators');
 
 async function transferStock(req, { partId, quantity, fromBranchId, toBranchId, reason }) {
   const { canAccessBranch } = require('../middleware/permissions');
@@ -160,6 +250,12 @@ async function transferStock(req, { partId, quantity, fromBranchId, toBranchId, 
   if (!await canAccessBranch(req, toBranchId, db)) throw new Error('Access denied for destination branch');
 
   await db.$transaction(async (tx) => {
+    // Apply "The Binding Law" (القانون الملزم)
+    const validation = await validateBranches(fromBranchId, toBranchId, 'SPARE_PART');
+    if (!validation.valid) {
+      throw new Error(validation.errors.join(' | '));
+    }
+
     const sourceItem = await tx.inventoryItem.findFirst(ensureBranchWhere({ where: { partId, branchId: fromBranchId } }, req));
     if (!sourceItem || sourceItem.quantity < quantity) throw new Error(`Insufficient stock in source branch. Available: ${sourceItem?.quantity || 0}`);
 
@@ -234,33 +330,63 @@ async function getMovements(req) {
   const partMap = Object.fromEntries(parts.map(p => [p.id, p]));
 
   // Fetch Requests for BK code and Serials
-  const requests = await db.maintenanceRequest.findMany(ensureBranchWhere({
+  const requests = await db.maintenanceRequest.findMany({
     where: { id: { in: requestIds } },
     select: {
       id: true,
       serialNumber: true,
+      receiptNumber: true, // Add receiptNumber
+      machineModel: true, // Add model
       posMachine: {
-        select: { serialNumber: true }
+        select: { serialNumber: true, model: true }
       },
       customer: {
         select: { bkcode: true, client_name: true }
       }
-    }
-  }, req));
+    },
+    _skipBranchEnforcer: true
+  });
   const requestMap = Object.fromEntries(requests.map(r => [r.id, r]));
+
+  // Fetch BranchDebts for Center Maintenance receipts
+  let debts = [];
+  if (requestIds.length > 0) {
+    debts = await db.branchDebt.findMany({
+      where: { referenceId: { in: requestIds } },
+      select: { referenceId: true, receiptNumber: true },
+      _skipBranchEnforcer: true // Bypass enforcer as we're fetching linked data for already filtered movements
+    });
+  }
+  const debtMap = Object.fromEntries(debts.map(d => [d.referenceId, d]));
 
   // Combine and Apply Smart Search if provided
   let results = movements.map(m => {
     const reqData = m.requestId ? requestMap[m.requestId] : null;
+    const debtData = m.requestId ? debtMap[m.requestId] : null;
+
+    // Fix: We use the specific movement's isPaid flag to determine status, 
+    // but we still pull the receipt number from the parent request/debt if it exists.
+    const effectiveReceipt = m.receiptNumber || reqData?.receiptNumber || debtData?.receiptNumber || null;
+    const effectiveIsPaid = m.isPaid;
+
     return {
       ...m,
+      isPaid: effectiveIsPaid,
+      receiptNumber: effectiveReceipt || '-',
       partName: partMap[m.partId]?.name || 'غير معروف',
       partNumber: partMap[m.partId]?.partNumber || '',
       customerBkCode: reqData?.customer?.bkcode || null,
       customerName: reqData?.customer?.client_name || null,
-      machineSerial: reqData?.serialNumber || reqData?.posMachine?.serialNumber || null
+      machineSerial: reqData?.serialNumber || reqData?.posMachine?.serialNumber || null,
+      machineModel: reqData?.machineModel || reqData?.posMachine?.model || null // Add model
     };
   });
+
+  const { model } = req.query || {};
+  if (model) {
+    results = results.filter(r => r.machineModel === model);
+  }
+
 
   if (search) {
     const s = search.toLowerCase();
@@ -270,7 +396,9 @@ async function getMovements(req) {
       (r.reason && r.reason.toLowerCase().includes(s)) ||
       (r.performedBy && r.performedBy.toLowerCase().includes(s)) ||
       (r.customerBkCode && r.customerBkCode.toLowerCase().includes(s)) ||
-      (r.machineSerial && r.machineSerial.toLowerCase().includes(s))
+      (r.customerName && r.customerName.toLowerCase().includes(s)) ||
+      (r.machineSerial && r.machineSerial.toLowerCase().includes(s)) ||
+      (r.receiptNumber && r.receiptNumber.toLowerCase().includes(s))
     );
   }
 
@@ -284,11 +412,12 @@ async function getMovements(req) {
  * @param {Array} parts - Array of {partId, name, quantity, reason}
  * @param {String} requestId - Request ID for logging
  * @param {String} performedBy - User name
+ * @param {String} receiptNumber - Optional receipt number
  * @param {Object} tx - Optional transaction object
  * @returns {Promise<Array>} Array of stock movements
  * @throws {Error} If part not found or insufficient quantity
  */
-async function deductParts(parts, requestId, performedBy, branchId, tx = null) {
+async function deductParts(parts, requestId, performedBy, branchId, receiptNumber = null, tx = null) {
   const txOrDb = tx || db;
 
   if (!branchId) {
@@ -348,7 +477,9 @@ async function deductParts(parts, requestId, performedBy, branchId, tx = null) {
         reason: part.reason || 'قطع غيار صيانة',
         requestId: requestId,
         performedBy: performedBy,
-        branchId: branchId
+        branchId: branchId,
+        isPaid: part.isPaid || false,
+        receiptNumber: receiptNumber || null
       }
     });
 
@@ -462,6 +593,7 @@ async function getLowStockItems(branchId) {
 
 module.exports = {
   getInventory,
+  getInventoryLite,
   stockIn,
   importStock,
   updateQuantity,

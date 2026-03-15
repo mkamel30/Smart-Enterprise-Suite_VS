@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
@@ -39,8 +39,11 @@ import {
     Calendar,
     MapPin,
     ArrowRight,
-    Loader2
+    Loader2,
+    X,
+    TrendingUp
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { format, differenceInDays } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -146,16 +149,23 @@ export default function TrackMachines() {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [selectedMachine, setSelectedMachine] = useState<BranchTrackedMachine | null>(null);
 
+    // ESC key handler for modals
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setSelectedMachine(null);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
+
     // Fetch tracked machines for branch
-    const { data: machinesResponse, isLoading, refetch } = useQuery<{
-        success: boolean;
-        count: number;
-        data: BranchTrackedMachine[];
-    }>({
+    const { data: machinesResponse, isLoading, refetch } = useQuery<BranchTrackedMachine[]>({
         queryKey: ['track-machines', activeBranchId, user?.branchId, filterStatus],
         queryFn: async () => {
             const branchId = activeBranchId || user?.branchId;
-            if (!branchId) return { success: true, count: 0, data: [] };
+            if (!branchId) return [];
             return api.getBranchMachinesAtCenter(branchId);
         },
         enabled: !!(activeBranchId || user?.branchId),
@@ -163,7 +173,7 @@ export default function TrackMachines() {
     });
 
     // Extract machines array from response
-    const machines = machinesResponse?.data || [];
+    const machines = Array.isArray(machinesResponse) ? machinesResponse : [];
 
     // Fetch summary
     const { data: summary, isLoading: summaryLoading } = useQuery<TrackingSummary>({
@@ -258,366 +268,380 @@ export default function TrackMachines() {
         {
             title: 'إجمالي الماكينات',
             value: summary?.total || machines?.length || 0,
-            icon: <Package className="w-5 h-5 text-blue-600" />,
-            color: 'bg-blue-50 border-blue-200',
-            textColor: 'text-blue-900'
+            icon: <Package size={22} />,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50',
+            subtitle: 'جميع الماكينات بالمراكز'
         },
         {
             title: 'تحت الفحص',
             value: summary?.underInspection || 0,
-            icon: <Clock className="w-5 h-5 text-yellow-600" />,
-            color: 'bg-yellow-50 border-yellow-200',
-            textColor: 'text-yellow-900'
+            icon: <Clock size={22} />,
+            color: 'text-yellow-600',
+            bgColor: 'bg-yellow-50',
+            subtitle: 'فحص فني أولى'
         },
         {
             title: 'قيد الإصلاح',
             value: summary?.inRepair || 0,
-            icon: <Wrench className="w-5 h-5 text-blue-600" />,
-            color: 'bg-blue-50 border-blue-200',
-            textColor: 'text-blue-900'
+            icon: <Wrench size={22} />,
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-50',
+            subtitle: 'عمليات صيانة جارية'
         },
         {
             title: 'بانتظار الموافقة',
             value: summary?.waitingApproval || 0,
-            icon: <AlertCircle className="w-5 h-5 text-orange-600" />,
-            color: 'bg-orange-50 border-orange-200',
-            textColor: 'text-orange-900'
+            icon: <AlertCircle size={22} />,
+            color: 'text-orange-600',
+            bgColor: 'bg-orange-50',
+            subtitle: 'فحص التكلفة والقطع'
         },
         {
             title: 'تم الإصلاح',
             value: summary?.completed || 0,
-            icon: <CheckCircle className="w-5 h-5 text-green-600" />,
-            color: 'bg-green-50 border-green-200',
-            textColor: 'text-green-900'
+            icon: <CheckCircle size={22} />,
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            subtitle: 'جاهزة للتسليم'
         },
     ];
 
     return (
-        <div className="p-6 space-y-6" dir="rtl">
+        <div className="px-8 pt-6 pb-20 bg-slate-50/50 min-h-screen" dir="rtl">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
-                        <MapPin className="text-primary" />
-                        متابعة الماكينات
-                    </h1>
-                    <p className="text-muted-foreground text-sm">
-                        تتبع حالة ماكينات فرعك في مراكز الصيانة
-                    </p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 bg-white rounded-[1.5rem] shadow-xl shadow-blue-500/10 flex items-center justify-center text-blue-600 border border-blue-50">
+                        <MapPin size={32} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">متابعة الماكينات بالمراكز</h1>
+                        <p className="text-slate-400 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
+                            <TrendingUp size={14} className="text-emerald-500" />
+                            تتبع العمليات والاعتمادات في الوقت الفعلي
+                        </p>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleExport}>
-                        <Download size={16} className="ml-2" />
-                        تصدير
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => refetch()}>
-                        <RefreshCw size={16} className="ml-2" />
-                        تحديث
-                    </Button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleExport}
+                        className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 hover:shadow-lg transition-all flex items-center gap-2"
+                    >
+                        <Download size={18} />
+                        تصدير التقرير
+                    </button>
+                    <button
+                        onClick={() => refetch()}
+                        className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-slate-900/20 transition-all flex items-center gap-2"
+                    >
+                        <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+                        تحديث البيانات
+                    </button>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {/* Premium Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
                 {statsCards.map((stat, index) => (
-                    <Card key={index} className={`${stat.color} border`}>
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs font-bold text-muted-foreground">{stat.title}</p>
-                                    <p className={`text-2xl font-black ${stat.textColor}`}>
-                                        {isLoading ? '-' : stat.value}
-                                    </p>
-                                </div>
-                                <div className="p-2 bg-white/60 rounded-lg">
-                                    {stat.icon}
-                                </div>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        key={index}
+                        className="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col gap-4 group hover:-translate-y-1 transition-all duration-300"
+                    >
+                        <div className={`w-12 h-12 ${stat.bgColor} ${stat.color} rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform`}>
+                            {stat.icon}
+                        </div>
+                        <div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-black text-slate-900 font-mono tracking-tighter">
+                                    {isLoading ? '-' : stat.value}
+                                </span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">وحدة</span>
                             </div>
-                        </CardContent>
-                    </Card>
+                            <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mt-1">{stat.title}</h4>
+                            <p className="text-[10px] font-bold text-slate-400 mt-2 border-t pt-2 border-slate-50">{stat.subtitle}</p>
+                        </div>
+                    </motion.div>
                 ))}
             </div>
 
-            {/* Filters */}
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <div className="flex-1 relative">
-                            <Package className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                            <Input
-                                placeholder="البحث برقم السريال، الموديل، أو المشكلة..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pr-10"
-                            />
-                        </div>
+            {/* Filters & Actions Area */}
+            <div className="bg-white/50 backdrop-blur-md rounded-[2.5rem] p-4 border border-white shadow-xl shadow-slate-200/30 mb-8 flex flex-col md:flex-row gap-4 items-center">
+                <div className="relative flex-1 group w-full">
+                    <Package size={20} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                    <input
+                        type="text"
+                        placeholder="البحث برقم السريال، الموديل، أو المشكلة..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-white border border-slate-100 rounded-[1.5rem] py-4 pr-14 pl-6 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200 transition-all shadow-sm"
+                    />
+                </div>
 
-                        <Select value={filterStatus || 'ALL'} onValueChange={(value) => setFilterStatus(value === 'ALL' ? '' : value)}>
-                            <SelectTrigger className="w-[200px]">
-                                <Clock size={16} className="ml-2" />
-                                <SelectValue placeholder="فلترة حسب الحالة" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ALL">كل الحالات</SelectItem>
-                                <SelectItem value="NEW">تم الاستلام</SelectItem>
-                                <SelectItem value="UNDER_INSPECTION">تحت الفحص</SelectItem>
-                                <SelectItem value="REPAIRING">قيد الإصلاح</SelectItem>
-                                <SelectItem value="WAITING_APPROVAL">بانتظار الموافقة</SelectItem>
-                                <SelectItem value="REPAIRED">تم الإصلاح</SelectItem>
-                                <SelectItem value="TOTAL_LOSS">خسارة كلية</SelectItem>
-                                <SelectItem value="IN_RETURN_TRANSIT">في طريق العودة</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-            </Card>
+                <div className="flex gap-4 w-full md:w-auto">
+                    <select
+                        value={filterStatus || 'ALL'}
+                        onChange={(e) => setFilterStatus(e.target.value === 'ALL' ? '' : e.target.value)}
+                        className="bg-white border border-slate-100 rounded-[1.5rem] py-4 px-8 text-sm font-black text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all shadow-sm cursor-pointer min-w-[220px]"
+                    >
+                        <option value="ALL">كل الحالات التشغيلية</option>
+                        {Object.entries(statusConfig).map(([key, value]) => (
+                            <option key={key} value={key}>{value.label}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
-            {/* Machines Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Building2 className="w-5 h-5" />
-                        الماكينات في مراكز الصيانة
-                        <Badge variant="secondary" className="mr-2">
-                            {filteredMachines?.length || 0}
-                        </Badge>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="text-center py-12">
-                            <Loader2 className="animate-spin mx-auto mb-4" size={32} />
-                            <p className="text-muted-foreground">جاري تحميل البيانات...</p>
-                        </div>
-                    ) : filteredMachines?.length === 0 ? (
-                        <div className="text-center py-12">
-                            <Package className="mx-auto mb-4 text-gray-300" size={48} />
-                            <p className="text-muted-foreground">لا توجد ماكينات في مراكز الصيانة</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>السريال</TableHead>
-                                        <TableHead>المركز</TableHead>
-                                        <TableHead>الحالة</TableHead>
-                                        <TableHead>المشكلة</TableHead>
-                                        <TableHead>الأيام في المركز</TableHead>
-                                        <TableHead>آخر تحديث</TableHead>
-                                        <TableHead>التفاصيل</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredMachines.map((machine) => {
-                                        const status = statusConfig[machine.status] || {
-                                            label: machine.status,
-                                            color: 'bg-gray-100 text-gray-700 border-gray-200',
-                                            icon: <Package size={16} />
-                                        };
-                                        const needsApproval = machine.status === 'WAITING_APPROVAL' && machine.approvalStatus === 'PENDING';
+            {/* Premium Table Container */}
+            <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                <div className="overflow-x-auto custom-scroll">
+                    <table className="w-full text-right border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-100">
+                                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">البيانات الفنية</th>
+                                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">موقع الصيانة</th>
+                                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">الحالة التشغيلية</th>
+                                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">مدة الانتظار</th>
+                                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={5} className="p-20 text-center">
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
+                                            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">جاري سحب البيانات من السيرفر...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : filteredMachines?.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="p-20 text-center">
+                                        <div className="flex flex-col items-center gap-4 opacity-30">
+                                            <Package size={64} strokeWidth={1} />
+                                            <p className="text-sm font-black uppercase tracking-widest">لا توجد سجلات مطابقة</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredMachines.map((machine) => {
+                                    const status = statusConfig[machine.status] || {
+                                        label: machine.status,
+                                        color: 'bg-gray-100 text-gray-700',
+                                        icon: <Package size={16} />
+                                    };
+                                    const needsApproval = machine.status === 'WAITING_APPROVAL' && machine.approvalStatus === 'PENDING';
 
-                                        return (
-                                            <TableRow
-                                                key={machine.id}
-                                                className={`hover:bg-muted/50 cursor-pointer ${needsApproval ? 'bg-orange-50/50' : ''}`}
-                                                onClick={() => setSelectedMachine(machine)}
-                                            >
-                                                <TableCell>
-                                                    <div className="font-mono font-bold">{machine.serialNumber}</div>
-                                                    <div className="text-xs text-muted-foreground">{machine.model}</div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Building2 size={14} className="text-muted-foreground" />
-                                                        <span>{machine.centerName}</span>
+                                    return (
+                                        <tr
+                                            key={machine.id}
+                                            className={`group hover:bg-slate-50/50 transition-colors cursor-pointer ${needsApproval ? 'bg-orange-50/30' : ''}`}
+                                            onClick={() => setSelectedMachine(machine)}
+                                        >
+                                            <td className="p-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all shadow-inner">
+                                                        <Package size={20} strokeWidth={2.5} />
                                                     </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={`${status.color} flex items-center gap-1`}
-                                                    >
-                                                        {status.icon}
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-black text-slate-900 tracking-tight font-mono">{machine.serialNumber}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{machine.model}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-6 text-sm font-bold text-slate-600">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400"><Building2 size={16} /></div>
+                                                    {machine.centerName}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="flex flex-col gap-2">
+                                                    <span className={`px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest w-fit shadow-sm border ${status.color}`}>
                                                         {status.label}
-                                                    </Badge>
+                                                    </span>
                                                     {machine.approvalStatus && (
-                                                        <div className="mt-1">
-                                                            <Badge
-                                                                variant="outline"
-                                                                className={`${approvalStatusConfig[machine.approvalStatus].color} text-xs`}
-                                                            >
-                                                                {approvalStatusConfig[machine.approvalStatus].label}
-                                                            </Badge>
-                                                        </div>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="max-w-xs truncate" title={machine.problem}>
-                                                        {machine.problem || 'غير محدد'}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-1">
-                                                        <Calendar size={14} className="text-muted-foreground" />
-                                                        <span className={machine.daysAtCenter > 7 ? 'text-orange-600 font-bold' : ''}>
-                                                            {machine.daysAtCenter} يوم
+                                                        <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest w-fit border ${approvalStatusConfig[machine.approvalStatus].color}`}>
+                                                            {approvalStatusConfig[machine.approvalStatus].label}
                                                         </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className={`text-lg font-black font-mono ${machine.daysAtCenter > 7 ? 'text-orange-600 underline decoration-2 decoration-orange-200 underline-offset-4' : 'text-slate-900'}`}>{machine.daysAtCenter}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400">أيـام</span>
                                                     </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-sm">
-                                                        {format(new Date(machine.lastUpdate), 'yyyy-MM-dd', { locale: ar })}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {machine.lastUpdateAction}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Button variant="ghost" size="sm">
-                                                        <Eye size={16} className="ml-1" />
-                                                        عرض
-                                                    </Button>
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tight mt-1">منذ تاريخ التعيين</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="flex gap-2 justify-center">
+                                                    <button className="w-10 h-10 bg-white border border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 rounded-xl transition-all flex items-center justify-center shadow-sm">
+                                                        <Eye size={18} strokeWidth={2.5} />
+                                                    </button>
                                                     {needsApproval && (
-                                                        <Button
-                                                            variant="destructive"
-                                                            size="sm"
-                                                            className="mr-2"
+                                                        <button
+                                                            className="px-4 h-10 bg-orange-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:bg-orange-700 transition-all flex items-center gap-2"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 navigate('/maintenance-approvals');
                                                             }}
                                                         >
-                                                            <AlertCircle size={16} className="ml-1" />
-                                                            موافقة مطلوبة
-                                                        </Button>
+                                                            <AlertCircle size={14} />
+                                                            موافقة معلقة
+                                                        </button>
                                                     )}
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             {/* Machine Detail Modal */}
             {selectedMachine && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="flex items-center gap-2">
-                                    <Package className="w-5 h-5" />
-                                    تفاصيل الماكينة
-                                </CardTitle>
-                                <Button variant="ghost" size="sm" onClick={() => setSelectedMachine(null)}>
-                                    إغلاق
-                                </Button>
+                <div className="modal-overlay" onClick={() => setSelectedMachine(null)}>
+                    <div className="modal-container md:max-w-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <div className="modal-header-content">
+                                <Package className="modal-icon text-primary" size={24} />
+                                <h2 className="modal-title">تفاصيل الماكينة</h2>
                             </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                            <button type="button" className="modal-close" onClick={() => setSelectedMachine(null)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="modal-body space-y-6">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 bg-muted rounded-lg">
-                                    <p className="text-sm text-muted-foreground">رقم السريال</p>
-                                    <p className="font-mono font-bold">{selectedMachine.serialNumber}</p>
+                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl shadow-sm">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">رقم السريال</p>
+                                    <p className="font-mono font-bold text-slate-900">{selectedMachine.serialNumber}</p>
                                 </div>
-                                <div className="p-3 bg-muted rounded-lg">
-                                    <p className="text-sm text-muted-foreground">الموديل</p>
-                                    <p className="font-bold">{selectedMachine.model}</p>
+                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl shadow-sm">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">الموديل</p>
+                                    <p className="font-bold text-slate-900">{selectedMachine.model}</p>
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground mb-2">الحالة الحالية</p>
-                                <Badge
-                                    variant="outline"
-                                    className={`${statusConfig[selectedMachine.status].color} text-base px-3 py-1`}
-                                >
-                                    {statusConfig[selectedMachine.status].icon}
-                                    {statusConfig[selectedMachine.status].label}
-                                </Badge>
-                                <p className="mt-2 text-sm text-muted-foreground">
+                            <div className="p-5 bg-gradient-to-br from-slate-50 to-blue-50/30 border-2 border-primary/5 rounded-2xl">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">الحالة الحالية</p>
+                                <div className="flex items-center gap-3">
+                                    <Badge
+                                        variant="outline"
+                                        className={`${statusConfig[selectedMachine.status].color} text-base px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm border-2`}
+                                    >
+                                        {statusConfig[selectedMachine.status].icon}
+                                        {statusConfig[selectedMachine.status].label}
+                                    </Badge>
+                                </div>
+                                <p className="mt-3 text-sm font-bold text-slate-600 leading-relaxed pr-2">
                                     {statusConfig[selectedMachine.status].description}
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">مركز الصيانة</p>
-                                    <p className="font-bold flex items-center gap-2">
-                                        <Building2 size={16} />
-                                        {selectedMachine.centerName}
-                                    </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                            <Building2 size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">مركز الصيانة</p>
+                                            <p className="font-bold text-slate-800">{selectedMachine.centerName}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                                            <User size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الفني المسؤول</p>
+                                            <p className="font-bold text-slate-800">{selectedMachine.technicianName || 'غير معين'}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">الفني المسؤول</p>
-                                    <p className="font-bold flex items-center gap-2">
-                                        <User size={16} />
-                                        {selectedMachine.technicianName || 'غير معين'}
-                                    </p>
+                                <div className="space-y-4 border-r pr-6 border-slate-100">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                            <Calendar size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">تاريخ الإرسال</p>
+                                            <p className="font-bold text-slate-800">{format(new Date(selectedMachine.assignedAt), 'PPP', { locale: ar })}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-orange-50 text-orange-600 rounded-lg">
+                                            <Clock size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">المدة في المركز</p>
+                                            <p className="font-bold text-slate-800">{selectedMachine.daysAtCenter} يوم</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div>
-                                <p className="text-sm text-muted-foreground">وصف المشكلة</p>
-                                <p className="p-3 bg-muted rounded-lg mt-1">{selectedMachine.problem || 'غير محدد'}</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">تاريخ الإرسال</p>
-                                    <p className="flex items-center gap-2">
-                                        <Calendar size={16} className="text-muted-foreground" />
-                                        {format(new Date(selectedMachine.assignedAt), 'PPP', { locale: ar })}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">المدة في المركز</p>
-                                    <p className="flex items-center gap-2">
-                                        <Clock size={16} className="text-muted-foreground" />
-                                        {selectedMachine.daysAtCenter} يوم
-                                    </p>
+                            <div className="modal-form-field">
+                                <label className="modal-form-label">وصف المشكلة</label>
+                                <div className="p-4 bg-red-50/30 border border-red-100 rounded-xl text-red-900 font-bold text-sm leading-relaxed">
+                                    {selectedMachine.problem || 'غير محدد'}
                                 </div>
                             </div>
 
                             {selectedMachine.estimatedCompletion && (
-                                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                    <p className="text-sm text-green-700 font-bold">تاريخ الانتهاء المتوقع</p>
-                                    <p className="text-green-600">
-                                        {format(new Date(selectedMachine.estimatedCompletion), 'PPP', { locale: ar })}
-                                    </p>
+                                <div className="p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl flex items-center gap-4">
+                                    <div className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200">
+                                        <Calendar size={24} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-emerald-800 mb-0.5">تاريخ الانتهاء المتوقع</p>
+                                        <p className="text-lg font-black text-emerald-600">
+                                            {format(new Date(selectedMachine.estimatedCompletion), 'PPP', { locale: ar })}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
-                            <div>
-                                <p className="text-sm text-muted-foreground">آخر تحديث</p>
-                                <p className="text-sm">
-                                    {selectedMachine.lastUpdateAction} - {format(new Date(selectedMachine.lastUpdate), 'PPpp', { locale: ar })}
-                                </p>
+                            <div className="pt-4 border-t border-slate-100">
+                                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 bg-slate-50 py-2 px-4 rounded-full w-fit">
+                                    <RefreshCw size={12} className="animate-spin-slow" />
+                                    آخر تحديث: {selectedMachine.lastUpdateAction} - {format(new Date(selectedMachine.lastUpdate), 'PPpp', { locale: ar })}
+                                </div>
                             </div>
-                        </CardContent>
-                        <CardFooter className="flex justify-between">
-                            <Button variant="outline" onClick={() => setSelectedMachine(null)}>
-                                إغلاق
-                            </Button>
+                        </div>
+                        <div className="modal-footer">
+                            <button
+                                onClick={() => setSelectedMachine(null)}
+                                className="smart-btn-secondary"
+                            >
+                                إغلاق النافذة
+                            </button>
                             {selectedMachine.status === 'WAITING_APPROVAL' && selectedMachine.approvalStatus === 'PENDING' && (
-                                <Button
+                                <button
                                     onClick={() => {
                                         setSelectedMachine(null);
                                         navigate('/maintenance-approvals');
                                     }}
-                                    className="bg-orange-600 hover:bg-orange-700"
+                                    className="smart-btn-primary bg-orange-600 hover:bg-orange-700 shadow-orange-200"
                                 >
-                                    <AlertCircle size={16} className="ml-2" />
-                                    الذهاب للموافقات
-                                </Button>
+                                    <AlertCircle size={18} />
+                                    الذهاب لصفحة الموافقات
+                                </button>
                             )}
-                        </CardFooter>
-                    </Card>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

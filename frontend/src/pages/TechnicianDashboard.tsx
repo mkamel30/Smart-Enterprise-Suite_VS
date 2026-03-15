@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,8 @@ import {
     Wrench,
     Search,
     RefreshCw,
-    Filter
+    Filter,
+    X
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { CloseRequestModal } from '../components/CloseRequestModal';
@@ -81,6 +82,19 @@ export default function TechnicianDashboard() {
     const [inspectionModal, setInspectionModal] = useState<{ isOpen: boolean; assignmentId: string | null }>({ isOpen: false, assignmentId: null });
     const [approvalModal, setApprovalModal] = useState<{ isOpen: boolean; assignmentId: string | null }>({ isOpen: false, assignmentId: null });
 
+    // ESC key handler for modals
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setInspectionModal({ isOpen: false, assignmentId: null });
+                setApprovalModal({ isOpen: false, assignmentId: null });
+                setShowPartsModal(false);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
+
     // Form Data
     const [inspectionNotes, setInspectionNotes] = useState('');
     const [approvalData, setApprovalData] = useState({ cost: 0, parts: '', notes: '' });
@@ -127,7 +141,7 @@ export default function TechnicianDashboard() {
 
     const { data: spareParts } = useQuery<any[]>({
         queryKey: ['spare-parts-inventory'],
-        queryFn: () => api.getInventory() as any,
+        queryFn: () => api.getInventoryLite() as any,
         enabled: !!user
     });
 
@@ -274,7 +288,7 @@ export default function TechnicianDashboard() {
                     <div className="p-12 text-center text-muted-foreground font-medium">لا توجد مهام حالياً</div>
                 ) : (
                     <div className="divide-y">
-                        {machines.map((machine) => {
+                        {Array.isArray(machines) && machines.map((machine) => {
                             const status = statusConfig[machine.status] || statusConfig.ASSIGNED;
                             const isMyTask = isManager || machine.technicianId === user?.id || machine.currentTechnicianId === user?.id;
 
@@ -352,70 +366,146 @@ export default function TechnicianDashboard() {
             </div>
 
             {/* Inspection Modal */}
-            <Dialog open={inspectionModal.isOpen} onOpenChange={(open) => !open && setInspectionModal({ isOpen: false, assignmentId: null })}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>بدء الفحص</DialogTitle>
-                        <DialogDescription>ملاحظات أولية قبل البدء</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <Label>ملاحظات الفحص</Label>
-                        <Textarea
-                            value={inspectionNotes}
-                            onChange={(e) => setInspectionNotes(e.target.value)}
-                            placeholder="حالة الماكينة، العطل الظاهري..."
-                            className="min-h-25"
-                        />
+            <Dialog
+                open={inspectionModal.isOpen}
+                onOpenChange={(open) => !open && setInspectionModal({ isOpen: false, assignmentId: null })}
+            >
+                <DialogContent className="p-0 border-0 flex flex-col max-h-[96vh] h-auto overflow-hidden sm:max-w-lg rounded-3xl shadow-2xl bg-slate-50 [&>button]:hidden" dir="rtl">
+                    <div className="modal-header shrink-0 p-8 pb-6 bg-white border-b-0">
+                        <div className="modal-header-content">
+                            <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-100 shadow-sm text-indigo-600">
+                                <Search size={24} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                                <h2 className="modal-title text-2xl font-black text-slate-900 leading-tight">بدء فحص الماكينة</h2>
+                                <p className="text-slate-500 font-bold text-sm mt-0.5">تسجيل الملاحظات الأولية قبل بدء العمل</p>
+                            </div>
+                        </div>
+                        <button type="button" className="modal-close" onClick={() => setInspectionModal({ isOpen: false, assignmentId: null })}>
+                            <X size={20} />
+                        </button>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setInspectionModal({ isOpen: false, assignmentId: null })}>إلغاء</Button>
-                        <Button onClick={() => submitInspectionMutation.mutate({ id: inspectionModal.assignmentId!, notes: inspectionNotes })}>
+
+                    <div className="flex-1 overflow-y-auto px-8 py-2 pb-8 space-y-6">
+                        <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-2xl flex items-start gap-3">
+                            <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                            <p className="text-xs font-bold text-amber-800 leading-relaxed">يرجى إضافة ملاحظات أولية عن حالة الماكينة الظاهرية والأعطال المبدئية قبل بدء عملية الصيانة الفعلية.</p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pr-1">ملاحظات الفني المبدئية</label>
+                            <textarea
+                                value={inspectionNotes}
+                                onChange={(e) => setInspectionNotes(e.target.value)}
+                                placeholder="مثال: كسر في الشاشة، لا يعمل الشحن، عطل في السوفت وير..."
+                                className="smart-input min-h-[150px] text-sm font-bold resize-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="modal-footer p-8 pt-4 bg-white border-t border-slate-100">
+                        <button
+                            type="button"
+                            className="smart-btn-secondary h-12 min-w-[100px]"
+                            onClick={() => setInspectionModal({ isOpen: false, assignmentId: null })}
+                        >
+                            إلغاء
+                        </button>
+                        <button
+                            type="button"
+                            className="smart-btn-primary h-12 flex-1"
+                            onClick={() => submitInspectionMutation.mutate({ id: inspectionModal.assignmentId!, notes: inspectionNotes })}
+                            disabled={submitInspectionMutation.isPending}
+                        >
+                            {submitInspectionMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <Play size={18} className="ml-2" />}
                             تأكيد وبدء العمل
-                        </Button>
-                    </DialogFooter>
+                        </button>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Approval Request Modal */}
-            <Dialog open={approvalModal.isOpen} onOpenChange={(open) => !open && setApprovalModal({ isOpen: false, assignmentId: null })}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>تقرير الفحص / طلب الموافقة</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>التكلفة التقديرية (ج.م)</Label>
-                                <Input
-                                    type="number"
-                                    value={approvalData.cost}
-                                    onChange={(e) => setApprovalData({ ...approvalData, cost: parseFloat(e.target.value) })}
-                                />
-                                <p className="text-xs text-muted-foreground">اتركه 0 إذا كانت صيانة مجانية</p>
+            <Dialog
+                open={approvalModal.isOpen}
+                onOpenChange={(open) => !open && setApprovalModal({ isOpen: false, assignmentId: null })}
+            >
+                <DialogContent className="p-0 border-0 flex flex-col max-h-[96vh] h-auto overflow-hidden sm:max-w-xl rounded-3xl shadow-2xl bg-slate-50 [&>button]:hidden" dir="rtl">
+                    <div className="modal-header shrink-0 p-8 pb-6 bg-white border-b-0">
+                        <div className="modal-header-content">
+                            <div className="p-3 bg-orange-50 rounded-2xl border border-orange-100 shadow-sm text-orange-600">
+                                <AlertCircle size={24} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                                <h2 className="modal-title text-2xl font-black text-slate-900 leading-tight">تقرير الفحص وطلب الموافقة</h2>
+                                <p className="text-slate-500 font-bold text-sm mt-0.5">تحديد التكلفة التقديرية وقطع الغيار المطلوبة</p>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>قطع الغيار المطلوبة</Label>
-                            <Input
-                                value={approvalData.parts}
-                                onChange={(e) => setApprovalData({ ...approvalData, parts: e.target.value })}
-                                placeholder="شاشة، بطارية..."
-                            />
+                        <button type="button" className="modal-close" onClick={() => setApprovalModal({ isOpen: false, assignmentId: null })}>
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto px-8 py-2 pb-8 space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pr-1 flex justify-between">
+                                    التكلفة التقديرية
+                                    <span className="text-slate-300">ج.م</span>
+                                </label>
+                                <div className="relative">
+                                    <Input
+                                        type="number"
+                                        value={approvalData.cost}
+                                        onChange={(e) => setApprovalData({ ...approvalData, cost: parseFloat(e.target.value) || 0 })}
+                                        className="smart-input font-black text-lg h-12"
+                                        placeholder="0.00"
+                                    />
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold text-xs pointer-events-none">EGP</div>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-bold italic">* اتركه 0 إذا كانت صيانة مجانية (ضمان)</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pr-1">قطع الغيار المقترحة</label>
+                                <Input
+                                    type="text"
+                                    value={approvalData.parts}
+                                    onChange={(e) => setApprovalData({ ...approvalData, parts: e.target.value })}
+                                    className="smart-input h-12 font-bold"
+                                    placeholder="شاشة، بطارية، كابل..."
+                                />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>ملاحظات الفني</Label>
-                            <Textarea
+
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pr-1">تقرير الفني التفصيلي</label>
+                            <textarea
                                 value={approvalData.notes}
                                 onChange={(e) => setApprovalData({ ...approvalData, notes: e.target.value })}
+                                className="smart-input min-h-[120px] text-sm font-bold resize-none"
+                                placeholder="صف تفاصيل العطل المكتشف والحل المقترح للموافقة عليه..."
                             />
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setApprovalModal({ isOpen: false, assignmentId: null })}>إلغاء</Button>
-                        <Button onClick={() => submitApprovalMutation.mutate({ id: approvalModal.assignmentId!, data: approvalData })}>
-                            إرسال للفرع
-                        </Button>
-                    </DialogFooter>
+
+                    <div className="modal-footer p-8 pt-4 bg-white border-t border-slate-100">
+                        <button
+                            type="button"
+                            className="smart-btn-secondary h-12 min-w-[100px]"
+                            onClick={() => setApprovalModal({ isOpen: false, assignmentId: null })}
+                        >
+                            إلغاء
+                        </button>
+                        <button
+                            type="button"
+                            className="smart-btn-primary h-12 flex-1 bg-orange-600 hover:bg-orange-700 shadow-orange-100"
+                            onClick={() => submitApprovalMutation.mutate({ id: approvalModal.assignmentId!, data: approvalData })}
+                            disabled={submitApprovalMutation.isPending}
+                        >
+                            {submitApprovalMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <Clock size={18} className="ml-2" />}
+                            إرسال لطلب الموافقة
+                        </button>
+                    </div>
                 </DialogContent>
             </Dialog>
 

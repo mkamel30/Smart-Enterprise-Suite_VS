@@ -1,0 +1,414 @@
+﻿
+> smart-enterprise-suite-backend@1.0.0 test
+> jest --detectOpenHandles --forceExit backend/tests/unit/branchIsolation.test.js
+
+node.exe : FAIL tests
+/unit/branchIsolation
+.test.js
+At line:1 char:1
++ & "C:\Program Files
+\nodejs/node.exe" "C:
+\Users\mkame\AppData\
+Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (FAIL te   
+ sts/unit/branchI    
+solation.test.js    
+:String) [], Rem    
+oteException
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+  Branch Isolation
+    getBranchFilter
+      ظêأ should 
+return empty object 
+for SUPER_ADMIN (13 
+ms)
+      ظêأ should 
+return empty object 
+for MANAGEMENT (4 ms)
+      ظêأ should 
+return branchId 
+filter for regular 
+USER (4 ms)
+      ظêأ should 
+return branchId 
+filter for ADMIN (4 
+ms)
+      ظêأ should 
+return branchId 
+filter for 
+ADMIN_AFFAIRS (4 ms)
+      ظêأ should 
+return branchId 
+filter for 
+CENTER_MANAGER (2 ms)
+      ├ù should 
+return empty object 
+when user has no 
+branchId (5 ms)
+      ظêأ should 
+return empty object 
+for unknown role (2 
+ms)
+    canAccessBranch
+      ظêأ should 
+allow SUPER_ADMIN to 
+access any branch 
+(11 ms)
+      ظêأ should 
+allow MANAGEMENT to 
+access any branch (3 
+ms)
+      ├ù should 
+allow CENTER_MANAGER 
+to access any branch 
+(3 ms)
+      ظêأ should 
+allow regular USER 
+to access only their 
+own branch (7 ms)
+      ظêأ should 
+allow ADMIN to 
+access only their 
+own branch (3 ms)
+      ظêأ should 
+deny access when 
+user has no branchId 
+(3 ms)
+      ظêأ should 
+handle undefined 
+targetBranchId (3 ms)
+      ظêأ should 
+handle null 
+targetBranchId (5 ms)
+    Branch filter 
+enforcement in 
+queries
+      ظêأ user query 
+should include 
+branchId filter (4 
+ms)
+      ظêأ admin 
+query should include 
+branchId filter (3 
+ms)
+      ظêأ super 
+admin query should 
+not include branchId 
+filter (6 ms)
+      ظêأ management 
+query should not 
+include branchId 
+filter (5 ms)
+      ظêأ query with 
+combined filters 
+should work 
+correctly (13 ms)
+    Cross-branch 
+data access 
+prevention
+      ظêأ regular 
+user cannot access 
+data from other 
+branches (1 ms)
+      ظêأ admin 
+cannot access data 
+from other branches 
+(3 ms)
+      ظêأ super 
+admin can access 
+data from any branch 
+(7 ms)
+      ظêأ management 
+can access data from 
+any branch (4 ms)
+      ├ù center 
+manager can access 
+data from any branch 
+(3 ms)
+      ظêأ affairs 
+admin restricted to 
+their branch (1 ms)
+    SUPER_ADMIN 
+bypass capabilities
+      ظêأ 
+SUPER_ADMIN bypasses 
+branch filter 
+completely (1 ms)
+      ظêأ 
+SUPER_ADMIN can 
+perform cross-branch 
+operations (2 ms)
+      ظêأ 
+SUPER_ADMIN query 
+sees all branches (2 
+ms)
+      ظêأ 
+SUPER_ADMIN can 
+transfer between any 
+branches (2 ms)
+      ظêأ 
+SUPER_ADMIN can view 
+all maintenance 
+requests (2 ms)
+    Complex branch 
+isolation scenarios
+      ظêأ transfer 
+order between 
+branches - regular 
+user can only access 
+their side (3 ms)
+      ظêأ transfer 
+order - both branch 
+users can access 
+with proper query (2 
+ms)
+      ظêأ 
+multi-branch admin 
+should be restricted 
+to their assigned 
+branch (6 ms)
+      ظêأ branch 
+isolation prevents 
+data leakage in list 
+queries (9 ms)
+      ظêأ global 
+roles can see data 
+from all branches (2 
+ms)
+    Edge cases
+      ظêأ should 
+handle undefined 
+user gracefully (8 
+ms)
+      ظêأ should 
+handle null user 
+gracefully (2 ms)
+      ظêأ should 
+handle user without 
+role (2 ms)
+      ظêأ should 
+handle user with 
+empty role (1 ms)
+      ظêأ should 
+handle empty string 
+branchId (1 ms)
+      ظêأ should 
+handle whitespace in 
+branchId (1 ms)
+      ظêأ should 
+preserve filter 
+object immutability 
+(3 ms)
+    Integration with 
+Prisma queries
+      ظêأ Prisma 
+query with user 
+branch filter (2 ms)
+      ظêأ Prisma 
+query with super 
+admin (no branch 
+filter) (1 ms)
+      ظêأ Prisma 
+query with OR 
+condition for 
+transfer orders (1 
+ms)
+      ظêأ Complex 
+query combining 
+filters (1 ms)
+
+  ظù Branch 
+Isolation ظ║ 
+getBranchFilter ظ║ 
+should return empty 
+object when user has 
+no branchId
+
+    expect(received).
+toEqual(expected) // 
+deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Object {}
+    + Object {
+    +   "branchId": 
+"00000000",
+    + }
+
+    [0m [90m 148 
+|[39m       
+[36mconst[39m 
+result [33m=[39m au
+thHelpers[33m.[39mg
+etBranchFilter(req)[
+33m;[39m
+     [90m 149 |[39m
+    [31m[1m>[22m[
+39m[90m 150 |[39m  
+     expect(result)[
+33m.[39mtoEqual({})
+[33m;[39m
+     [90m     
+|[39m               
+       
+[31m[1m^[22m[39m
+     [90m 151 
+|[39m     
+})[33m;[39m
+     [90m 152 |[39m
+     [90m 153 
+|[39m     
+test([32m'should 
+return empty object 
+for unknown role'[39
+m[33m,[39m () 
+[33m=>[39m {[0m
+
+      at 
+Object.toEqual (tests
+/unit/branchIsolation
+.test.js:150:22)
+
+  ظù Branch 
+Isolation ظ║ 
+canAccessBranch ظ║ 
+should allow 
+CENTER_MANAGER to 
+access any branch
+
+    expect(received).
+toBe(expected) // 
+Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 188 
+|[39m       
+[36mconst[39m req 
+[33m=[39m { 
+user[33m:[39m 
+centerManager 
+}[33m;[39m
+     [90m 189 |[39m
+    [31m[1m>[22m[
+39m[90m 190 |[39m  
+     expect(authHelpe
+rs[33m.[39mcanAcces
+sBranch(req[33m,[39
+m [32m'branch-1'[39
+m))[33m.[39mtoBe([
+36mtrue[39m)[33m;[
+39m
+     [90m     
+|[39m               
+                     
+                     
+   
+[31m[1m^[22m[39m
+     [90m 191 
+|[39m       expect(a
+uthHelpers[33m.[39m
+canAccessBranch(req[
+33m,[39m [32m'cente
+r-1'[39m))[33m.[39
+mtoBe([36mtrue[39m)
+[33m;[39m
+     [90m 192 
+|[39m     
+})[33m;[39m
+     [90m 193 
+|[39m[0m
+
+      at Object.toBe 
+(tests/unit/branchIso
+lation.test.js:190:60
+)
+
+  ظù Branch 
+Isolation ظ║ 
+Cross-branch data 
+access prevention 
+ظ║ center manager 
+can access data from 
+any branch
+
+    expect(received).
+toBe(expected) // 
+Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 362 
+|[39m
+     [90m 363 
+|[39m       expect(a
+uthHelpers[33m.[39m
+canAccessBranch({ 
+user[33m:[39m 
+centerManager 
+}[33m,[39m centerDa
+ta[33m.[39mbranchId
+))[33m.[39mtoBe([3
+6mtrue[39m)[33m;[3
+9m
+    [31m[1m>[22m[
+39m[90m 364 |[39m  
+     expect(authHelpe
+rs[33m.[39mcanAcces
+sBranch({ 
+user[33m:[39m 
+centerManager 
+}[33m,[39m branchDa
+ta[33m.[39mbranchId
+))[33m.[39mtoBe([3
+6mtrue[39m)[33m;[3
+9m
+     [90m     
+|[39m               
+                     
+                     
+                     
+           
+[31m[1m^[22m[39m
+     [90m 365 
+|[39m     
+})[33m;[39m
+     [90m 366 |[39m
+     [90m 367 
+|[39m     
+test([32m'affairs 
+admin restricted to 
+their branch'[39m[3
+3m,[39m () 
+[33m=>[39m {[0m
+
+      at Object.toBe 
+(tests/unit/branchIso
+lation.test.js:364:89
+)
+
+Test Suites: 1 
+failed, 1 total
+Tests:       3 
+failed, 45 passed, 
+48 total
+Snapshots:   0 total
+Time:        0.771 
+s, estimated 1 s
+Ran all test suites 
+matching backend/test
+s/unit/branchIsolatio
+n.test.js.

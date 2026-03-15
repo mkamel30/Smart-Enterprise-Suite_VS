@@ -28,7 +28,7 @@ export function BranchRankings({ data }: BranchRankingsProps) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
-                        {branchPerformance.map((branch: any, idx: number) => (
+                        {Array.isArray(branchPerformance) && branchPerformance.map((branch: any, idx: number) => (
                             <tr key={branch.id} className="group hover:bg-muted/30 transition-colors">
                                 <td className="p-6">
                                     <div className="flex items-center gap-4">

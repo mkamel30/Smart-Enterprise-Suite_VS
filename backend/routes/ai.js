@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const OpenAI = require('openai');
 const db = require('../db');
@@ -130,7 +130,6 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
 
                 if (completion.choices && completion.choices[0]) {
                     let text = completion.choices[0].message.content.trim();
-                    // console.log(`ًں¤– Raw output from ${m}:`, text);
 
                     // 1. Clean markdown
                     text = text.replace(/```sql/gi, '').replace(/```/g, '').trim();
@@ -160,7 +159,6 @@ router.post('/ai/query', authenticateToken, async (req, res) => {
         }
 
         if (!sqlQuery) {
-            console.warn("âڑ ï¸ڈ No SQL generated. Switching to Fallback Mode (Lite Context).");
 
             // Fallback: Fetch basic data to answer general questions or simple queries
             try {

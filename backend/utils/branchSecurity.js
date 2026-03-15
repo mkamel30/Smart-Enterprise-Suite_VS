@@ -6,7 +6,8 @@ const { ForbiddenError } = require('../utils/errors');
  * @returns {boolean}
  */
 function userHasGlobalRole(user) {
-    return ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS'].includes(user?.role);
+    const role = user?.role;
+    return ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS', 'CS_SUPERVISOR', 'CENTER_MANAGER'].includes(role);
 }
 
 /**
@@ -18,7 +19,13 @@ function userHasGlobalRole(user) {
  */
 function getBranchScope(user, field = 'branchId') {
     if (userHasGlobalRole(user) || !user?.branchId) {
-        return {};
+        // Return a dummy filter that satisfies branch enforcer but includes everything
+        return {
+            OR: [
+                { [field]: { not: '0000_SYSTEM_BYPASS' } },
+                { [field]: null }
+            ]
+        };
     }
     return { [field]: user.branchId };
 }

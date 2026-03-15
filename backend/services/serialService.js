@@ -42,8 +42,7 @@ async function getSerialConflicts(serialNumber) {
             customerId: p.customerId,
             customerName: p.customer?.client_name || null,
             branchId: p.customer?.branchId || p.branchId || null,
-            branchName: p.customer?.branch?.name || null,
-            isMain: p.isMain || false
+            branchName: p.customer?.branch?.name || null
         });
     }
 

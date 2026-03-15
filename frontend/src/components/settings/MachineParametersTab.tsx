@@ -42,7 +42,7 @@ export function MachineParametersTab() {
         errorMessage: 'فشل تحديث الموديلات',
         invalidateKeys: [['warehouse-machines'], ['machine-parameters']],
         onSuccess: (data: any) => {
-            setUpdateResult(`تم تحديث ${data.warehouseUpdated} ماكينة مخزن + ${data.customerUpdated} ماكينة عملاء`);
+            setUpdateResult(`تحديث: ${data?.warehouseUpdated} مخازن، ${data?.customerUpdated} عملاء، ${data?.adminStoreUpdated} شئون إدارية`);
             setTimeout(() => setUpdateResult(null), 5000);
         }
     });

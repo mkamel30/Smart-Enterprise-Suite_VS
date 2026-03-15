@@ -39,7 +39,7 @@ export default function Customers() {
 
     // Mutations
     const updateSimMutation = useApiMutation({
-        mutationFn: (data: { id: string, type: string }) => api.updateSimCard(data.id, { type: data.type }),
+        mutationFn: (data: { id: string, type: string }) => api.updateSimCard(data?.id, { type: data?.type }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['customers'] }),
         successMessage: 'تم تحديث نوع الشريحة بنجاح'
     });
@@ -97,12 +97,14 @@ export default function Customers() {
     };
 
     // Fetch available warehouse machines for exchange
-    const { data: warehouseMachines } = useQuery({
+    const { data: warehouseMachinesData } = useQuery<any>({
         queryKey: ['available-warehouse-machines', user?.branchId],
         queryFn: () => api.getAvailableWarehouseMachines(user?.branchId),
         enabled: !!user,
         staleTime: 5 * 60 * 1000 // 5 minutes
     });
+
+    const warehouseMachines = Array.isArray(warehouseMachinesData) ? warehouseMachinesData : (warehouseMachinesData?.data || []);
 
     // Mutations for modals
     const exchangeMutation = useApiMutation({

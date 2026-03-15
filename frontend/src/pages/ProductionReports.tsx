@@ -8,7 +8,8 @@ import {
     ShoppingCart,
     Calendar,
     TrendingUp,
-    Layers
+    Layers,
+    Users
 } from 'lucide-react';
 
 // Import new report components
@@ -17,13 +18,15 @@ import { InventoryMovementReport } from '../components/reports/InventoryMovement
 import { PosStockReport } from '../components/reports/PosStockReport';
 import { PosSalesReport } from '../components/reports/PosSalesReport';
 import { ReportsFilters } from '../components/reports/ReportsFilters';
+import { TechnicianConsumptionReport } from '../components/reports/TechnicianConsumptionReport';
 
-type ReportTab = 'governorate' | 'inventory' | 'stock' | 'salesMonthly' | 'salesDaily';
+type ReportTab = 'governorate' | 'inventory' | 'stock' | 'salesMonthly' | 'salesDaily' | 'techConsumption';
 
 const TABS: { id: ReportTab; label: string; icon: React.ReactNode }[] = [
     { id: 'governorate', label: 'أداء المحافظات', icon: <Building2 size={18} /> },
     { id: 'inventory', label: 'حركة المخزون', icon: <Package size={18} /> },
     { id: 'stock', label: 'مخزون الأجهزة', icon: <Layers size={18} /> },
+    { id: 'techConsumption', label: 'استهلاك الفنيين', icon: <Users size={18} /> },
     { id: 'salesMonthly', label: 'المبيعات الشهرية', icon: <Calendar size={18} /> },
     { id: 'salesDaily', label: 'المبيعات اليومية', icon: <TrendingUp size={18} /> },
 ];
@@ -63,22 +66,22 @@ export default function ProductionReports() {
     // Query for Governorate Performance
     const { data: governorateData, isLoading: isGovLoading } = useQuery({
         queryKey: ['governorate-performance', filters],
-        queryFn: () => api.getGovernoratePerformance({
-            from: filters.startDate,
-            to: filters.endDate,
-            branchId: filters.branchId || undefined
-        }),
+        queryFn: () => api.getPerformanceReport(
+            filters.startDate,
+            filters.endDate,
+            filters.branchId || undefined
+        ),
         enabled: activeTab === 'governorate'
     });
 
     // Query for Inventory Movement
     const { data: inventoryData, isLoading: isInvLoading } = useQuery({
         queryKey: ['inventory-movement', filters],
-        queryFn: () => api.getInventoryMovement({
-            from: filters.startDate,
-            to: filters.endDate,
-            branchId: filters.branchId || undefined
-        }),
+        queryFn: () => api.getMovementsReport(
+            filters.startDate,
+            filters.endDate,
+            filters.branchId || undefined
+        ),
         enabled: activeTab === 'inventory'
     });
 
@@ -113,12 +116,24 @@ export default function ProductionReports() {
         enabled: activeTab === 'salesDaily'
     });
 
+    // Query for Technician Consumption
+    const { data: techConsumptionData, isLoading: isTechLoading } = useQuery({
+        queryKey: ['tech-consumption', filters],
+        queryFn: () => api.getTechnicianConsumptionReport({
+            from: filters.startDate,
+            to: filters.endDate,
+            branchId: filters.branchId || undefined
+        }),
+        enabled: activeTab === 'techConsumption'
+    });
+
     const isLoading =
         (activeTab === 'governorate' && isGovLoading) ||
         (activeTab === 'inventory' && isInvLoading) ||
         (activeTab === 'stock' && isStockLoading) ||
         (activeTab === 'salesMonthly' && isSalesMonthlyLoading) ||
-        (activeTab === 'salesDaily' && isSalesDailyLoading);
+        (activeTab === 'salesDaily' && isSalesDailyLoading) ||
+        (activeTab === 'techConsumption' && isTechLoading);
 
     const resetFilters = () => {
         setFilters({
@@ -150,8 +165,8 @@ export default function ProductionReports() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all ${activeTab === tab.id
-                                ? 'bg-primary text-primary-foreground shadow-lg'
-                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            ? 'bg-primary text-primary-foreground shadow-lg'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                             }`}
                     >
                         {tab.icon}
@@ -187,6 +202,7 @@ export default function ProductionReports() {
                     {activeTab === 'stock' && <PosStockReport data={stockData} />}
                     {activeTab === 'salesMonthly' && <PosSalesReport data={salesMonthlyData} granularity="monthly" />}
                     {activeTab === 'salesDaily' && <PosSalesReport data={salesDailyData} granularity="daily" />}
+                    {activeTab === 'techConsumption' && <TechnicianConsumptionReport data={techConsumptionData} />}
                 </div>
             )}
         </div>

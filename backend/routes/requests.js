@@ -1,615 +1,223 @@
 const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
-
-// Database and services
 const db = require('../db');
-const requestService = require('../services/requestService');
-const { ensureBranchWhere } = require('../prisma/branchHelpers');
-
-// Middleware
-const { authenticateToken, requireManager, requireTechnician } = require('../middleware/auth');
-const { getBranchFilter } = require('../middleware/permissions');
-const { validateRequest, validateQuery } = require('../middleware/validation');
-const { createLimiter, updateLimiter, deleteLimiter } = require('../middleware/rateLimits');
-
-// Utilities
-const { asyncHandler, AppError, NotFoundError } = require('../utils/errorHandler');
+const { authenticateToken } = require('../middleware/auth');
+const { validateRequest } = require('../middleware/validation');
+const { success, error, paginated } = require('../utils/apiResponse');
 const { logAction } = require('../utils/logger');
-const { createPaginationResponse } = require('../utils/pagination');
-const { exportEntitiesToExcel, transformRequestsForExport, setExcelHeaders } = require('../utils/excelExport');
+const asyncHandler = require('../utils/asyncHandler');
+const requestService = require('../services/requestService');
+
+// Use individual assignments for clarity and to avoid any potential destructuring issues
+const rateLimits = require('../middleware/rateLimits');
+const createLimiter = rateLimits.createLimiter;
+const updateLimiter = rateLimits.updateLimiter;
+const deleteLimiter = rateLimits.deleteLimiter;
 
 // ===================== VALIDATION SCHEMAS =====================
-
-const listQuerySchema = z.object({
-  branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
-  status: z.enum(['Open', 'In Progress', 'Closed', 'PENDING_TRANSFER', 'AT_CENTER']).optional(),
-  customerId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
-  limit: z.string().regex(/^\d+$/).transform(Number).refine(n => n > 0 && n <= 100, 'Limit must be between 1 and 100').optional().default('50'),
-  offset: z.string().regex(/^\d+$/).transform(Number).refine(n => n >= 0, 'Offset must be non-negative').optional().default('0'),
-  sortBy: z.enum(['createdAt', 'status', 'customerId', 'id']).default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  search: z.string().optional(),
-  includeRelations: z.enum(['true', 'false']).optional().default('false')
-});
 
 const idParamSchema = z.object({
   id: z.string().regex(/^[a-z0-9]{25}$/)
 });
 
 const createRequestSchema = z.object({
-  customerId: z.string().min(1, 'Customer ID required'),
-  machineId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
-  problemDescription: z.string().min(5, 'Problem description must be at least 5 characters'),
-  status: z.enum(['Open', 'In Progress']).optional().default('Open'),
-  takeMachine: z.boolean().optional().default(false),
-  branchId: z.string().regex(/^[a-z0-9]{25}$/).optional()
+  customerId: z.string().min(1, 'العميل مطلوب'),
+  posMachineId: z.string().optional().nullable(),
+  complaint: z.string().min(1, 'الشكوى مطلوبة'),
+  serialNumber: z.string().optional(),
+  machineModel: z.string().optional(),
+  machineManufacturer: z.string().optional(),
+  notes: z.string().optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM')
 });
 
 const updateRequestSchema = z.object({
-  status: z.enum(['Open', 'In Progress', 'Closed', 'PENDING_TRANSFER', 'AT_CENTER']).optional(),
-  problemDescription: z.string().min(5).optional(),
-  technician: z.string().optional()
+  status: z.string().optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  complaint: z.string().optional(),
+  notes: z.string().optional(),
+  technicianId: z.string().optional()
 });
 
-const closeRequestSchema = z.object({
-  actionTaken: z.string().optional().default(''),
-  usedParts: z.array(z.object({
-    partId: z.string().regex(/^[a-z0-9]{25}$/),
-    name: z.string(),
-    quantity: z.number().positive(),
-    cost: z.number().nonnegative(),
-    isPaid: z.boolean()
-  })).optional().default([]),
-  receiptNumber: z.string().optional().nullable(),
-  paymentPlace: z.string().optional()
+const statusUpdateSchema = z.object({
+  status: z.string().min(1, 'الحالة مطلوبة'),
+  notes: z.string().optional(),
+  actionTaken: z.string().optional()
 });
 
-const monthlyCountQuerySchema = z.object({
-  date: z.string().optional().transform(s => s ? new Date(s) : undefined),
-  months: z.string().regex(/^\d+$/).transform(Number).optional().default('6')
+const listQuerySchema = z.object({
+  status: z.string().optional(),
+  priority: z.string().optional(),
+  technicianId: z.string().optional(),
+  customerId: z.string().optional(),
+  q: z.string().optional(),
+  limit: z.string().transform(v => parseInt(v)).optional(),
+  offset: z.string().transform(v => parseInt(v)).optional(),
+  branchId: z.string().optional(),
+  includeRelations: z.string().transform(v => v === 'true').optional(),
+  search: z.string().optional()
 });
 
-// ===================== HELPER FUNCTION =====================
+// ===================== ROUTES =====================
 
 /**
- * Build where clause with proper filtering and security
- */
-const buildWhereClause = (validated, req) => {
-  const where = {};
-
-  // Apply branch filter for non-super-admins
-  const branchFilter = getBranchFilter(req);
-  Object.assign(where, branchFilter);
-
-  // Admin-only branch filtering OR user filtering by their own authorized branch
-  if (validated.branchId) {
-    const isPrivileged = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER'].includes(req.user.role);
-    const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
-
-    if (isPrivileged) {
-      where.branchId = validated.branchId;
-    } else {
-      // Allow if the requested branch is in authorized list
-      if (authorizedIds.includes(validated.branchId)) {
-        where.branchId = validated.branchId;
-      } else {
-        // If filtering by unauthorized branch, user sees nothing
-        // Instead of throwing 403, we can just return empty result or throw 403. 
-        // Consistent with other routes, we might want to return empty or throw.
-        // The current implementation threw 403. Let's keep it but relax the condition.
-        throw new AppError('Insufficient permissions to filter by this branch', 403, 'FORBIDDEN');
-      }
-    }
-  }
-
-  // Status filtering
-  if (validated.status) {
-    where.status = validated.status;
-  }
-
-  // Customer filtering
-  if (validated.customerId) {
-    where.customerId = validated.customerId;
-  }
-
-  // Search filtering - enhanced to include related models
-  if (validated.search) {
-    const s = validated.search;
-    where.OR = [
-      { customerName: { contains: s } },
-      { serialNumber: { contains: s } },
-      { complaint: { contains: s } },
-      { customer: { bkcode: { contains: s } } },
-      { customer: { client_name: { contains: s } } },
-      { posMachine: { serialNumber: { contains: s } } }
-    ];
-  }
-
-  return where;
-};
-
-
-// ===================== GET ALL REQUESTS =====================
-/**
- * @route GET /requests
- * @summary Get all maintenance requests with pagination
+ * @route GET /api/requests
+ * @summary Get all maintenance requests
  * @security bearerAuth
- * @queryParam {string} branchId - Filter by branch
- * @queryParam {string} status - Filter by status
- * @queryParam {number} limit - Results per page (max 100)
- * @queryParam {number} offset - Page offset
- * @queryParam {boolean} includeRelations - Include customer and machine data
- * @returns {Array} List of requests with pagination
  */
 router.get(
   '/requests',
   authenticateToken,
-  validateQuery(listQuerySchema),
   asyncHandler(async (req, res) => {
-    const validated = req.query;
-
-    // Build filter with security checks
-    const where = buildWhereClause(validated, req);
-
-    // Safe pagination (max 100 per request)
-    const limit = Math.min(validated.limit, 100);
-    const offset = Math.max(0, validated.offset);
-
-    // Determine if we should include relationships
-    const shouldIncludeRelations = validated.includeRelations === 'true';
-    const include = shouldIncludeRelations ? {
-      customer: {
-        select: {
-          id: true,
-          client_name: true,
-          bkcode: true,
-          supply_office: true,
-          telephone_1: true,
-          telephone_2: true,
-          address: true,
-          national_id: true
-        }
-      },
-      posMachine: {
-        select: {
-          id: true,
-          serialNumber: true,
-          model: true,
-          manufacturer: true
-        }
-      },
-      branch: {
-        select: {
-          id: true,
-          name: true
-        }
-      }
-    } : undefined;
-
-    // Fetch data in parallel
-    const [requests, total] = await Promise.all([
-      db.maintenanceRequest.findMany(ensureBranchWhere({
-        where,
-        include,
-        orderBy: { [validated.sortBy]: validated.sortOrder },
-        take: limit,
-        skip: offset
-      }, req)),
-      db.maintenanceRequest.count(ensureBranchWhere({ where }, req))
-    ]);
-
-    res.json(createPaginationResponse(requests, total, limit, offset));
+    const filters = listQuerySchema.parse(req.query);
+    const result = await requestService.getRequests(filters, req.user);
+    return paginated(res, result.requests, result.total, filters.limit || 50, filters.offset || 0);
   })
 );
-// ===================== GET REQUEST STATS =====================
+
 /**
- * @route GET /requests/stats
- * @summary Get quick summary of requests (Day, Week, Month)
+ * @route GET /api/requests/stats
+ * @summary Get request statistics
+ * @security bearerAuth
  */
 router.get(
   '/requests/stats',
   authenticateToken,
   asyncHandler(async (req, res) => {
-    try {
-      const now = new Date();
-      const branchFilter = getBranchFilter(req);
-
-      // Create fresh date objects for each range
-      const startOfDay = new Date(now);
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const startOfWeek = new Date(now);
-      const daysSinceSaturday = (now.getDay() + 1) % 7;
-      startOfWeek.setDate(now.getDate() - daysSinceSaturday);
-      startOfWeek.setHours(0, 0, 0, 0);
-
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const getStatsForRange = async (startDate) => {
-        const baseWhere = {
-          createdAt: { gte: startDate },
-          ...branchFilter
-        };
-
-        const [open, inProgress, closed] = await Promise.all([
-          db.maintenanceRequest.count(ensureBranchWhere({
-            where: { ...baseWhere, status: { notIn: ['In Progress', 'Closed'] } }
-          }, req)),
-          db.maintenanceRequest.count(ensureBranchWhere({
-            where: { ...baseWhere, status: 'In Progress' }
-          }, req)),
-          db.maintenanceRequest.count(ensureBranchWhere({
-            where: { ...baseWhere, status: 'Closed' }
-          }, req))
-        ]);
-
-        return { open, inProgress, closed, total: open + inProgress + closed };
-      };
-
-      const [day, week, month] = await Promise.all([
-        getStatsForRange(startOfDay),
-        getStatsForRange(startOfWeek),
-        getStatsForRange(startOfMonth)
-      ]);
-
-      res.json({ day, week, month });
-    } catch (error) {
-      console.error('[STATS_ERROR]', error);
-      // Return 0s instead of 500 if stats fail, to not break the page
-      const empty = { open: 0, inProgress: 0, closed: 0, total: 0 };
-      res.json({
-        day: empty, week: empty, month: empty,
-        _error: process.env.NODE_ENV === 'development' ? error.message : 'Error fetching stats'
-      });
-    }
+    const stats = await requestService.getRequestStats(req.user);
+    return success(res, stats);
   })
 );
 
-// ===================== GET SINGLE REQUEST =====================
 /**
- * @route GET /requests/:id
- * @summary Get specific maintenance request with all details
+ * @route GET /api/requests/:id
+ * @summary Get request details
  * @security bearerAuth
  * @param {string} id - Request ID
- * @returns {Object} Request details with all relations
  */
 router.get(
   '/requests/:id',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
-
-    const { getBranchFilter, canAccessBranch } = require('../middleware/permissions');
-
-    const request = await db.maintenanceRequest.findFirst({
-      where: {
-        id,
-        // Satisfy branchEnforcer while allowing cross-branch access
-        OR: [
-          { branchId: { in: req.user.authorizedBranchIds || [req.user.branchId] } },
-          { servicedByBranchId: req.user.branchId },
-          { branchId: { not: null } }
-        ]
-      },
-      include: {
-        customer: true,
-        posMachine: true,
-        branch: { select: { id: true, name: true } },
-        approval: {
-          include: {
-            branch: { select: { name: true } }
-          }
-        },
-        vouchers: true
-      }
-    });
-
-    if (!request) {
-      throw new NotFoundError('Maintenance request');
-    }
-
-    // Branch isolation check
-    if (req.user.role !== 'SUPER_ADMIN' && req.user.branchId) {
-      const isAuthorized = (req.user.authorizedBranchIds || [req.user.branchId]).includes(request.branchId);
-      const isServiced = request.servicedByBranchId === req.user.branchId;
-
-      if (!isAuthorized && !isServiced) {
-        throw new AppError('Access denied', 403, 'FORBIDDEN');
-      }
-    }
-
-    res.json(request);
+    const request = await requestService.getRequestById(id, req.user);
+    return success(res, request);
   })
 );
 
-// ===================== CREATE REQUEST =====================
 /**
- * @route POST /requests
- * @summary Create new maintenance request
+ * @route POST /api/requests
+ * @summary Create a new maintenance request
  * @security bearerAuth
- * @body {Object} Request data
- * @returns {Object} Created request
  */
 router.post(
   '/requests',
   authenticateToken,
-  requireTechnician,
   createLimiter,
   validateRequest(createRequestSchema),
   asyncHandler(async (req, res) => {
-    const { canAccessBranch } = require('../middleware/permissions');
-    const validated = req.validated;
-    const branchId = validated.branchId || req.user.branchId;
-
-    if (!branchId) {
-      throw new AppError('Branch ID is required', 400, 'MISSING_BRANCH');
-    }
-
-    if (!await canAccessBranch(req, branchId, db)) {
-      throw new AppError('Permission denied for this branch', 403, 'FORBIDDEN');
-    }
-
-    const request = await requestService.createRequest({
-      ...validated,
-      branchId,
-      complaint: validated.problemDescription,
-      posMachineId: validated.machineId
-    }, {
-      id: req.user.id,
-      name: req.user.displayName,
-      branchId
-    });
-
-    res.status(201).json(request);
+    // Translate field names from frontend to service
+    const data = {
+      ...req.body,
+      complaint: req.body.problemDescription || req.body.complaint,
+      posMachineId: req.body.machineId || req.body.posMachineId
+    };
+    const request = await requestService.createRequest(data, req.user);
+    return success(res, request, 201);
   })
 );
 
-// ===================== UPDATE REQUEST =====================
 /**
- * @route PUT /requests/:id
- * @summary Update maintenance request
+ * @route PUT /api/requests/:id
+ * @summary Update a maintenance request
  * @security bearerAuth
  * @param {string} id - Request ID
- * @body {Object} Update data
- * @returns {Object} Updated request
  */
 router.put(
   '/requests/:id',
   authenticateToken,
-  requireTechnician,
   updateLimiter,
   validateRequest(updateRequestSchema),
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
-    const validated = req.validated;
-
-    const { canAccessBranch } = require('../middleware/permissions');
-
-    const existing = await db.maintenanceRequest.findFirst({
-      where: { id, branchId: { not: null } }
-    });
-
-    if (!existing) {
-      throw new NotFoundError('Request');
-    }
-
-    if (!await canAccessBranch(req, existing.branchId, db)) {
-      throw new AppError('Access denied', 403, 'FORBIDDEN');
-    }
-
-    // Use service for status updates
-    let updated;
-    if (validated.status) {
-      updated = await requestService.updateStatus(id, validated.status, {
-        id: req.user.id,
-        name: req.user.displayName
-      });
-    } else {
-      // For other fields, use direct update (or extend service)
-      const updateData = {};
-      if (validated.problemDescription) updateData.complaint = validated.problemDescription;
-      if (validated.technician) updateData.technician = validated.technician;
-
-      updated = await db.maintenanceRequest.updateMany({
-        where: { id, branchId: existing.branchId },
-        data: updateData
-      });
-
-      // Refetch to return the actual object
-      updated = await db.maintenanceRequest.findFirst({
-        where: { id, branchId: existing.branchId }
-      });
-    }
-
-    res.json(updated);
+    const request = await requestService.updateRequest(id, req.body, req.user);
+    return success(res, request);
   })
 );
 
-// ===================== ASSIGN TECHNICIAN =====================
 /**
- * @route PUT /requests/:id/assign
- * @summary Assign technician to maintenance request
+ * @route PATCH /api/requests/:id/status
+ * @summary Update request status
  * @security bearerAuth
  * @param {string} id - Request ID
- * @body {Object} Assignment data { technicianId }
- * @returns {Object} Updated request
  */
-router.put(
-  '/requests/:id/assign',
+router.patch(
+  '/requests/:id/status',
   authenticateToken,
-  requireTechnician,
-  // requireManager, // Supervisor/Manager
-  validateRequest(z.object({
-    technicianId: z.string().regex(/^[a-z0-9]{25}$/)
-  })),
+  validateRequest(statusUpdateSchema),
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
-    const { technicianId } = req.validated;
-
-    const { canAccessBranch } = require('../middleware/permissions');
-
-    const existing = await db.maintenanceRequest.findFirst({
-      where: { id, branchId: { not: null } }
-    });
-
-    if (!existing) {
-      throw new NotFoundError('Request');
-    }
-
-    if (!await canAccessBranch(req, existing.branchId, db)) {
-      throw new AppError('Access denied', 403, 'FORBIDDEN');
-    }
-
-    // Get technician name
-    const tech = await db.user.findUnique({
-      where: { id: technicianId },
-      select: { displayName: true }
-    });
-
-    if (!tech) {
-      throw new NotFoundError('Technician');
-    }
-
-    await db.maintenanceRequest.updateMany({
-      where: { id, branchId: existing.branchId },
-      data: {
-        technicianId,
-        technician: tech.displayName,
-        status: 'In Progress'
-      }
-    });
-
-    const updated = await db.maintenanceRequest.findFirst({
-      where: { id, branchId: existing.branchId }
-    });
-
-    await logAction({
-      entityType: 'REQUEST',
-      entityId: id,
-      action: 'ASSIGN',
-      details: `Assigned to technician: ${tech.displayName}`,
-      userId: req.user.id,
-      performedBy: req.user.displayName,
-      branchId: req.user.branchId
-    });
-
-    res.json(updated);
+    const request = await requestService.updateRequestStatus(id, req.body, req.user);
+    return success(res, request);
   })
 );
 
-// ===================== CLOSE REQUEST =====================
 /**
- * @route PUT /requests/:id/close
- * @summary Close maintenance request
+ * @route POST /api/requests/:id/assign
+ * @summary Assign technician to request
  * @security bearerAuth
  * @param {string} id - Request ID
- * @body {Object} Closure data with action taken and parts used
- * @returns {Object} Closed request
+ */
+router.post(
+  '/requests/:id/assign',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const { technicianId } = z.object({ technicianId: z.string() }).parse(req.body);
+    const request = await requestService.assignTechnician(id, technicianId, req.user);
+    return success(res, request);
+  })
+);
+
+/**
+ * @route DELETE /api/requests/:id
+ * @summary Delete maintenance request
+ * @security bearerAuth
+ * @param {string} id - Request ID
+ * @returns {Object} Success message
+ */
+/**
+ * @route PUT /api/requests/:id/close
+ * @summary Close maintenance request with parts and payment
+ * @security bearerAuth
+ * @param {string} id - Request ID
  */
 router.put(
   '/requests/:id/close',
   authenticateToken,
-  requireTechnician,
-  validateRequest(closeRequestSchema),
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);
-    const validated = req.validated;
-
-    const { canAccessBranch } = require('../middleware/permissions');
-
-    // Find and verify request - RULE 1
-    const existing = await db.maintenanceRequest.findFirst({
-      where: { id, branchId: { not: null } }
-    });
-
-    if (!existing) {
-      throw new NotFoundError('Request');
-    }
-
-    // Branch isolation
-    if (!await canAccessBranch(req, existing.branchId, db)) {
-      throw new AppError('Access denied', 403, 'FORBIDDEN');
-    }
-
-    // Prevent closing already closed requests
-    if (existing.status === 'Closed') {
-      throw new AppError('Request is already closed', 400, 'REQUEST_ALREADY_CLOSED');
-    }
-
-    // Close via service
-    const request = await requestService.closeRequest(
-      id,
-      validated.actionTaken,
-      validated.usedParts || [],
-      {
-        id: req.user.id,
-        name: req.user.displayName
-      },
-      validated.receiptNumber
-    );
-
-    res.json(request);
+    // Translate field names from frontend to service
+    const data = {
+      ...req.body,
+      actionTaken: req.body.actionTaken,
+      usedParts: req.body.usedParts,
+      receiptNumber: req.body.receiptNumber
+    };
+    const request = await requestService.closeRequest(id, data.actionTaken, data.usedParts, req.user, data.receiptNumber);
+    return success(res, request);
   })
 );
 
-// ===================== MONTHLY REPAIR COUNT =====================
-/**
- * @route GET /requests/machine/:serialNumber/monthly-count
- * @summary Get monthly repair count for a specific machine
- * @security bearerAuth
- * @param {string} serialNumber - Machine serial number
- * @queryParam {string} date - Specific date (YYYY-MM-DD)
- * @returns {Object} Repair count for the month
- */
-router.get(
-  '/requests/machine/:serialNumber/monthly-count',
+router.delete(
+  '/requests/:id',
   authenticateToken,
+  deleteLimiter,
   asyncHandler(async (req, res) => {
-    const { serialNumber } = req.params;
-    const query = monthlyCountQuerySchema.parse(req.query);
-
-    // Validate serial number format
-    if (!serialNumber || serialNumber.length < 3) {
-      throw new AppError('Invalid serial number format', 400, 'INVALID_SERIAL');
-    }
-
-    const { count, trend } = await requestService.getMachineMonthlyRequestCount(serialNumber, query.months);
-    res.json({ count, trend });
-  })
-);
-
-
-
-// ===================== EXPORT REQUESTS =====================
-/**
- * @route GET /requests/export
- * @summary Export filtered requests to Excel
- */
-router.get(
-  '/requests/export',
-  authenticateToken,
-  validateQuery(listQuerySchema),
-  asyncHandler(async (req, res) => {
-    const validated = req.query;
-    const where = buildWhereClause(validated, req);
-
-    const requests = await db.maintenanceRequest.findMany(ensureBranchWhere({
-      where,
-      include: {
-        customer: { select: { client_name: true, bkcode: true } },
-        posMachine: { select: { serialNumber: true, model: true } },
-        branch: { select: { name: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    }, req));
-
-    const excelData = transformRequestsForExport(requests);
-    const buffer = await exportEntitiesToExcel(excelData, 'requests', 'maintenance_requests');
-
-    setExcelHeaders(res, `requests_${Date.now()}.xlsx`);
-    res.send(buffer);
+    const { id } = idParamSchema.parse(req.params);
+    await requestService.deleteRequest(id, req.user);
+    return success(res, { message: 'Request deleted successfully' });
   })
 );
 

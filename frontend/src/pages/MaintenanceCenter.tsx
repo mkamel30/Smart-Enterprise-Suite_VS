@@ -59,10 +59,12 @@ import toast from 'react-hot-toast';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
 } from '../components/ui/dialog';
+import { cn } from '../lib/utils';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Checkbox } from '../components/ui/checkbox';
@@ -119,7 +121,7 @@ const approvalStatusConfig: Record<string, { label: string; color: string }> = {
 const MaintenanceCenter: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    
+
     // Filters
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [technicianFilter, setTechnicianFilter] = useState<string>('');
@@ -178,9 +180,9 @@ const MaintenanceCenter: React.FC = () => {
     const filteredMachines = useMemo(() => {
         if (!machines) return [];
         if (!searchQuery) return machines;
-        
+
         const query = searchQuery.toLowerCase();
-        return machines.filter(machine => 
+        return machines.filter(machine =>
             machine.serialNumber.toLowerCase().includes(query) ||
             machine.model.toLowerCase().includes(query) ||
             machine.problemDescription.toLowerCase().includes(query) ||
@@ -192,7 +194,7 @@ const MaintenanceCenter: React.FC = () => {
     // Get available actions based on status
     const getAvailableActions = (machine: MaintenanceMachine) => {
         const actions = [];
-        
+
         switch (machine.status) {
             case 'NEW':
                 actions.push(
@@ -228,14 +230,12 @@ const MaintenanceCenter: React.FC = () => {
                 );
                 break;
         }
-        
+
         return actions;
     };
 
     // Handle action click
     const handleAction = (machineId: string, actionType: string) => {
-        console.log('Action clicked:', actionType, 'for machine:', machineId);
-        
         const routes: Record<string, string> = {
             'assign': `/maintenance-center/machine/${machineId}?action=assign`,
             'inspect': `/maintenance-center/machine/${machineId}?action=inspect`,
@@ -247,17 +247,16 @@ const MaintenanceCenter: React.FC = () => {
             'mark-total-loss': `/maintenance-center/machine/${machineId}?action=total-loss`,
             'create-return': `/maintenance-center/machine/${machineId}?action=create-return`,
         };
-        
+
         const route = routes[actionType] || `/maintenance-center/machine/${machineId}`;
-        console.log('Navigating to:', route);
         navigate(route);
     };
 
     // ==================== RETURN PACKAGE HANDLERS ====================
 
     const toggleMachineSelection = (machineId: string) => {
-        setSelectedMachines(prev => 
-            prev.includes(machineId) 
+        setSelectedMachines(prev =>
+            prev.includes(machineId)
                 ? prev.filter(id => id !== machineId)
                 : [...prev, machineId]
         );
@@ -305,37 +304,37 @@ const MaintenanceCenter: React.FC = () => {
 
     // Stats cards data
     const statsCards = [
-        { 
-            title: 'إجمالي الماكينات', 
-            value: stats?.totalMachines || 0, 
+        {
+            title: 'إجمالي الماكينات',
+            value: stats?.totalMachines || 0,
             icon: <Package className="w-5 h-5 text-blue-600" />,
             color: 'bg-blue-50 border-blue-200',
             textColor: 'text-blue-900'
         },
-        { 
-            title: 'تحت الإصلاح', 
-            value: (stats?.underRepair || 0) + (stats?.underInspection || 0), 
+        {
+            title: 'تحت الإصلاح',
+            value: (stats?.underRepair || 0) + (stats?.underInspection || 0),
             icon: <Wrench className="w-5 h-5 text-yellow-600" />,
             color: 'bg-yellow-50 border-yellow-200',
             textColor: 'text-yellow-900'
         },
-        { 
-            title: 'بانتظار الموافقة', 
-            value: stats?.waitingApproval || 0, 
+        {
+            title: 'بانتظار الموافقة',
+            value: stats?.waitingApproval || 0,
             icon: <Clock className="w-5 h-5 text-orange-600" />,
             color: 'bg-orange-50 border-orange-200',
             textColor: 'text-orange-900'
         },
-        { 
-            title: 'تم الإصلاح', 
-            value: stats?.repaired || 0, 
+        {
+            title: 'تم الإصلاح',
+            value: stats?.repaired || 0,
             icon: <CheckCircle className="w-5 h-5 text-green-600" />,
             color: 'bg-green-50 border-green-200',
             textColor: 'text-green-900'
         },
-        { 
-            title: 'خسارة كلية', 
-            value: stats?.totalLoss || 0, 
+        {
+            title: 'خسارة كلية',
+            value: stats?.totalLoss || 0,
             icon: <XCircle className="w-5 h-5 text-red-600" />,
             color: 'bg-red-50 border-red-200',
             textColor: 'text-red-900'
@@ -354,9 +353,9 @@ const MaintenanceCenter: React.FC = () => {
                     <p className="text-muted-foreground text-sm">إدارة الماكينات في مركز الصيانة</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button 
-                        variant="default" 
-                        size="sm" 
+                    <Button
+                        variant="default"
+                        size="sm"
                         onClick={() => {
                             setShowReturnDialog(true);
                             refetchReturnMachines();
@@ -434,7 +433,7 @@ const MaintenanceCenter: React.FC = () => {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="">كل الفنيين</SelectItem>
-                                {technicians?.map((tech: any) => (
+                                {Array.isArray(technicians) && technicians.map((tech: any) => (
                                     <SelectItem key={tech.id} value={tech.id}>
                                         {tech.displayName || tech.name}
                                     </SelectItem>
@@ -450,7 +449,7 @@ const MaintenanceCenter: React.FC = () => {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="">كل الفروع</SelectItem>
-                                {branches?.map((branch: any) => (
+                                {Array.isArray(branches) && branches.map((branch: any) => (
                                     <SelectItem key={branch.id} value={branch.id}>
                                         {branch.name}
                                     </SelectItem>
@@ -499,10 +498,10 @@ const MaintenanceCenter: React.FC = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredMachines.map((machine) => {
+                                    {Array.isArray(filteredMachines) && filteredMachines.map((machine) => {
                                         const status = statusConfig[machine.status];
                                         const actions = getAvailableActions(machine);
-                                        
+
                                         return (
                                             <TableRow key={machine.id} className="hover:bg-muted/50">
                                                 <TableCell>
@@ -516,8 +515,8 @@ const MaintenanceCenter: React.FC = () => {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge 
-                                                        variant="outline" 
+                                                    <Badge
+                                                        variant="outline"
                                                         className={`${status.color} flex items-center gap-1`}
                                                     >
                                                         {status.icon}
@@ -525,8 +524,8 @@ const MaintenanceCenter: React.FC = () => {
                                                     </Badge>
                                                     {machine.approvalStatus && (
                                                         <div className="mt-1">
-                                                            <Badge 
-                                                                variant="outline" 
+                                                            <Badge
+                                                                variant="outline"
                                                                 className={`${approvalStatusConfig[machine.approvalStatus].color} text-xs`}
                                                             >
                                                                 {approvalStatusConfig[machine.approvalStatus].label}
@@ -566,12 +565,12 @@ const MaintenanceCenter: React.FC = () => {
                                                             <Eye size={16} className="ml-1" />
                                                             عرض
                                                         </Button>
-                                                        
+
                                                         {actions.length > 0 && (
                                                             <DropdownMenu modal={false}>
                                                                 <DropdownMenuTrigger asChild>
-                                                                    <Button 
-                                                                        variant="outline" 
+                                                                    <Button
+                                                                        variant="outline"
                                                                         size="sm"
                                                                         className="cursor-pointer hover:bg-gray-100"
                                                                     >
@@ -579,7 +578,7 @@ const MaintenanceCenter: React.FC = () => {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="w-48">
-                                                                    {actions.map((action, idx) => (
+                                                                    {Array.isArray(actions) && actions.map((action, idx) => (
                                                                         <DropdownMenuItem
                                                                             key={idx}
                                                                             onClick={() => handleAction(machine.id, action.action)}
@@ -606,174 +605,169 @@ const MaintenanceCenter: React.FC = () => {
 
             {/* ==================== RETURN PACKAGE DIALOG ==================== */}
             <Dialog open={showReturnDialog} onOpenChange={setShowReturnDialog}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Truck className="w-5 h-5" />
-                            إنشاء طرد إرجاع للفرع
-                        </DialogTitle>
+                <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-xl rounded-2xl shadow-2xl bg-white" dir="rtl">
+                    <DialogHeader className="bg-slate-50/50 p-4 md:p-5 border-b shrink-0 text-right">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-600 text-white rounded-lg">
+                                <Truck size={16} />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-base font-black text-slate-900 leading-tight">إنشاء طرد إرجاع للفروع</DialogTitle>
+                                <DialogDescription className="text-[10px] text-slate-400 font-bold mt-0.5 opacity-80">تجميع الماكينات الجاهزة وإرسالها في طرد واحد</DialogDescription>
+                            </div>
+                        </div>
                     </DialogHeader>
 
-                    <div className="space-y-4">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 custom-scroll">
                         {/* Driver Info */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label>اسم السائق</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">اسم السائق الناقل</label>
                                 <Input
                                     value={returnDriverName}
                                     onChange={(e) => setReturnDriverName(e.target.value)}
-                                    placeholder="اسم السائق"
+                                    className="h-9 text-xs font-bold border-slate-200 focus:border-indigo-500 rounded-lg"
+                                    placeholder="اختياري..."
                                 />
                             </div>
-                            <div>
-                                <Label>هاتف السائق</Label>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">هاتف السائق</label>
                                 <Input
                                     value={returnDriverPhone}
                                     onChange={(e) => setReturnDriverPhone(e.target.value)}
-                                    placeholder="رقم الهاتف"
+                                    className="h-9 text-xs font-bold border-slate-200 focus:border-indigo-500 rounded-lg"
+                                    placeholder="اختياري..."
                                 />
                             </div>
                         </div>
 
                         {/* Notes */}
-                        <div>
-                            <Label>ملاحظات</Label>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ملاحظات التحويل</label>
                             <Textarea
                                 value={returnNotes}
                                 onChange={(e) => setReturnNotes(e.target.value)}
-                                placeholder="ملاحظات على الطرد..."
+                                className="min-h-[60px] text-xs font-bold border-slate-200 focus:border-indigo-500 rounded-lg bg-slate-50/30 focus:bg-white transition-all"
+                                placeholder="أي تفاصيل خاصة بالشحن أو الاستلام..."
                             />
                         </div>
 
                         {/* Machines Selection */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <Label>الماكينة القابلة للإرجاع ({machinesReadyForReturn?.length || 0})</Label>
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">اختيار الماكينات ({machinesReadyForReturn?.length || 0})</label>
                                 <div className="flex gap-2">
-                                    <Button variant="ghost" size="sm" onClick={selectAllReturnMachines}>
-                                        تحديد الكل
-                                    </Button>
-                                    <Button variant="ghost" size="sm" onClick={deselectAllReturnMachines}>
-                                        إلغاء التحديد
-                                    </Button>
+                                    <button onClick={selectAllReturnMachines} className="text-[9px] font-black text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md transition-all">تحديد الكل</button>
+                                    <button onClick={deselectAllReturnMachines} className="text-[9px] font-black text-slate-500 hover:text-slate-600 bg-slate-100 px-2 py-1 rounded-md transition-all">إلغاء</button>
                                 </div>
                             </div>
 
-                            {loadingReturnMachines ? (
-                                <div className="text-center py-8">
-                                    <RefreshCw className="animate-spin mx-auto mb-4" size={24} />
-                                    <p className="text-muted-foreground">جاري تحميل الماكينات...</p>
-                                </div>
-                            ) : machinesReadyForReturn?.length === 0 ? (
-                                <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                                    <Package className="mx-auto mb-2 text-gray-300" size={32} />
-                                    <p className="text-muted-foreground">لا توجد ماكينات جاهزة للإرجاع</p>
-                                </div>
-                            ) : (
-                                <div className="max-h-96 overflow-y-auto border rounded-lg">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-10"></TableHead>
-                                                <TableHead>السريال</TableHead>
-                                                <TableHead>الموديل</TableHead>
-                                                <TableHead>الفرع</TableHead>
-                                                <TableHead>التكلفة</TableHead>
-                                                <TableHead>الحالة</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {machinesReadyForReturn?.map((machine: any) => (
-                                                <TableRow key={machine.id}>
-                                                    <TableCell>
-                                                        <Checkbox
-                                                            checked={selectedMachines.includes(machine.id)}
-                                                            onCheckedChange={() => toggleMachineSelection(machine.id)}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell className="font-mono">{machine.serialNumber}</TableCell>
-                                                    <TableCell>{machine.model}</TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <Building2 size={14} className="text-muted-foreground" />
-                                                            {/* We'd need to fetch branch name - using ID for now */}
-                                                            {machine.originBranchId || 'غير محدد'}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="text-sm">
-                                                            {machine.maintenanceCost > 0 ? (
-                                                                <span className="font-medium text-blue-600">
-                                                                    {machine.maintenanceCost.toLocaleString()} ج.م
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-green-600">مجاني</span>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline" className={
-                                                            machine.status === 'TOTAL_LOSS' 
-                                                                ? 'bg-red-50 text-red-700' 
-                                                                : 'bg-green-50 text-green-700'
-                                                        }>
-                                                            {machine.status === 'TOTAL_LOSS' ? 'فقدان كلي' : 'تم الإصلاح'}
-                                                        </Badge>
-                                                    </TableCell>
+                            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-sm">
+                                {loadingReturnMachines ? (
+                                    <div className="text-center py-6 flex flex-col items-center gap-2">
+                                        <RefreshCw className="animate-spin text-indigo-200" size={24} />
+                                        <p className="text-[10px] text-slate-400 font-bold">جاري تحميل الماكينات...</p>
+                                    </div>
+                                ) : machinesReadyForReturn?.length === 0 ? (
+                                    <div className="text-center py-8 flex flex-col items-center gap-2">
+                                        <Package className="text-slate-100" size={32} />
+                                        <p className="text-[10px] text-slate-400 font-bold">لا توجد ماكينات جاهزة حالياً</p>
+                                    </div>
+                                ) : (
+                                    <div className="max-h-48 overflow-y-auto custom-scroll">
+                                        <Table>
+                                            <TableHeader className="bg-slate-50/80">
+                                                <TableRow className="border-b-slate-100">
+                                                    <TableHead className="h-8 w-10 text-center"></TableHead>
+                                                    <TableHead className="h-8 text-right font-black text-[9px] text-slate-400">السريال</TableHead>
+                                                    <TableHead className="h-8 text-right font-black text-[9px] text-slate-400">الفرع</TableHead>
+                                                    <TableHead className="h-8 text-center font-black text-[9px] text-slate-400">التكلفة</TableHead>
+                                                    <TableHead className="h-8 text-center font-black text-[9px] text-slate-400">الحالة</TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            )}
+                                            </TableHeader>
+                                            <TableBody>
+                                                {Array.isArray(machinesReadyForReturn) && machinesReadyForReturn.map((machine: any) => (
+                                                    <TableRow key={machine.id} className="border-b-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                                                        <TableCell className="p-2 text-center">
+                                                            <Checkbox
+                                                                checked={selectedMachines.includes(machine.id)}
+                                                                onCheckedChange={() => toggleMachineSelection(machine.id)}
+                                                                className="rounded-[4px]"
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell className="p-2">
+                                                            <div className="font-mono text-[11px] font-black text-slate-700 leading-none">{machine.serialNumber}</div>
+                                                            <div className="text-[8px] text-slate-400 mt-0.5">{machine.model}</div>
+                                                        </TableCell>
+                                                        <TableCell className="p-2 text-[10px] font-bold text-slate-600">
+                                                            {machine.originBranchId || 'غير محدد'}
+                                                        </TableCell>
+                                                        <TableCell className="p-2 text-center text-[10px] font-black">
+                                                            {machine.maintenanceCost > 0 ? (
+                                                                <span className="text-indigo-600">{machine.maintenanceCost.toLocaleString()}</span>
+                                                            ) : (
+                                                                <span className="text-emerald-500">0</span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="p-2 text-center">
+                                                            <span className={cn(
+                                                                "text-[8px] font-black px-1.5 py-0.5 rounded",
+                                                                machine.status === 'TOTAL_LOSS' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
+                                                            )}>
+                                                                {machine.status === 'TOTAL_LOSS' ? 'فقدان' : 'تم'}
+                                                            </span>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Summary */}
+                        {/* Summary Block */}
                         {selectedMachines.length > 0 && (
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <h4 className="font-medium mb-2">ملخص الطرد</h4>
-                                <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div className="bg-indigo-600 p-3 rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-between text-white">
+                                <div className="flex items-center gap-4">
                                     <div>
-                                        <p className="text-muted-foreground">عدد الماكينات</p>
-                                        <p className="font-bold text-lg">{selectedMachines.length}</p>
+                                        <p className="text-[8px] font-black opacity-60 uppercase mb-0.5">عدد الماكينات</p>
+                                        <p className="text-base font-black leading-none">{selectedMachines.length}</p>
                                     </div>
+                                    <div className="w-px h-8 bg-white/20"></div>
                                     <div>
-                                        <p className="text-muted-foreground">إجمالي التكلفة</p>
-                                        <p className="font-bold text-lg text-blue-600">
-                                            {machinesReadyForReturn
-                                                ?.filter((m: any) => selectedMachines.includes(m.id))
-                                                ?.reduce((sum: number, m: any) => sum + (m.maintenanceCost || 0), 0)
-                                                ?.toLocaleString()} ج.م
+                                        <p className="text-[8px] font-black opacity-60 uppercase mb-0.5">إجمالي التكلفة</p>
+                                        <p className="text-base font-black leading-none">
+                                            {(Array.isArray(machinesReadyForReturn) ? machinesReadyForReturn : [])
+                                                .filter((m: any) => selectedMachines.includes(m.id))
+                                                .reduce((sum: number, m: any) => sum + (m.maintenanceCost || 0), 0)
+                                                .toLocaleString()} <span className="text-[10px] opacity-60">ج.م</span>
                                         </p>
                                     </div>
-                                    <div>
-                                        <p className="text-muted-foreground">الحالة</p>
-                                        <Badge className="mt-1">
-                                            {machinesReadyForReturn
-                                                ?.filter((m: any) => selectedMachines.includes(m.id))
-                                                ?.some((m: any) => m.status === 'TOTAL_LOSS') 
-                                                ? 'يحتوي على خسائر'
-                                                : 'تم الإصلاح'}
-                                        </Badge>
-                                    </div>
+                                </div>
+                                <div className="bg-white/10 p-1.5 rounded-lg border border-white/10">
+                                    <Package size={16} />
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowReturnDialog(false)}>
+                    <div className="p-4 md:p-5 border-t bg-slate-50 flex items-center gap-2">
+                        <button
+                            onClick={() => setShowReturnDialog(false)}
+                            className="h-10 px-4 border border-slate-200 text-slate-500 font-bold text-xs rounded-lg hover:bg-slate-100 transition-all font-bold"
+                        >
                             إلغاء
-                        </Button>
-                        <Button 
+                        </button>
+                        <button
                             onClick={handleCreateReturnPackage}
                             disabled={selectedMachines.length === 0 || isCreatingReturn}
-                            className="gap-2"
+                            className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black text-xs shadow-lg shadow-emerald-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            <Send size={16} className="ml-2" />
-                            {isCreatingReturn ? 'جاري الإنشاء...' : `إنشاء طرد إرجاع (${selectedMachines.length})`}
-                        </Button>
-                    </DialogFooter>
+                            {isCreatingReturn ? <RefreshCw className="animate-spin" size={14} /> : <Send size={14} />}
+                            {isCreatingReturn ? 'جاري الإنشاء...' : `تأكيد إنشاء وتحويل (${selectedMachines.length})`}
+                        </button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

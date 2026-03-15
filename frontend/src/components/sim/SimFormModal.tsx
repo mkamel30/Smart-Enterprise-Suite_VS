@@ -1,5 +1,8 @@
 import React from 'react';
-import { SIM_TYPES } from './constants';
+import { SIM_TYPES, NETWORK_TYPES } from './constants';
+import { X, Smartphone, Save } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { Button } from '../ui/button';
 
 interface FormModalProps {
     isOpen: boolean;
@@ -27,24 +30,34 @@ export function SimFormModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[150] p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl w-full max-w-sm sm:max-w-md shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-hidden">
-                <h2 className="text-xl font-black p-6 pb-4 border-b text-slate-900 shrink-0">
-                    {editingSim ? 'تعديل شريحة' : 'إضافة شريحة جديدة'}
-                </h2>
+        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[150] p-4 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-white rounded-[32px] w-full max-w-sm sm:max-w-md shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
+                <div className="p-8 pb-4 flex justify-between items-center bg-slate-50/50 border-b border-slate-100 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                            <Smartphone size={24} />
+                        </div>
+                        <h2 className="text-xl font-black text-slate-900">
+                            {editingSim ? 'تعديل بيانات الشريحة' : 'إضافة شريحة جديدة'}
+                        </h2>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400">
+                        <X size={20} />
+                    </button>
+                </div>
 
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-8 space-y-6">
                         {isAdmin && !editingSim && (
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1.5">الفرع *</label>
+                                <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 mr-1">الفرع المسئول *</label>
                                 <select
-                                    className="w-full border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700"
                                     value={formData.branchId || ''}
                                     onChange={e => setFormData({ ...formData, branchId: e.target.value })}
                                     required={!editingSim}
                                 >
-                                    <option value="">اختر الفرع...</option>
+                                    <option value="">اختر الفرع المستلم...</option>
                                     {branches?.map((branch: any) => (
                                         <option key={branch.id} value={branch.id}>{branch.name}</option>
                                     ))}
@@ -53,84 +66,113 @@ export function SimFormModal({
                         )}
 
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">مسلسل الشريحة *</label>
+                            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 mr-1">مسلسل الشريحة (SN) *</label>
                             <input
                                 type="text"
                                 value={formData.serialNumber}
                                 onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
-                                className="w-full border rounded-xl px-4 py-2.5 font-mono focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                                className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-mono font-bold text-slate-900 text-lg shadow-inner"
                                 placeholder="8920100000000001"
                                 required
                                 dir="ltr"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">نوع الشريحة</label>
-                            <select
-                                value={formData.type}
-                                onChange={e => setFormData({ ...formData, type: e.target.value })}
-                                className="w-full border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
-                            >
-                                <option value="">-- اختر --</option>
-                                {SIM_TYPES.map(t => (
-                                    <option key={t} value={t}>{t}</option>
-                                ))}
-                            </select>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 mr-1">الشركة المشغلة</label>
+                                <select
+                                    value={formData.type}
+                                    onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700"
+                                >
+                                    <option value="">-- اختر --</option>
+                                    {SIM_TYPES.map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 mr-1">نوع الشبكة</label>
+                                <select
+                                    value={formData.networkType || ''}
+                                    onChange={e => setFormData({ ...formData, networkType: e.target.value })}
+                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700"
+                                >
+                                    <option value="">-- تلقائي --</option>
+                                    {NETWORK_TYPES.map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
+
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">الحالة</label>
-                            <div className="flex gap-6 p-1">
-                                <label className="flex items-center gap-2 cursor-pointer group">
+                            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 mr-1">جودة الحالة التشغيلية</label>
+                            <div className="flex gap-4 p-1">
+                                <label className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all cursor-pointer font-black text-sm",
+                                    formData.status === 'ACTIVE'
+                                        ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-100"
+                                        : "bg-white border-slate-100 text-slate-400 grayscale"
+                                )}>
                                     <input
                                         type="radio"
                                         name="status"
                                         value="ACTIVE"
                                         checked={formData.status === 'ACTIVE'}
                                         onChange={() => setFormData({ ...formData, status: 'ACTIVE' })}
-                                        className="w-4 h-4 text-green-600 focus:ring-green-500 border-slate-300"
+                                        className="sr-only"
                                     />
-                                    <span className="text-green-700 font-bold group-hover:text-green-800 transition-colors">سليمة</span>
+                                    <span>سليمة (نشطة)</span>
                                 </label>
-                                <label className="flex items-center gap-2 cursor-pointer group">
+                                <label className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all cursor-pointer font-black text-sm",
+                                    formData.status === 'DEFECTIVE'
+                                        ? "bg-red-50 border-red-500 text-red-700 shadow-lg shadow-red-100"
+                                        : "bg-white border-slate-100 text-slate-400 grayscale"
+                                )}>
                                     <input
                                         type="radio"
                                         name="status"
                                         value="DEFECTIVE"
                                         checked={formData.status === 'DEFECTIVE'}
                                         onChange={() => setFormData({ ...formData, status: 'DEFECTIVE' })}
-                                        className="w-4 h-4 text-red-600 focus:ring-red-500 border-slate-300"
+                                        className="sr-only"
                                     />
-                                    <span className="text-red-700 font-bold group-hover:text-red-800 transition-colors">تالفة</span>
+                                    <span>تالفة (معطلة)</span>
                                 </label>
                             </div>
                         </div>
+
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">ملاحظات</label>
+                            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 mr-1">ملاحظات إضافية</label>
                             <textarea
                                 value={formData.notes}
                                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                className="w-full border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
-                                rows={3}
-                                placeholder="أضف ملاحظاتك هنا..."
+                                className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium text-slate-700 min-h-[100px]"
+                                placeholder="أضف أي تفاصيل أو ملاحظات هنا..."
                             />
                         </div>
                     </div>
 
-                    <div className="p-6 pt-4 border-t bg-slate-50/50 shrink-0 flex gap-3">
-                        <button
+                    <div className="p-8 pt-4 border-t bg-slate-50/50 shrink-0 flex gap-4">
+                        <Button
                             type="submit"
-                            className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-black hover:bg-purple-700 shadow-lg shadow-purple-600/20 transition-all active:scale-95 disabled:opacity-50"
                             disabled={isPending}
+                            className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-7 font-black shadow-xl shadow-indigo-100 transition-all gap-2"
                         >
-                            {isPending ? 'جاري الحفظ...' : 'حفظ البيانات'}
-                        </button>
-                        <button
+                            <Save size={20} />
+                            {isPending ? 'جاري الحفظ...' : editingSim ? 'تحديث الشريحة' : 'حفظ الشريحة'}
+                        </Button>
+                        <Button
                             type="button"
+                            variant="outline"
                             onClick={onClose}
-                            className="flex-1 border-2 border-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-50 transition-all"
+                            className="flex-1 border-slate-200 text-slate-600 rounded-2xl py-7 font-bold hover:bg-white transition-all shadow-sm"
                         >
                             إلغاء
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>

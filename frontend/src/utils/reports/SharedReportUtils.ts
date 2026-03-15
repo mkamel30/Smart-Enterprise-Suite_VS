@@ -81,13 +81,21 @@ export const getReportStyles = () => `
 
 export const getReportSidebar = () => `
     <div class="report-sidebar">
-        <button onclick="window.print()" class="sidebar-btn print" title="طباعة (Ctrl+P)">
+        <button onclick="printA4()" class="sidebar-btn print" title="طباعة A4 (Ctrl+P)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                 <rect x="6" y="14" width="12" height="8"></rect>
             </svg>
-            <span>طباعة</span>
+            <span>طباعة A4</span>
+        </button>
+
+        <button onclick="printA5()" class="sidebar-btn print" title="طباعة A5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="8" y="6" width="8" height="12" rx="1"></rect>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            </svg>
+            <span>طباعة A5</span>
         </button>
         
         <button onclick="downloadPDF()" class="sidebar-btn pdf" title="حفظ كملف PDF">
@@ -115,26 +123,50 @@ export const getReportSidebar = () => `
 export const getReportScripts = (filename: string, elementId: string = 'report-content') => `
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
+        function printA4() {
+            const sheet = document.querySelector('.sheet');
+            if (sheet) {
+                sheet.classList.remove('a5');
+                sheet.style.setProperty('--page-size', 'A4');
+            }
+            setTimeout(() => window.print(), 100);
+        }
+
+        function printA5() {
+            const sheet = document.querySelector('.sheet');
+            if (sheet) {
+                sheet.classList.add('a5');
+                sheet.style.setProperty('--page-size', 'A5');
+            }
+            setTimeout(() => window.print(), 100);
+        }
+
         function downloadPDF() {
-            // Select the element and clone it to remove any potential conflicts
             const element = document.getElementById('${elementId}');
             
-            // PDF Options
+            // Get actual content height to avoid blank pages
+            const contentHeight = element.scrollHeight;
+            const contentWidth = element.scrollWidth;
+            
+            // PDF Options - Auto size based on content
             const opt = {
-                margin: [0, 0, 0, 0], // Zero margins for full control
+                margin: [5, 5, 5, 5], // Small margins
                 filename: '${filename}.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                     scale: 2, 
                     useCORS: true, 
                     logging: false,
-                    letterRendering: true
+                    letterRendering: true,
+                    height: contentHeight,
+                    width: contentWidth
                 },
                 jsPDF: { 
                     unit: 'mm', 
                     format: 'a4', 
-                    orientation: 'portrait' 
-                }
+                    orientation: 'portrait'
+                },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
             };
             
             // Visual Feedback
@@ -151,7 +183,6 @@ export const getReportScripts = (filename: string, elementId: string = 'report-c
 
             // Generate
             html2pdf().set(opt).from(element).save().then(() => {
-                // Restore Button
                 btn.innerHTML = originalContent;
                 btn.style.pointerEvents = 'auto';
             }).catch(err => {

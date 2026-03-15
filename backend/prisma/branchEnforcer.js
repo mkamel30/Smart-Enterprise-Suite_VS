@@ -24,6 +24,7 @@ const protectedModels = new Set([
   'SimMovementLog',
   'SystemLog',
   'RepairVoucher',
+  'Notification',
 ]);
 
 const branchFieldNames = [
@@ -62,33 +63,57 @@ function attachBranchEnforcer(prisma, opts = {}) {
   prisma.$use(async (params, next) => {
     try {
       // Only enforce on certain actions that accept `where`
-      const actionsToCheck = new Set(['findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete', 'deleteMany', 'count', 'aggregate']);
+      const actionsToCheck = new Set(['findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete', 'deleteMany', 'count', 'aggregate', 'groupBy']);
       if (!actionsToCheck.has(params.action)) return next(params);
 
       const args = params.args || {};
 
+      // Deeply strip _skipBranchEnforcer from query arguments in-place
+      function stripBypass(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        if (obj instanceof Date || obj instanceof Buffer) return obj;
+
+        if (Array.isArray(obj)) {
+          for (const item of obj) stripBypass(item);
+          return obj;
+        }
+
+        // Remove the bypass flag if it exists
+        if (Object.prototype.hasOwnProperty.call(obj, '_skipBranchEnforcer')) {
+          delete obj._skipBranchEnforcer;
+        }
+
+        // Recursively clean all properties
+        for (const key of Object.keys(obj)) {
+          stripBypass(obj[key]);
+        }
+        return obj;
+      }
+
+      // Check for bypass BEFORE stripping
+      const hasBypass = args._skipBranchEnforcer === true || (args.where && args.where._skipBranchEnforcer === true);
+
+      // ALWAYS strip bypass flag from final arguments to prevent Prisma "Unknown argument" errors
+      // We do this for ALL models to ensure no Prisma query is corrupted by the marker
+      params.args = stripBypass(args);
+
       if (!models.has(params.model)) return next(params);
 
-      // Special marker: if query has _skipBranchEnforcer = true, skip the check
-      // This is set by ensureBranchWhere for admin users viewing all branches
-      if (args.where && args.where._skipBranchEnforcer === true) {
-        // Remove the marker before sending to Prisma
-        const { _skipBranchEnforcer, ...cleanWhere } = args.where;
-        params.args = { ...args, where: Object.keys(cleanWhere).length > 0 ? cleanWhere : undefined };
-        // If where is now empty, remove it entirely for findMany/aggregate
-        if (!params.args.where || Object.keys(params.args.where).length === 0) {
-          delete params.args.where;
-        }
+      if (hasBypass) {
         return next(params);
       }
 
       // If there is no `where` argument, block it
-      if (!args.where) {
-        throw new Error(`Branch filter required: missing 'where' for ${params.model}.${params.action}`);
+      if (!params.args.where) {
+        const errorMsg = `Branch filter required: missing 'where' for ${params.model}.${params.action}`;
+        console.error(`[BranchEnforcer] FAILED: ${errorMsg}`, { action: params.action, model: params.model });
+        throw new Error(errorMsg);
       }
 
-      if (!containsBranchId(args.where)) {
-        throw new Error(`Branch filter required: '${params.model}.${params.action}' must filter by branchId`);
+      if (!containsBranchId(params.args.where)) {
+        const errorMsg = `Branch filter required: '${params.model}.${params.action}' must filter by branchId`;
+        console.error(`[BranchEnforcer] FAILED: ${errorMsg}`, { action: params.action, model: params.model, where: JSON.stringify(params.args.where) });
+        throw new Error(errorMsg);
       }
 
       return next(params);

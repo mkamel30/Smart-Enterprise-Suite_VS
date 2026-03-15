@@ -1,13 +1,13 @@
 ﻿const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { logAction } = require('../utils/logger');
+const { success, error, paginated } = require('../utils/apiResponse');
+const { ROLES } = require('../utils/constants');
 const { authenticateToken } = require('../middleware/auth');
-const { getBranchFilter, requirePermission, PERMISSIONS } = require('../middleware/permissions');
+const { requirePermission, PERMISSIONS } = require('../middleware/permissions');
 const asyncHandler = require('../utils/asyncHandler');
 const { z } = require('zod');
 const { roundMoney } = require('../services/paymentService');
-const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const inventoryService = require('../services/inventoryService');
 
 // Validation Schemas
@@ -39,24 +39,46 @@ const transferStockSchema = z.object({
     toBranchId: z.string()
 });
 
-// GET inventory (parts with quantities PER BRANCH)
+// Pagination helpers removed
+
+// GET inventory lite (dropdowns)
+router.get('/inventory/lite', authenticateToken, asyncHandler(async (req, res) => {
+    const { search, branchId } = req.query;
+    const items = await inventoryService.getInventoryLite(req, { search, branchId });
+    return success(res, items);
+}));
+
+// GET inventory (parts with quantities PER BRANCH) - PAGINATED
 router.get('/inventory', authenticateToken, asyncHandler(async (req, res) => {
-    const inventory = await inventoryService.getInventory(req);
-    res.json(inventory);
+    const { page, limit, search, model, branchId } = req.query;
+
+    const limitNum = parseInt(limit) || 50;
+    const pageNum = parseInt(page) || 1;
+    const offset = (pageNum - 1) * limitNum;
+
+    const { items, total } = await inventoryService.getInventory(req, {
+        limit: limitNum,
+        offset,
+        search,
+        model,
+        branchId
+    });
+
+    return paginated(res, items, total, limitNum, offset);
 }));
 
 // POST add stock (IN movement)
 router.post('/inventory/stock-in', authenticateToken, asyncHandler(async (req, res) => {
     const validated = stockInSchema.parse(req.body);
     const result = await inventoryService.stockIn(req, validated);
-    res.json({ success: true, newQuantity: result.newQuantity });
+    return success(res, { success: true, newQuantity: result.newQuantity });
 }));
 
 // POST bulk import stock
 router.post('/inventory/import', authenticateToken, asyncHandler(async (req, res) => {
     const validated = importStockSchema.parse(req.body);
     const result = await inventoryService.importStock(req, validated.items, validated.branchId);
-    res.json({ success: true, updated: result.updated });
+    return success(res, { success: true, updated: result.updated });
 }));
 
 // PUT update inventory quantity directly
@@ -64,27 +86,27 @@ router.put('/inventory/:partId', authenticateToken, asyncHandler(async (req, res
     const validated = updateQuantitySchema.parse(req.body);
     const { partId } = req.params;
     const inventoryItem = await inventoryService.updateQuantity(req, partId, validated.quantity, validated.branchId);
-    res.json({ success: true, quantity: inventoryItem.quantity });
+    return success(res, { success: true, quantity: inventoryItem.quantity });
 }));
 
 // POST stock out (used in repair)
 router.post('/inventory/stock-out', authenticateToken, asyncHandler(async (req, res) => {
     const validated = stockOutSchema.parse(req.body);
     const result = await inventoryService.stockOut(req, validated, validated.branchId);
-    res.json({ success: true, newQuantity: result.newQuantity, paymentCreated: !!result.payment, paymentId: result.payment?.id });
+    return success(res, { success: true, newQuantity: result.newQuantity, paymentCreated: !!result.payment, paymentId: result.payment?.id });
 }));
 
 // POST transfer stock between branches
 router.post('/inventory/transfer', authenticateToken, asyncHandler(async (req, res) => {
     const validated = transferStockSchema.parse(req.body);
     const result = await inventoryService.transferStock(req, validated);
-    res.json(result);
+    return success(res, result);
 }));
 
 // GET stock movements log
 router.get('/inventory/movements', authenticateToken, asyncHandler(async (req, res) => {
     const movements = await inventoryService.getMovements(req);
-    res.json(movements);
+    return success(res, movements);
 }));
 
 module.exports = router;

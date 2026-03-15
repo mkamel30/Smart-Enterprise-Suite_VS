@@ -3,6 +3,7 @@ import { History, Wrench, DollarSign, ArrowRightLeft, Package } from 'lucide-rea
 import { api } from '../api/client';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from './ui/sheet';
 import { Button } from './ui/button';
+import { cn } from '../lib/utils';
 
 interface MachineHistoryModalProps {
     serialNumber: string;
@@ -174,39 +175,93 @@ export default function MachineHistoryModal({ serialNumber, onClose }: MachineHi
 
                                                     {/* Movement Details */}
                                                     {item.type === 'movement' && (
-                                                        <div className="space-y-1 text-sm">
-                                                            <div className="text-gray-700">
-                                                                {(() => {
-                                                                    try {
-                                                                        const data = JSON.parse(item.details.details);
-                                                                        if (data.sale) {
-                                                                            return (
-                                                                                <div>
-                                                                                    <span className="font-bold text-emerald-600">بيع: </span>
-                                                                                    {data.customer?.client_name} ({data.sale.type === 'CASH' ? 'كاش' : 'قسط'})
-                                                                                    <div className="text-xs text-gray-500 mt-1">
-                                                                                        السعر: {data.sale.totalPrice} ج.م | المدفوع: {data.sale.paidAmount} ج.م
-                                                                                    </div>
+                                                        <div className="space-y-1.5">
+                                                            {(() => {
+                                                                try {
+                                                                    const data = typeof item.details.details === 'string' ? JSON.parse(item.details.details) : item.details.details;
+                                                                    const action = item.details.action;
+
+                                                                    // Compact Row Component Helper
+                                                                    const CompactMovementRow = ({ icon, label, children, bgColor, textColor, borderColor }: any) => (
+                                                                        <div className={cn("flex items-center justify-between p-2 rounded-xl border shadow-sm transition-all hover:bg-white", bgColor, borderColor)}>
+                                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                                <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 whitespace-nowrap", textColor, bgColor.replace('50', '100'))}>
+                                                                                    {icon} {label}
+                                                                                </span>
+                                                                                <div className="text-[11px] font-bold text-slate-600 truncate">
+                                                                                    {children}
                                                                                 </div>
-                                                                            );
-                                                                        }
-                                                                        if (data.outgoingMachine) {
-                                                                            return (
-                                                                                <div>
-                                                                                    <span className="font-bold text-blue-600">استبدال: </span>
-                                                                                    مع العميل {data.customer?.client_name}
+                                                                            </div>
+                                                                            <div className="text-[9px] font-black text-slate-400 bg-white/80 px-2 py-0.5 rounded-full border border-slate-100 whitespace-nowrap ml-2">
+                                                                                {item.details.performedBy || 'النظام'}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+
+                                                                    // 1. Exchange (Specific for Machine History)
+                                                                    if (action.includes('EXCHANGE') || data.oldMachine || data.newMachine) {
+                                                                        const isOutgoingExchange = action === 'EXCHANGE_OUT' || data.outgoingMachine?.serialNumber === serialNumber;
+                                                                        const otherSerial = isOutgoingExchange
+                                                                            ? (data.newMachine?.serialNumber || data.incomingMachine?.serialNumber)
+                                                                            : (data.oldMachine?.serialNumber || data.outgoingMachine?.serialNumber);
+
+                                                                        return (
+                                                                            <CompactMovementRow icon="🔄" label="استبدال ماكينة" bgColor="bg-amber-50/50" textColor="text-amber-700" borderColor="border-amber-100/50">
+                                                                                <div className="flex items-center gap-1.5">
+                                                                                    <span className="text-slate-400 font-mono opacity-60">
+                                                                                        {isOutgoingExchange ? serialNumber : (otherSerial || 'القديمة')}
+                                                                                    </span>
+                                                                                    <ArrowRightLeft size={10} className="text-slate-300 shrink-0" />
+                                                                                    <span className="text-emerald-600 font-mono">
+                                                                                        {isOutgoingExchange ? (otherSerial || 'الجديدة') : serialNumber}
+                                                                                    </span>
                                                                                 </div>
-                                                                            );
-                                                                        }
-                                                                        return item.details.details;
-                                                                    } catch (e) {
-                                                                        return item.details.details; // Fallback for old string logs
+                                                                            </CompactMovementRow>
+                                                                        );
                                                                     }
-                                                                })()}
-                                                            </div>
-                                                            <p className="text-xs text-gray-500">
-                                                                بواسطة: {item.details.performedBy}
-                                                            </p>
+
+                                                                    // 2. Sale
+                                                                    if (data.sale || action === 'SELL') {
+                                                                        return (
+                                                                            <CompactMovementRow icon="🛒" label="عملية بيع" bgColor="bg-emerald-50/50" textColor="text-emerald-700" borderColor="border-emerald-100/50">
+                                                                                {data.customer?.client_name || 'عميل'} | {data.sale?.type === 'CASH' ? 'كاش' : 'قسط'}
+                                                                            </CompactMovementRow>
+                                                                        );
+                                                                    }
+
+                                                                    // 3. Transfers
+                                                                    if (action.includes('TRANSFER') || action === 'IMPORT' || data.orderId) {
+                                                                        const isIncoming = action === 'TRANSFER_IN' || action === 'IMPORT';
+                                                                        return (
+                                                                            <CompactMovementRow icon={isIncoming ? "📥" : "📤"} label={isIncoming ? "استلام تحويل" : "إرسال تحويل"} bgColor="bg-indigo-50/50" textColor="text-indigo-700" borderColor="border-indigo-100/50">
+                                                                                {isIncoming ? 'من: ' : 'إلى: '} {data.fromBranchName || data.toBranchName || 'فرع آخر'}
+                                                                            </CompactMovementRow>
+                                                                        );
+                                                                    }
+
+                                                                    // 4. Returns
+                                                                    if (action.includes('RETURN') || data.reason) {
+                                                                        return (
+                                                                            <CompactMovementRow icon="🔄" label="إرجاع مخزن" bgColor="bg-rose-50/50" textColor="text-rose-700" borderColor="border-rose-100/50">
+                                                                                العميل: {data.customer?.client_name || 'غير محدد'}
+                                                                            </CompactMovementRow>
+                                                                        );
+                                                                    }
+
+                                                                    // 5. Assignments
+                                                                    if (action === 'ASSIGN') {
+                                                                        return (
+                                                                            <CompactMovementRow icon="📠" label="تسليم عميل" bgColor="bg-blue-50/50" textColor="text-blue-700" borderColor="border-blue-100/50">
+                                                                                العميل: {data.customer?.client_name || 'غير محدد'}
+                                                                            </CompactMovementRow>
+                                                                        );
+                                                                    }
+
+                                                                    return <div className="text-[11px] text-slate-400 italic bg-slate-50 p-1.5 rounded-lg border border-dashed">{item.details.action}: {item.details.details}</div>;
+                                                                } catch (e) {
+                                                                    return <div className="text-[11px] text-slate-400 italic">{item.details.details}</div>;
+                                                                }
+                                                            })()}
                                                         </div>
                                                     )}
 

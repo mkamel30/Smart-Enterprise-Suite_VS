@@ -25,6 +25,7 @@ const {
   removeServerHeader,
   additionalSecurityHeaders
 } = require('./middleware/security');
+const { contextMiddleware } = require('./middleware/context');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 
 // Swagger documentation
@@ -48,8 +49,23 @@ app.use(securityHeaders);
 app.use(additionalSecurityHeaders);
 
 // 4. CORS Configuration
+const allowedOrigins = config.cors.origin;
 app.use(cors({
-  origin: config.cors.origin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // If wildcard is used, reflect the origin to allow credentials
+    if (allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: config.cors.credentials,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
@@ -65,6 +81,9 @@ app.use(express.urlencoded({
   extended: true,
   limit: config.uploads.maxFileSize
 }));
+
+// Establish request context (async context tracking)
+app.use(contextMiddleware);
 
 // 5b. Force UTF-8 Encoding
 app.use((req, res, next) => {
@@ -150,11 +169,11 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:5000',
+        url: `http://localhost:${config.port || 5002}`,
         description: 'Development server'
       },
       {
-        url: process.env.API_URL || 'http://localhost:5000',
+        url: config.urls.api,
         description: 'Production server'
       }
     ],
@@ -192,14 +211,13 @@ app.use('/api/technicians', require('./routes/technicians'));
 app.use('/api', require('./routes/requests'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/pending-payments', require('./routes/pending-payments'));
+app.use('/api/finance', require('./routes/finance')); // NEW: Finance Dashboard Routes
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/audit-logs', require('./routes/audit-logs'));
 
 // Settings & Configuration
 app.use('/api/branches', require('./routes/branches'));
-// /api/branches-lookup is served by the same routes module (legacy alias)
-app.use('/api/branches-lookup', require('./routes/branches'));
 
 // Permissions management - full route
 app.use('/api/permissions', require('./routes/permissions'));
@@ -209,6 +227,7 @@ app.use('/api', require('./routes/inventory'));
 app.use('/api/spare-parts', require('./routes/warehouse'));
 app.use('/api/warehouse-machines', require('./routes/warehouse-machines'));
 app.use('/api/warehouse-sims', require('./routes/warehouseSims'));
+app.use('/api/admin-store', require('./routes/admin-store'));
 
 // Machines & SimCards
 app.use('/api', require('./routes/machines'));
@@ -256,18 +275,8 @@ app.get('/api/reports/executive', authenticateToken, (req, res) => {
 
 // ===================== HEALTH CHECK =====================
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    environment: config.nodeEnv
-  });
-});
+app.use('/health', require('./routes/health'));
+app.use('/api/health', require('./routes/health'));
 
 // ===================== ERROR HANDLING =====================
 
@@ -287,8 +296,8 @@ const PORT = config.port;
 let server;
 
 if (require.main === module) {
-  server = app.listen(PORT, () => {
-    logger.info(`[SERVER] Server running on port ${PORT}`);
+  server = app.listen(PORT, config.host, () => {
+    logger.info(`[SERVER] Server running on http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${PORT}`);
     logger.info(`[DOCS] API Docs: http://localhost:${PORT}/api-docs`);
     logger.info(`[ENV] Environment: ${config.nodeEnv}`);
   });

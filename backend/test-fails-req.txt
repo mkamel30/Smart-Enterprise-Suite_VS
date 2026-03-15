@@ -1,0 +1,36 @@
+
+================================
+FAIL: should create maintenance request successfully
+Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+- Expected
++ Received
+
+@@ -9,6 +9,10 @@
+      "machineModel": "POS-X200",
+      "posMachineId": "machine-123",
+      "serialNumber": "SN123456",
+      "status": "Pending",
+    },
++   "include": Object {
++     "customer": true,
++     "posMachine": true,
++   },
+
+================================
+FAIL: should use user branchId when creating request
+Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+- Expected
++ Received
+
+  Object {
+-   "data": ObjectContaining {
++   "data": Object {
+      "branchId": "user-branch",
++     "complaint": "Machine not working",
++     "customerBkcode": "CUST001",
++     "customerId": "cust-123",
++     "customerName": "Test Customer",
++     "machineManufacturer": "Ingenico",
++     "machineModel": "POS-X200",

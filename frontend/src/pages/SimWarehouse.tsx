@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { Plus, Download, Upload, FileSpreadsheet, Smartphone } from 'lucide-react';
+import { Plus, Download, Upload, FileSpreadsheet, Smartphone, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useApiMutation } from '../hooks/useApiMutation';
 import toast from 'react-hot-toast';
@@ -12,7 +12,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import PageHeader from '../components/PageHeader';
+import { cn } from '../lib/utils';
+import { Button } from '../components/ui/button';
+import { isGlobalRole } from '../lib/permissions';
 
 // Modular Components
 import { SimStatsCards } from '../components/sim/SimStatsCards';
@@ -27,98 +29,95 @@ interface WarehouseSim {
     id: string;
     serialNumber: string;
     type: string | null;
+    networkType: string | null;
     status: string;
     notes: string | null;
     importDate: string;
+    branchId?: string;
 }
 
 export default function SimWarehouse() {
-    const { user, activeBranchId } = useAuth();
-    const isAdmin = !user?.branchId;
-    const isAffairs = user?.role === 'ADMIN_AFFAIRS';
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || !user?.branchId;
     const queryClient = useQueryClient();
 
-    const [filterBranchId, setFilterBranchId] = useState('');
+    // State
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterBranchId, setFilterBranchId] = useState('');
+    const [activeTab, setActiveTab] = useState('ALL');
+    const [typeFilter, setTypeFilter] = useState('');
+    const [selectedSims, setSelectedSims] = useState<Set<string>>(new Set());
+
+    // Modals State
     const [showAddModal, setShowAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
-    const [editingSim, setEditingSim] = useState<WarehouseSim | null>(null);
-    const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DEFECTIVE' | 'IN_TRANSIT'>('ACTIVE');
-    const [typeFilter, setTypeFilter] = useState<string>('');
-    const [selectedSims, setSelectedSims] = useState<Set<string>>(new Set());
     const [showTransferModal, setShowTransferModal] = useState(false);
-    const [transferTargetBranch, setTransferTargetBranch] = useState('');
-    const [transferNotes, setTransferNotes] = useState('');
+    const [editingSim, setEditingSim] = useState<WarehouseSim | null>(null);
 
+    // Form State
     const [formData, setFormData] = useState({
         serialNumber: '',
         type: '',
+        networkType: '',
         status: 'ACTIVE',
         notes: '',
         branchId: ''
     });
 
+    // Transfer State
+    const [transferTargetBranch, setTransferTargetBranch] = useState('');
+    const [transferNotes, setTransferNotes] = useState('');
+
     // Queries
-    const { data: sims, isLoading } = useQuery<WarehouseSim[]>({
-        queryKey: ['warehouse-sims', activeBranchId, filterBranchId],
-        queryFn: () => api.getWarehouseSims(activeBranchId || filterBranchId)
-    });
-
-    const { data: counts } = useQuery({
-        queryKey: ['warehouse-sims-counts', activeBranchId, filterBranchId],
-        queryFn: () => api.getWarehouseSimCounts(activeBranchId || filterBranchId)
-    });
-
     const { data: branches } = useQuery({
         queryKey: ['branches'],
-        queryFn: () => api.getActiveBranches(),
-        enabled: isAdmin || isAffairs,
-        staleTime: 1000 * 60 * 60
+        queryFn: api.getBranches,
+        enabled: isAdmin
+    });
+
+    const { data: sims = [], isLoading } = useQuery({
+        queryKey: ['warehouse-sims', filterBranchId, activeTab],
+        queryFn: () => api.getWarehouseSims(filterBranchId, activeTab)
+    });
+
+    const { data: stats } = useQuery({
+        queryKey: ['warehouse-sims-stats', filterBranchId],
+        queryFn: () => api.getWarehouseSimCounts(filterBranchId)
     });
 
     // Mutations
     const createMutation = useApiMutation({
         mutationFn: (data: any) => api.createWarehouseSim(data),
         successMessage: 'تم إضافة الشريحة بنجاح',
-        errorMessage: 'فشل إضافة الشريحة',
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['warehouse-sims'] });
-            await queryClient.invalidateQueries({ queryKey: ['warehouse-sims-counts'] });
+        invalidateKeys: [['warehouse-sims'], ['warehouse-sims-stats']],
+        onSuccess: () => {
             setShowAddModal(false);
             resetForm();
         }
     });
 
     const updateMutation = useApiMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => api.updateWarehouseSim(id, data),
+        mutationFn: (data: any) => api.updateWarehouseSim(editingSim!.id, data),
         successMessage: 'تم تحديث الشريحة بنجاح',
-        errorMessage: 'فشل تحديث الشريحة',
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['warehouse-sims'] });
-            await queryClient.invalidateQueries({ queryKey: ['warehouse-sims-counts'] });
-            setEditingSim(null);
+        invalidateKeys: [['warehouse-sims'], ['warehouse-sims-stats']],
+        onSuccess: () => {
             setShowAddModal(false);
+            setEditingSim(null);
             resetForm();
         }
     });
 
     const deleteMutation = useApiMutation({
         mutationFn: (id: string) => api.deleteWarehouseSim(id),
-        successMessage: 'تم حذف الشريحة',
-        errorMessage: 'فشل حذف الشريحة',
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['warehouse-sims'] });
-            await queryClient.invalidateQueries({ queryKey: ['warehouse-sims-counts'] });
-        }
+        successMessage: 'تم حذف الشريحة بنجاح',
+        invalidateKeys: [['warehouse-sims'], ['warehouse-sims-stats']]
     });
 
     const transferMutation = useApiMutation({
         mutationFn: (data: any) => api.transferWarehouseSims(data),
-        successMessage: 'تم إنشاء إذن النقل بنجاح',
-        errorMessage: 'فشل إنشاء إذن النقل',
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['warehouse-sims'] });
-            await queryClient.invalidateQueries({ queryKey: ['warehouse-sims-counts'] });
+        successMessage: 'تم نقل الشرائح بنجاح',
+        invalidateKeys: [['warehouse-sims'], ['warehouse-sims-stats']],
+        onSuccess: () => {
             setShowTransferModal(false);
             setSelectedSims(new Set());
             setTransferTargetBranch('');
@@ -126,23 +125,16 @@ export default function SimWarehouse() {
         }
     });
 
+    // Handlers
     const resetForm = () => {
         setFormData({
             serialNumber: '',
             type: '',
+            networkType: '',
             status: 'ACTIVE',
             notes: '',
             branchId: ''
         });
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (editingSim) {
-            updateMutation.mutate({ id: editingSim.id, data: formData });
-        } else {
-            createMutation.mutate(formData);
-        }
     };
 
     const handleEdit = (sim: WarehouseSim) => {
@@ -150,57 +142,34 @@ export default function SimWarehouse() {
         setFormData({
             serialNumber: sim.serialNumber,
             type: sim.type || '',
+            networkType: sim.networkType || '',
             status: sim.status,
             notes: sim.notes || '',
-            branchId: ''
+            branchId: sim.branchId || ''
         });
         setShowAddModal(true);
     };
 
-    const handleDownloadTemplate = async () => {
-        try {
-            const blob = await api.getWarehouseSimTemplate();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'warehouse_sims_import.xlsx';
-            a.click();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            toast.error('فشل تحميل القالب');
+    const handleDelete = (id: string) => {
+        if (window.confirm('هل أنت متأكد من حذف هذه الشريحة؟')) {
+            deleteMutation.mutate(id);
         }
     };
 
-    const handleExport = async () => {
-        try {
-            const blob = await api.exportWarehouseSims();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `sim_warehouse_${new Date().toISOString().slice(0, 10)}.xlsx`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-            toast.success('تم تصدير البيانات بنجاح');
-        } catch (error) {
-            toast.error('فشل تصدير البيانات');
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (editingSim) {
+            updateMutation.mutate(formData);
+        } else {
+            createMutation.mutate({ ...formData, branchId: filterBranchId || user?.branchId });
         }
     };
-
-    const filteredSims = sims?.filter(sim => {
-        const matchesSearch = !searchTerm ||
-            sim.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            sim.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            sim.notes?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesTab = sim.status === activeTab;
-        const matchesType = !typeFilter || sim.type === typeFilter;
-        return matchesSearch && matchesTab && matchesType;
-    }) || [];
 
     const toggleSelectAll = () => {
-        if (selectedSims.size === filteredSims.length) {
+        if (selectedSims.size === sims.length) {
             setSelectedSims(new Set());
         } else {
-            setSelectedSims(new Set(filteredSims.map(s => s.id)));
+            setSelectedSims(new Set(sims.map((s: any) => s.id)));
         }
     };
 
@@ -214,95 +183,131 @@ export default function SimWarehouse() {
         setSelectedSims(newSelected);
     };
 
-    const actionElements = (
-        <div className="flex flex-wrap gap-2">
-            {selectedSims.size > 0 && isAffairs ? (
-                <button
-                    onClick={() => setShowTransferModal(true)}
-                    className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#6CE4F0] to-[#6CE4F0]/90 text-primary rounded-xl font-black shadow-lg hover:opacity-90 transition-all active:scale-95"
-                >
-                    <Plus size={18} />
-                    <span>إنشاء إذن نقل ({selectedSims.size})</span>
-                </button>
-            ) : (
-                <>
-                    <button
-                        onClick={() => { resetForm(); setEditingSim(null); setShowAddModal(true); }}
-                        className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#7E5BAB] to-[#7E5BAB]/90 text-white rounded-xl font-black shadow-lg hover:opacity-90 transition-all active:scale-95"
+    const handleExport = async () => {
+        try {
+            await api.exportWarehouseSims(filterBranchId);
+            toast.success('تم تصدير البيانات بنجاح');
+        } catch (error) {
+            toast.error('فشل تصدير البيانات');
+        }
+    };
+
+    // Filtered Sims
+    const safeSims = Array.isArray(sims) ? sims : [];
+    const filteredSims = safeSims.filter((sim: WarehouseSim) =>
+        (sim.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (sim.type && sim.type.toLowerCase().includes(searchTerm.toLowerCase()))) &&
+        (!typeFilter || sim.type === typeFilter)
+    );
+
+    const safeBranches = Array.isArray(branches) ? branches : [];
+    const isAdminOrHQ = isAdmin || isGlobalRole(user?.role);
+
+    return (
+        <div className="px-8 pt-4 pb-8 space-y-8 max-w-[1600px] mx-auto bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl lg:text-4xl font-black text-[#0A2472] tracking-tight">
+                        مخزن الشرائح
+                    </h1>
+                    <p className="text-slate-500 mt-2 font-medium">إدارة ومراقبة حركة مخزون شرائح الاتصال</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                    {selectedSims.size > 0 && (isAdmin || user?.role === 'STOCK_MANAGER') && (
+                        <Button
+                            onClick={() => setShowTransferModal(true)}
+                            className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl px-4 py-6 font-bold shadow-xl shadow-amber-200 transition-all gap-2 animate-in slide-in-from-right-4"
+                        >
+                            <Upload size={18} />
+                            نقل ({selectedSims.size})
+                        </Button>
+                    )}
+
+                    <Button
+                        onClick={handleExport}
+                        variant="outline"
+                        className="flex-1 lg:flex-none bg-white border-slate-200 text-slate-700 rounded-xl px-6 py-6 font-bold shadow-sm hover:bg-slate-50 transition-all gap-2"
                     >
-                        <Plus size={18} />
-                        <span>إضافة شريحة</span>
-                    </button>
+                        <Download size={20} />
+                        تصدير
+                    </Button>
+
                     <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all outline-none">
-                            <FileSpreadsheet size={18} className="text-emerald-600" />
-                            عمليات Excel
+                        <DropdownMenuTrigger asChild>
+                            <Button className="flex-1 lg:flex-none bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl px-6 py-6 font-black shadow-xl transition-all gap-2">
+                                <Plus size={20} />
+                                <span className="whitespace-nowrap">إضافة شرائح</span>
+                            </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white rounded-xl p-2 shadow-xl border-2 border-slate-100 min-w-[200px] z-[100]">
-                            <DropdownMenuItem onClick={handleDownloadTemplate} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
-                                <Download size={16} className="text-slate-500" />
-                                تحميل القالب
+                        <DropdownMenuContent align="end" className="rounded-xl border-slate-200 shadow-xl p-2 min-w-[200px]">
+                            <DropdownMenuItem
+                                className="rounded-lg font-medium p-3 cursor-pointer hover:bg-slate-50 gap-2"
+                                onClick={() => {
+                                    setEditingSim(null);
+                                    resetForm();
+                                    setShowAddModal(true);
+                                }}
+                            >
+                                <Plus className="h-4 w-4 text-indigo-600" />
+                                إضافة يدوية
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setShowImportModal(true)} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50">
-                                <Upload size={16} className="text-blue-500" />
-                                استيراد
-                            </DropdownMenuItem>
-                            <div className="h-px bg-slate-100 my-1" />
-                            <DropdownMenuItem onClick={handleExport} className="rounded-lg gap-3 cursor-pointer py-2.5 font-medium hover:bg-slate-50 focus:bg-slate-50 text-emerald-700">
-                                <Download size={16} />
-                                تصدير
+                            <DropdownMenuItem
+                                className="rounded-lg font-medium p-3 cursor-pointer hover:bg-slate-50 gap-2"
+                                onClick={() => setShowImportModal(true)}
+                            >
+                                <FileSpreadsheet className="h-4 w-4 text-indigo-600" />
+                                استيراد من Excel
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                </>
-            )}
-        </div>
-    );
+                </div>
+            </div>
 
-    return (
-        <div className="px-4 lg:px-8 pt-4 pb-8 animate-fade-in bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
-            <PageHeader
-                title={isAffairs ? 'المخزن الرئيسي للشرائح' : 'مخزن الشرائح'}
-                subtitle={isAffairs ? 'إدارة وتوزيع شرائح البيانات للفروع' : 'إدارة المخزون المحلي من شرائح البيانات'}
-                actions={actionElements}
-            />
+            <SimStatsCards counts={stats} />
 
-            <SimStatsCards counts={counts} />
+            <div className="bg-white/40 backdrop-blur-xl border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden">
+                <SimTabs
+                    activeTab={activeTab as any}
+                    setActiveTab={setActiveTab}
+                    counts={stats}
+                />
 
-            <SimTypeBreakdown
-                counts={counts}
-                typeFilter={typeFilter}
-                setTypeFilter={setTypeFilter}
-            />
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    <div className="lg:col-span-3 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="flex flex-wrap items-center gap-4 mb-2">
+                            <div className="flex-1 min-w-[300px]">
+                                <SimFilters
+                                    searchTerm={searchTerm}
+                                    onSearchChange={setSearchTerm}
+                                    isAdmin={isAdminOrHQ}
+                                    filterBranchId={filterBranchId}
+                                    onBranchChange={setFilterBranchId}
+                                    branches={safeBranches}
+                                />
+                            </div>
+                        </div>
 
-            <SimTabs
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                counts={counts}
-            />
+                        <SimTable
+                            isLoading={isLoading}
+                            sims={filteredSims}
+                            selectedSims={selectedSims}
+                            toggleSelectAll={toggleSelectAll}
+                            toggleSelectSim={toggleSelectSim}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                        />
+                    </div>
 
-            <SimFilters
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                isAdmin={isAdmin}
-                filterBranchId={filterBranchId}
-                onBranchChange={setFilterBranchId}
-                branches={branches as any[]}
-            />
-
-            <SimTable
-                isLoading={isLoading}
-                sims={filteredSims}
-                selectedSims={selectedSims}
-                toggleSelectAll={toggleSelectAll}
-                toggleSelectSim={toggleSelectSim}
-                onEdit={handleEdit}
-                onDelete={(id) => {
-                    if (confirm('هل أنت متأكد من حذف هذه الشريحة؟')) {
-                        deleteMutation.mutate(id);
-                    }
-                }}
-            />
+                    <div className="lg:col-span-1 animate-in fade-in slide-in-from-left-2 duration-500">
+                        <SimTypeBreakdown
+                            counts={stats}
+                            typeFilter={typeFilter}
+                            setTypeFilter={setTypeFilter}
+                        />
+                    </div>
+                </div>
+            </div>
 
             <ImportModal
                 isOpen={showImportModal}
@@ -311,11 +316,12 @@ export default function SimWarehouse() {
                 onImport={(file) => api.importWarehouseSims(file, filterBranchId)}
                 onSuccess={() => {
                     queryClient.invalidateQueries({ queryKey: ['warehouse-sims'] });
-                    queryClient.invalidateQueries({ queryKey: ['warehouse-sims-counts'] });
+                    queryClient.invalidateQueries({ queryKey: ['warehouse-sims-stats'] });
                 }}
                 columns={[
                     { header: 'مسلسل الشريحة', key: 'serialNumber' },
-                    { header: 'نوع الشريحة', key: 'type' },
+                    { header: 'الشركة (Type)', key: 'type' },
+                    { header: 'الشبكة (Network)', key: 'networkType' },
                     { header: 'الحالة', key: 'status' },
                     { header: 'ملاحظات', key: 'notes' }
                 ]}
@@ -328,8 +334,8 @@ export default function SimWarehouse() {
                 formData={formData}
                 setFormData={setFormData}
                 handleSubmit={handleSubmit}
-                isAdmin={isAdmin}
-                branches={branches as any[]}
+                isAdmin={isAdminOrHQ}
+                branches={safeBranches}
                 isPending={createMutation.isPending || updateMutation.isPending}
             />
 
@@ -341,7 +347,7 @@ export default function SimWarehouse() {
                 setTransferTargetBranch={setTransferTargetBranch}
                 transferNotes={transferNotes}
                 setTransferNotes={setTransferNotes}
-                branches={branches as any[]}
+                branches={safeBranches}
                 onTransfer={() => transferMutation.mutate({
                     simIds: Array.from(selectedSims),
                     targetBranchId: transferTargetBranch,

@@ -1,0 +1,497 @@
+{
+  "summary": {
+    "missingNullChecks": 44,
+    "namingMismatches": 22,
+    "totalIssues": 66
+  },
+  "details": {
+    "missingNullChecks": [
+      {
+        "file": "frontend\\src\\components\\CloseRequestModal.tsx",
+        "line": 80,
+        "apiMethod": "checkReceipt",
+        "access": "data.receiptNumber",
+        "suggestion": "Add null check or use optional chaining: data?.receiptNumber"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\MachineParametersTab.tsx",
+        "line": 32,
+        "apiMethod": "deleteMachineParameter",
+        "access": "data.warehouseUpdated",
+        "suggestion": "Add null check or use optional chaining: data?.warehouseUpdated"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\MachineParametersTab.tsx",
+        "line": 32,
+        "apiMethod": "deleteMachineParameter",
+        "access": "data.customerUpdated",
+        "suggestion": "Add null check or use optional chaining: data?.customerUpdated"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\MachineParametersTab.tsx",
+        "line": 40,
+        "apiMethod": "forceUpdateMachineModels",
+        "access": "data.warehouseUpdated",
+        "suggestion": "Add null check or use optional chaining: data?.warehouseUpdated"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\MachineParametersTab.tsx",
+        "line": 40,
+        "apiMethod": "forceUpdateMachineModels",
+        "access": "data.customerUpdated",
+        "suggestion": "Add null check or use optional chaining: data?.customerUpdated"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SecurityTab.tsx",
+        "line": 26,
+        "apiMethod": "getMFAStatus",
+        "access": "response.data",
+        "suggestion": "Add null check or use optional chaining: response?.data"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SecurityTab.tsx",
+        "line": 37,
+        "apiMethod": "setupMFA",
+        "access": "response.data",
+        "suggestion": "Add null check or use optional chaining: response?.data"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SecurityTab.tsx",
+        "line": 51,
+        "apiMethod": "verifyMFASetup",
+        "access": "response.data",
+        "suggestion": "Add null check or use optional chaining: response?.data"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+        "line": 86,
+        "apiMethod": "post",
+        "access": "data.skipped",
+        "suggestion": "Add null check or use optional chaining: data?.skipped"
+      },
+      {
+        "file": "frontend\\src\\pages\\Customers.tsx",
+        "line": 42,
+        "apiMethod": "updateSimCard",
+        "access": "data.id",
+        "suggestion": "Add null check or use optional chaining: data?.id"
+      },
+      {
+        "file": "frontend\\src\\pages\\Customers.tsx",
+        "line": 42,
+        "apiMethod": "updateSimCard",
+        "access": "data.type",
+        "suggestion": "Add null check or use optional chaining: data?.type"
+      },
+      {
+        "file": "frontend\\src\\pages\\Login.tsx",
+        "line": 24,
+        "apiMethod": "login",
+        "access": "data.mfaRequired",
+        "suggestion": "Add null check or use optional chaining: data?.mfaRequired"
+      },
+      {
+        "file": "frontend\\src\\pages\\Login.tsx",
+        "line": 24,
+        "apiMethod": "login",
+        "access": "data.user",
+        "suggestion": "Add null check or use optional chaining: data?.user"
+      },
+      {
+        "file": "frontend\\src\\pages\\Login.tsx",
+        "line": 24,
+        "apiMethod": "login",
+        "access": "data.token",
+        "suggestion": "Add null check or use optional chaining: data?.token"
+      },
+      {
+        "file": "frontend\\src\\pages\\MaintenanceCenter.tsx",
+        "line": 284,
+        "apiMethod": "createReturnPackage",
+        "access": "result.dat",
+        "suggestion": "Add null check or use optional chaining: result?.dat"
+      },
+      {
+        "file": "frontend\\src\\pages\\MaintenanceMachineDetail.tsx",
+        "line": 86,
+        "apiMethod": "getMaintenanceMachine",
+        "access": "data.technicianId",
+        "suggestion": "Add null check or use optional chaining: data?.technicianId"
+      },
+      {
+        "file": "frontend\\src\\pages\\MaintenanceMachineDetail.tsx",
+        "line": 92,
+        "apiMethod": "getTechnicians",
+        "access": "data.technicianId",
+        "suggestion": "Add null check or use optional chaining: data?.technicianId"
+      },
+      {
+        "file": "frontend\\src\\pages\\MaintenanceMachineDetail.tsx",
+        "line": 97,
+        "apiMethod": "getMaintenanceCenterInventory",
+        "access": "data.technicianId",
+        "suggestion": "Add null check or use optional chaining: data?.technicianId"
+      },
+      {
+        "file": "frontend\\src\\pages\\MaintenanceMachineDetail.tsx",
+        "line": 102,
+        "apiMethod": "assignMaintenanceTechnician",
+        "access": "data.technicianId",
+        "suggestion": "Add null check or use optional chaining: data?.technicianId"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 34,
+        "apiMethod": "getSales",
+        "access": "data.id",
+        "suggestion": "Add null check or use optional chaining: data?.id"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 34,
+        "apiMethod": "getSales",
+        "access": "data.amount",
+        "suggestion": "Add null check or use optional chaining: data?.amount"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 34,
+        "apiMethod": "getSales",
+        "access": "data.receiptNumber",
+        "suggestion": "Add null check or use optional chaining: data?.receiptNumber"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 34,
+        "apiMethod": "getSales",
+        "access": "data.paymentPlace",
+        "suggestion": "Add null check or use optional chaining: data?.paymentPlace"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 40,
+        "apiMethod": "getInstallments",
+        "access": "data.id",
+        "suggestion": "Add null check or use optional chaining: data?.id"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 40,
+        "apiMethod": "getInstallments",
+        "access": "data.amount",
+        "suggestion": "Add null check or use optional chaining: data?.amount"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 40,
+        "apiMethod": "getInstallments",
+        "access": "data.receiptNumber",
+        "suggestion": "Add null check or use optional chaining: data?.receiptNumber"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 40,
+        "apiMethod": "getInstallments",
+        "access": "data.paymentPlace",
+        "suggestion": "Add null check or use optional chaining: data?.paymentPlace"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 46,
+        "apiMethod": "payInstallmentWithDetails",
+        "access": "data.id",
+        "suggestion": "Add null check or use optional chaining: data?.id"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 46,
+        "apiMethod": "payInstallmentWithDetails",
+        "access": "data.amount",
+        "suggestion": "Add null check or use optional chaining: data?.amount"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 46,
+        "apiMethod": "payInstallmentWithDetails",
+        "access": "data.receiptNumber",
+        "suggestion": "Add null check or use optional chaining: data?.receiptNumber"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 46,
+        "apiMethod": "payInstallmentWithDetails",
+        "access": "data.paymentPlace",
+        "suggestion": "Add null check or use optional chaining: data?.paymentPlace"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 61,
+        "apiMethod": "deleteSale",
+        "access": "data.saleId",
+        "suggestion": "Add null check or use optional chaining: data?.saleId"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 61,
+        "apiMethod": "deleteSale",
+        "access": "data.newCount",
+        "suggestion": "Add null check or use optional chaining: data?.newCount"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 75,
+        "apiMethod": "recalculateInstallments",
+        "access": "data.saleId",
+        "suggestion": "Add null check or use optional chaining: data?.saleId"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 75,
+        "apiMethod": "recalculateInstallments",
+        "access": "data.newCount",
+        "suggestion": "Add null check or use optional chaining: data?.newCount"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 79,
+        "apiMethod": "createTransferOrder",
+        "access": "data.imported",
+        "suggestion": "Add null check or use optional chaining: data?.imported"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 92,
+        "apiMethod": "importTransferOrder",
+        "access": "data.imported",
+        "suggestion": "Add null check or use optional chaining: data?.imported"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 92,
+        "apiMethod": "importTransferOrder",
+        "access": "data.id",
+        "suggestion": "Add null check or use optional chaining: data?.id"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 92,
+        "apiMethod": "importTransferOrder",
+        "access": "data.items",
+        "suggestion": "Add null check or use optional chaining: data?.items"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 105,
+        "apiMethod": "receiveTransferOrder",
+        "access": "data.id",
+        "suggestion": "Add null check or use optional chaining: data?.id"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 105,
+        "apiMethod": "receiveTransferOrder",
+        "access": "data.items",
+        "suggestion": "Add null check or use optional chaining: data?.items"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 105,
+        "apiMethod": "receiveTransferOrder",
+        "access": "data.reason",
+        "suggestion": "Add null check or use optional chaining: data?.reason"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 118,
+        "apiMethod": "rejectTransferOrder",
+        "access": "data.id",
+        "suggestion": "Add null check or use optional chaining: data?.id"
+      },
+      {
+        "file": "frontend\\src\\pages\\TransferOrders.tsx",
+        "line": 118,
+        "apiMethod": "rejectTransferOrder",
+        "access": "data.reason",
+        "suggestion": "Add null check or use optional chaining: data?.reason"
+      }
+    ],
+    "inconsistentNaming": [
+      {
+        "file": "frontend\\src\\components\\CloseRequestModal.tsx",
+        "line": 80,
+        "apiMethod": "checkReceipt",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\DatabaseAdmin.tsx",
+        "line": 73,
+        "apiMethod": "listBackups",
+        "found": "list",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'list' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\MachineDetailsModal.tsx",
+        "line": 29,
+        "apiMethod": "get",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\MachineDetailsModal.tsx",
+        "line": 40,
+        "apiMethod": "get",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\MachineDetailsModal.tsx",
+        "line": 52,
+        "apiMethod": "post",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\ProcessingModal.tsx",
+        "line": 90,
+        "apiMethod": "post",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SecurityTab.tsx",
+        "line": 26,
+        "apiMethod": "getMFAStatus",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SecurityTab.tsx",
+        "line": 37,
+        "apiMethod": "setupMFA",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SecurityTab.tsx",
+        "line": 51,
+        "apiMethod": "verifyMFASetup",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+        "line": 28,
+        "apiMethod": "getSpareParts",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+        "line": 32,
+        "apiMethod": "createSparePart",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+        "line": 48,
+        "apiMethod": "updateSparePart",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\AdminBackups.tsx",
+        "line": 33,
+        "apiMethod": "listBackups",
+        "found": "list",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'list' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\MaintenanceCenter.tsx",
+        "line": 284,
+        "apiMethod": "createReturnPackage",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\Payments.tsx",
+        "line": 71,
+        "apiMethod": "deletePayment",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 34,
+        "apiMethod": "getSales",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 40,
+        "apiMethod": "getInstallments",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\Receipts.tsx",
+        "line": 46,
+        "apiMethod": "payInstallmentWithDetails",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\TechnicianDashboard.tsx",
+        "line": 168,
+        "apiMethod": "post",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\TechnicianDashboard.tsx",
+        "line": 183,
+        "apiMethod": "post",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\TrackMachines.tsx",
+        "line": 159,
+        "apiMethod": "getBranchMachinesAtCenter",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      },
+      {
+        "file": "frontend\\src\\pages\\TrackMachines.tsx",
+        "line": 174,
+        "apiMethod": "getBranchMachinesSummary",
+        "found": "data",
+        "expected": "items",
+        "suggestion": "Backend might be sending 'data' but frontend expects 'items'"
+      }
+    ]
+  }
+}

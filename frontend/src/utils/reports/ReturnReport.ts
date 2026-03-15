@@ -80,6 +80,10 @@ export function generateReturnReport(props: ReturnReportProps): string {
                     <span class="label">الموديل:</span>
                     <span class="value">${machine.model || '-'}</span>
                 </div>
+                <div class="field">
+                    <span class="label">الشركة المصنعة:</span>
+                    <span class="value">${machine.manufacturer || '-'}</span>
+                </div>
             </div>
         </div>
 

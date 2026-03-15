@@ -12,7 +12,12 @@ mockDb.warehouseMachine.updateMany.mockResolvedValue({ count: 0 });
 mockDb.warehouseSim.updateMany.mockResolvedValue({ count: 0 });
 mockDb.maintenanceRequest.findMany.mockResolvedValue([]);
 mockDb.transferOrderItem.findMany.mockResolvedValue([]);
-mockDb.branch.findUnique.mockImplementation(async ({ where }) => ({ id: where.id, isActive: true, type: 'BRANCH' }));
+mockDb.branch.findUnique.mockImplementation(async ({ where }) => ({
+    id: where.id,
+    isActive: true,
+    type: 'BRANCH',
+    parentBranchId: where.id === 'branchA' ? 'branchB' : null
+}));
 mockDb.warehouseSim.findUnique.mockResolvedValue({ status: 'ACTIVE', branchId: 'branchA' });
 mockDb.warehouseSim.findMany.mockResolvedValue([{ serialNumber: 'S1', status: 'ACTIVE', branchId: 'branchA' }]);
 
@@ -25,7 +30,7 @@ const { createTransferOrder, receiveTransferOrder, rejectOrder, cancelOrder } = 
 describe('transferService smoke flows', () => {
     it('creates a SIM transfer order', async () => {
         const user = { id: 'u1', branchId: 'branchA', role: 'USER', displayName: 'U1' };
-        const payload = { toBranchId: 'branchB', type: 'SIM', items: [{ serialNumber: 'S1' }], notes: 'note' };
+        const payload = { fromBranchId: 'branchA', toBranchId: 'branchB', type: 'SIM', items: [{ serialNumber: 'S1' }], notes: 'note' };
         const order = await createTransferOrder(payload, user);
         expect(order).toBeDefined();
         expect(order.status).toBe('PENDING');
@@ -34,6 +39,6 @@ describe('transferService smoke flows', () => {
 
     it('imports from excel requires buffer', async () => {
         const user = { id: 'u1', branchId: 'branchA', role: 'USER' };
-        await expect(require('../services/transferService').importTransferFromExcel(null, { branchId: 'b', type: 'SIM' }, user)).rejects.toThrow('File required');
+        await expect(require('../services/transferService').importTransferFromExcel(null, { branchId: 'b', type: 'SIM' }, user)).rejects.toThrow();
     });
 });

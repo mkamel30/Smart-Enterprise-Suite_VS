@@ -32,8 +32,6 @@ router.get('/', authenticateToken, async (req, res) => {
     const startTime = Date.now();
     const branchId = req.user.branchId;
 
-    console.log('[SelfTest] Starting self-test for user:', req.user.email, 'branchId:', branchId);
-
     try {
         // ===================== 1. DATABASE CONNECTIVITY =====================
         const dbHealth = await safeCall(async () => {
@@ -115,8 +113,8 @@ router.get('/', authenticateToken, async (req, res) => {
                 const result = await db.branchDebt.aggregate({
                     where: {
                         // BranchDebt has NO branchId field - use debtorBranchId
-                        debtorBranchId: branchId || { not: '' },
-                        status: 'PENDING_PAYMENT'
+                        debtorBranchId: branchId || { not: 'BYPASS' },
+                        status: 'PENDING'
                     },
                     _sum: { amount: true }
                 });

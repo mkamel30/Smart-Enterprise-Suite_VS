@@ -140,7 +140,7 @@ export default function AdminDashboard() {
                         {searchResults && (searchResults.machines.length > 0 || searchResults.customers.length > 0) && (
                             <div className="absolute top-full right-0 left-0 mt-2 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden z-100 animate-slide-up">
                                 <div className="max-h-100 overflow-y-auto custom-scroll">
-                                    {searchResults.machines.length > 0 && (
+                                    {Array.isArray(searchResults.machines) && searchResults.machines.length > 0 && (
                                         <div className="p-2">
                                             <p className="px-4 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-muted/30 rounded-lg mb-1">الماكينات</p>
                                             {searchResults.machines.map((m: any) => (
@@ -153,7 +153,7 @@ export default function AdminDashboard() {
                                                         <p className="font-black text-sm group-hover:text-primary transition-colors">{m.serialNumber}</p>
                                                         <p className="text-[10px] text-muted-foreground font-bold">{m.model} • {m.branch?.name}</p>
                                                     </div>
-                                                    <span className={`text-[9px] font-black px-2 py-1 rounded-lg border ${m.status === 'STANDBY' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
+                                                    <span className={`text-[9px] font-black px-2 py-1 rounded-lg border ${m.status === 'STANDBY' ? 'bg-success/10 text-success border-success/20' : 'bg-primary/10 text-primary border-primary/20'}`}>
                                                         {m.status}
                                                     </span>
                                                 </button>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
                                         </div>
                                     )}
 
-                                    {searchResults.customers.length > 0 && (
+                                    {Array.isArray(searchResults.customers) && searchResults.customers.length > 0 && (
                                         <div className="p-2 border-t border-border/50">
                                             <p className="px-4 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-muted/30 rounded-lg mb-1">العملاء</p>
                                             {searchResults.customers.map((c: any) => (
@@ -231,9 +231,9 @@ export default function AdminDashboard() {
                             </span>
                         </div>
                     </div>
-                    <div className="h-95 w-full" dir="ltr">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <BarChart data={globalStats?.branchPerformance || []}>
+                    <div className="h-96 w-full" dir="ltr">
+                        <ResponsiveContainer width="100%" height={384}>
+                            <BarChart data={Array.isArray(globalStats?.branchPerformance) ? globalStats.branchPerformance : []}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }} />
@@ -263,11 +263,11 @@ export default function AdminDashboard() {
                             <HealthMeter
                                 label="كفاءة النظام (Success Rate)"
                                 value={globalStats?.systemHealth?.score || 100}
-                                color={(globalStats?.systemHealth?.score ?? 100) < 90 ? "bg-amber-500" : "bg-emerald-500"}
+                                color={(globalStats?.systemHealth?.score ?? 100) < 90 ? "bg-warning" : "bg-success"}
                             />
                             <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                                 <div className="flex items-center gap-3">
-                                    <AlertTriangle size={20} className={(globalStats?.systemHealth?.errorCount || 0) > 0 ? "text-amber-500" : "text-emerald-500"} />
+                                    <AlertTriangle size={20} className={(globalStats?.systemHealth?.errorCount || 0) > 0 ? "text-warning" : "text-success"} />
                                     <div>
                                         <p className="text-[10px] font-black text-slate-500 uppercase">أخطاء السجل (24س)</p>
                                         <p className="text-xl font-black">{globalStats?.systemHealth?.errorCount || 0}</p>
@@ -291,23 +291,23 @@ export default function AdminDashboard() {
                             </button>
                             <button
                                 onClick={() => navigate('/branches')}
-                                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 hover:bg-emerald-500/10 transition-all group"
+                                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-success/5 border border-success/10 hover:bg-success/10 transition-all group"
                             >
-                                <PlusCircle size={20} className="text-emerald-500 group-hover:scale-110 transition-transform" />
+                                <PlusCircle size={20} className="text-success group-hover:scale-110 transition-transform" />
                                 <span className="text-[10px] font-bold">فرع جديد</span>
                             </button>
                             <button
                                 onClick={() => navigate('/reports')}
-                                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 hover:bg-blue-500/10 transition-all group"
+                                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-all group"
                             >
-                                <FileText size={20} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                                <FileText size={20} className="text-primary group-hover:scale-110 transition-transform" />
                                 <span className="text-[10px] font-bold">تقارير إدارية</span>
                             </button>
                             <button
                                 onClick={() => navigate('/settings')}
-                                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-slate-500/5 border border-slate-500/10 hover:bg-slate-500/10 transition-all group"
+                                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/50 border border-muted-foreground/10 hover:bg-muted transition-all group"
                             >
-                                <Settings size={20} className="text-slate-500 group-hover:scale-110 transition-transform" />
+                                <Settings size={20} className="text-muted-foreground group-hover:scale-110 transition-transform" />
                                 <span className="text-[10px] font-bold">الإعدادات</span>
                             </button>
                         </div>
@@ -320,7 +320,7 @@ export default function AdminDashboard() {
                             السجلات الإدارية
                         </h3>
                         <div className="space-y-5">
-                            {logs?.map((log: any) => (
+                            {Array.isArray(logs) && logs.map((log: any) => (
                                 <div key={log.id} className="flex gap-4 pb-5 border-b border-border/50 last:border-0 last:pb-0 group/log">
                                     <div className="w-2 h-2 rounded-full bg-border mt-2 shrink-0 group-hover/log:bg-primary transition-colors" />
                                     <div className="min-w-0">
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
                 <div className="bg-card rounded-[2.5rem] border border-border shadow-2xl p-8 overflow-hidden relative">
                     <div className="flex items-center justify-between mb-10">
                         <h3 className="text-xl font-black flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500">
+                            <div className="p-2 rounded-xl bg-warning/10 text-warning">
                                 <Zap size={24} />
                             </div>
                             تحليل أداء مراكز الصيانة
@@ -352,10 +352,10 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="space-y-6">
-                        {globalStats?.maintenanceCenterStats?.map(center => (
-                            <div key={center.id} className="bg-muted/30 p-6 rounded-3xl border border-border/50 group hover:border-orange-500/30 transition-all">
+                        {Array.isArray(globalStats?.maintenanceCenterStats) && globalStats.maintenanceCenterStats.map(center => (
+                            <div key={center.id} className="bg-muted/30 p-6 rounded-3xl border border-border/50 group hover:border-warning/30 transition-all">
                                 <p className="text-lg font-black mb-4 flex items-center gap-2">
-                                    <span className="w-1.5 h-6 bg-orange-500 rounded-full" />
+                                    <span className="w-1.5 h-6 bg-warning rounded-full" />
                                     {center.name}
                                 </p>
                                 <div className="grid grid-cols-3 gap-4">
@@ -365,11 +365,11 @@ export default function AdminDashboard() {
                                     </div>
                                     <div className="text-center border-x border-border/50">
                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">قيد الإصلاح</p>
-                                        <p className="text-xl font-black text-orange-500">{center.inRepair}</p>
+                                        <p className="text-xl font-black text-warning">{center.inRepair}</p>
                                     </div>
                                     <div className="text-center">
                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">تم الإصلاح</p>
-                                        <p className="text-xl font-black text-emerald-500">{center.repaired}</p>
+                                        <p className="text-xl font-black text-success">{center.repaired}</p>
                                     </div>
                                 </div>
                             </div>
@@ -389,7 +389,7 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="space-y-6">
-                        {globalStats?.adminAffairsStats?.map(dept => (
+                        {Array.isArray(globalStats?.adminAffairsStats) && globalStats.adminAffairsStats.map(dept => (
                             <div key={dept.id} className="bg-muted/30 p-6 rounded-3xl border border-border/50 group hover:border-blue-500/30 transition-all">
                                 <p className="text-lg font-black mb-4 flex items-center gap-2">
                                     <span className="w-1.5 h-6 bg-blue-500 rounded-full" />
@@ -413,27 +413,27 @@ export default function AdminDashboard() {
                 {/* Global Inventory Alerts (New) */}
                 <div className="bg-card rounded-[2.5rem] border border-border shadow-2xl p-8 transition-all hover:shadow-primary/5">
                     <h3 className="text-xl font-black mb-10 flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-red-500/10 text-red-500">
+                        <div className="p-2 rounded-xl bg-destructive/10 text-destructive">
                             <TrendingUp size={24} className="rotate-180" />
                         </div>
                         تنبيهات المخزون الشبكي
                     </h3>
 
                     <div className="space-y-4">
-                        {(globalStats?.globalLowStock?.length || 0) === 0 && (
+                        {(Array.isArray(globalStats?.globalLowStock) ? globalStats.globalLowStock : []).length === 0 && (
                             <div className="p-12 text-center text-muted-foreground font-bold">
                                 <Activity className="mx-auto mb-4 opacity-20" size={48} />
-                                جميع مستويات القطع آمنة عبر الشبكة
+                                所有 مستويات القطع آمنة عبر الشبكة
                             </div>
                         )}
-                        {globalStats?.globalLowStock?.map((item: any) => (
-                            <div key={item.partNumber} className="flex items-center justify-between p-4 bg-red-500/5 border border-red-500/10 rounded-2xl group hover:bg-red-500/10 transition-all">
+                        {Array.isArray(globalStats?.globalLowStock) && globalStats.globalLowStock.map((item: any) => (
+                            <div key={item.partNumber} className="flex items-center justify-between p-4 bg-destructive/5 border border-destructive/10 rounded-2xl group hover:bg-destructive/10 transition-all">
                                 <div>
-                                    <p className="text-sm font-black group-hover:text-red-500 transition-colors">{item.name}</p>
+                                    <p className="text-sm font-black group-hover:text-destructive transition-colors">{item.name}</p>
                                     <p className="text-[10px] font-bold text-muted-foreground">{item.partNumber}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-black text-red-500">عجز حرج</p>
+                                    <p className="text-xs font-black text-destructive">عجز حرج</p>
                                     <p className="text-sm font-black">{item.totalQuantity} قطعة</p>
                                 </div>
                             </div>
@@ -447,10 +447,10 @@ export default function AdminDashboard() {
 
 function HighlightCard({ title, value, icon, color, onClick }: any) {
     const colors: any = {
-        blue: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
-        emerald: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-        purple: 'text-purple-500 bg-purple-500/10 border-purple-500/20',
-        orange: 'text-orange-500 bg-orange-500/10 border-orange-500/20',
+        blue: 'text-primary bg-primary/10 border-primary/20',
+        emerald: 'text-success bg-success/10 border-success/20',
+        purple: 'text-info bg-info/10 border-info/20',
+        orange: 'text-warning bg-warning/10 border-warning/20',
     };
 
     return (

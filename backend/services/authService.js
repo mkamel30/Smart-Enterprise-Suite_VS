@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const { logAction } = require('../utils/logger');
 const passwordPolicy = require('../utils/passwordPolicy');
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const getJwtSecret = () => process.env.JWT_SECRET;
+const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || (getJwtSecret() + '_refresh');
 
 function ApiError(message, status = 500) {
     const e = new Error(message);
@@ -14,7 +15,7 @@ function ApiError(message, status = 500) {
 async function getProfile(userId) {
     // RULE 1: Must include branchId filter
     const user = await db.user.findFirst({
-        where: { id: userId, branchId: { not: null } },
+        where: { id: userId },
         include: { branch: true }
     });
     if (!user) throw ApiError('User not found', 404);
@@ -27,7 +28,7 @@ async function getProfile(userId) {
             where: { parentBranchId: user.branchId },
             select: { id: true }
         });
-        authorizedBranchIds.push(...children.map(c => c.id));
+        authorizedBranchIds.push(...(children || []).map(c => c.id));
     }
 
     // Check password expiration status
@@ -53,18 +54,18 @@ async function getProfile(userId) {
 
 async function updatePreferences(userId, { theme, fontFamily }) {
     // RULE 1: Use updateMany with branchId filter, then fetch result
-    await db.user.updateMany({
-        where: { id: userId, branchId: { not: null } },
+    await db.user.update({
+        where: { id: userId },
         data: { theme: theme || undefined, fontFamily: fontFamily || undefined }
     });
-    const user = await db.user.findFirst({ where: { id: userId, branchId: { not: null } } });
+    const user = await db.user.findUnique({ where: { id: userId } });
     return { theme: user?.theme, fontFamily: user?.fontFamily };
 }
 
 async function changePassword(userId, currentPassword, newPassword) {
     // RULE 1: Must include branchId filter
-    const user = await db.user.findFirst({
-        where: { id: userId, branchId: { not: null } }
+    const user = await db.user.findUnique({
+        where: { id: userId }
     });
     if (!user) throw ApiError('User not found', 404);
 
@@ -131,18 +132,16 @@ async function changePassword(userId, currentPassword, newPassword) {
 }
 
 async function login({ identifier, password, branchId: requestedBranchId, mfaToken = null }) {
-    if (!JWT_SECRET) throw ApiError('JWT secret not configured', 500);
+    if (!getJwtSecret()) throw ApiError('JWT secret not configured', 500);
 
     // RULE 1: Must include branchId filter for login lookup
     const user = await db.user.findFirst({
         where: {
-            OR: [{ email: identifier }, { uid: identifier }],
-            branchId: { not: null }
+            OR: [{ email: identifier }, { uid: identifier }]
         },
         include: { branch: true }
     });
     if (!user) {
-        console.log(`Login failed: User not found for identifier: ${identifier}`);
         throw ApiError('المستخدم غير موجود', 401);
     }
 
@@ -181,7 +180,6 @@ async function login({ identifier, password, branchId: requestedBranchId, mfaTok
     if (!validPassword) {
         // Record failed attempt
         const attemptStatus = await passwordPolicy.recordFailedAttempt(user.id);
-        console.log(`Login failed: Invalid password for user: ${user.email}`);
 
         if (attemptStatus.isLocked) {
             throw ApiError(
@@ -216,7 +214,7 @@ async function login({ identifier, password, branchId: requestedBranchId, mfaTok
                 branchId: sessionBranchId,
                 mfaRequired: true,
                 mfaVerified: false
-            }, JWT_SECRET, { expiresIn: '5m' });
+            }, getJwtSecret(), { expiresIn: '5m' });
 
             return {
                 mfaRequired: true,
@@ -259,7 +257,19 @@ async function login({ identifier, password, branchId: requestedBranchId, mfaTok
         displayName: user.displayName,
         branchId: sessionBranchId,
         mfaVerified: user.mfaEnabled || false
-    }, JWT_SECRET, { expiresIn: '24h' });
+    }, getJwtSecret(), { expiresIn: '1h' }); // Short-lived access token
+
+    // Generate Refresh Token
+    const refreshToken = jwt.sign({ id: user.id }, getRefreshSecret(), { expiresIn: '7d' });
+
+    // Save refresh token to DB
+    await db.refreshToken.create({
+        data: {
+            token: refreshToken,
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        }
+    });
 
     // Support hierarchy
     let authorizedBranchIds = [];
@@ -269,7 +279,7 @@ async function login({ identifier, password, branchId: requestedBranchId, mfaTok
             where: { parentBranchId: sessionBranchId },
             select: { id: true }
         });
-        authorizedBranchIds.push(...children.map(c => c.id));
+        authorizedBranchIds.push(...(children || []).map(c => c.id));
     }
 
     await logAction({
@@ -303,11 +313,50 @@ async function login({ identifier, password, branchId: requestedBranchId, mfaTok
 
     return {
         token,
+        refreshToken,
         user: resultUser,
         mfaRequired: false,
         warnings: isPasswordExpired ? ['Your password has expired. Please change it immediately.'] :
             daysUntilExpiration <= 7 ? [`Your password will expire in ${daysUntilExpiration} days. Please change it soon.`] : []
     };
+}
+
+/**
+ * Refresh access token using a valid refresh token
+ */
+async function refreshAccessToken(refreshToken) {
+    if (!refreshToken) throw ApiError('Refresh token required', 401);
+
+    try {
+        const decoded = jwt.verify(refreshToken, getRefreshSecret());
+
+        // Verify token exists in DB
+        const savedToken = await db.refreshToken.findUnique({
+            where: { token: refreshToken },
+            include: { user: { include: { branch: true } } }
+        });
+
+        if (!savedToken || savedToken.expiresAt < new Date()) {
+            if (savedToken) await db.refreshToken.delete({ where: { id: savedToken.id } });
+            throw ApiError('Invalid or expired refresh token', 401);
+        }
+
+        const user = savedToken.user;
+        const sessionBranchId = user.branchId;
+
+        const token = jwt.sign({
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            displayName: user.displayName,
+            branchId: sessionBranchId,
+            mfaVerified: user.mfaEnabled || false
+        }, getJwtSecret(), { expiresIn: '1h' });
+
+        return { token, user: { id: user.id, email: user.email, role: user.role, displayName: user.displayName, branchId: sessionBranchId } };
+    } catch (error) {
+        throw ApiError('Invalid refresh token', 401);
+    }
 }
 
 /**
@@ -403,5 +452,6 @@ module.exports = {
     changePassword,
     login,
     forcePasswordChange,
-    unlockAccount
+    unlockAccount,
+    refreshAccessToken
 };

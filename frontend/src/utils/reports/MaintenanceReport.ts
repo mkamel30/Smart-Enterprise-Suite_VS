@@ -51,15 +51,22 @@ export function generateMaintenanceReport(props: PrintReportProps): string {
 
     // Dynamic service type
     let serviceType = '';
+    const formattedTotalCost = new Intl.NumberFormat('ar-EG').format(totalCost);
+
     if (usedParts.length === 0) {
-        serviceType = 'صيانة بدون تغيير قطع غيار';
+        serviceType = 'صيانة دورية / فنية بدون تغيير قطع غيار';
     } else if (paidParts.length > 0 && freeParts.length > 0) {
-        serviceType = `صيانة مجانية ومدفوعة - المبلغ المدفوع: ${totalCost} جنيه`;
+        serviceType = `صيانة (مجانية + مدفوعة) - إجمالي المحصل: ${formattedTotalCost} جنيه`;
     } else if (paidParts.length > 0) {
-        serviceType = `صيانة مدفوعة - المبلغ المدفوع: ${totalCost} جنيه`;
+        serviceType = `صيانة بمقابل مادي - القيمة المحصلة: ${formattedTotalCost} جنيه`;
     } else {
-        serviceType = 'صيانة مجانية';
+        serviceType = 'صيانة مجانية بالكامل (ضمن الضمان / العقد)';
     }
+
+    // Default action taken if empty but parts exist
+    const displayActionTaken = request.actionTaken && request.actionTaken !== '-'
+        ? request.actionTaken
+        : (usedParts.length > 0 ? 'إصلاح العطل الفني مع استبدال قطع الغيار الموضحة' : '-');
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     // Use customer bkcode for filename
@@ -88,16 +95,33 @@ export function generateMaintenanceReport(props: PrintReportProps): string {
         .sheet {
             margin: 0 auto;
             width: 210mm;
-            min-height: 297mm;
             padding: 10mm;
             position: relative;
+            background: white;
         }
 
-        /* Print Override */
+        /* Print Override - Dynamic page size */
         @media print {
-            .sheet { width: 100%; margin: 0; padding: 0.5cm; }
-            @page { margin: 0; }
+            .sheet { 
+                width: 100%; 
+                margin: 0; 
+                padding: 0.5cm;
+                min-height: auto;
+            }
+            @page { 
+                margin: 0;
+                size: var(--page-size, A4);
+            }
         }
+
+        /* A5 Specific Styles */
+        .sheet.a5 {
+            width: 148mm;
+            padding: 8mm;
+        }
+        .sheet.a5 .header-center h1 { font-size: 13pt; }
+        .sheet.a5 .info-table { font-size: 8pt; }
+        .sheet.a5 .section-content { font-size: 8pt; }
 
         /* Report styles */
         .header {
@@ -172,9 +196,15 @@ export function generateMaintenanceReport(props: PrintReportProps): string {
         </tr>
         <tr>
             <td class="label">كود النشاط:</td>
-            <td>${customer.bkcode || '-'}</td>
+            <td>${customer.bkcode || request.customerBkcode || '-'}</td>
             <td class="label">مسلسل الماكينة:</td>
-            <td>${machine.serialNumber || '-'}</td>
+            <td>${machine.serialNumber || request.serialNumber || '-'}</td>
+        </tr>
+        <tr>
+            <td class="label">موديل الماكينة:</td>
+            <td>${machine.model || request.machineModel || '-'}</td>
+            <td class="label">الشركة المصنعة:</td>
+            <td>${machine.manufacturer || request.machineManufacturer || '-'}</td>
         </tr>
     </table>
 
@@ -186,7 +216,7 @@ export function generateMaintenanceReport(props: PrintReportProps): string {
     <div class="section">
         <div class="section-title">الإجراء:</div>
         <div class="section-content">
-            ${request.actionTaken || '-'}
+            ${displayActionTaken}
             ${freePartsText ? `<div class="parts-free">تغيير (مجاني): ${freePartsText}</div>` : ''}
             ${paidPartsText ? `<div class="parts-paid">تغيير (بمقابل): ${paidPartsText}</div>` : ''}
         </div>

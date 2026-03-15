@@ -13,16 +13,38 @@ const salesService = {
     /**
      * Get all sales with branch filtering
      */
-    async getAllSales(req) {
+    async getAllSales(req, params = {}) {
+        const { limit, offset } = params;
         const branchFilter = getBranchFilter(req);
-        return await db.machineSale.findMany(ensureBranchWhere({
-            where: branchFilter,
-            include: {
-                customer: true,
-                installments: true
-            },
-            orderBy: { saleDate: 'desc' }
-        }, req));
+
+        const [items, total] = await Promise.all([
+            db.machineSale.findMany(ensureBranchWhere({
+                where: branchFilter,
+                include: {
+                    customer: true,
+                    installments: true
+                },
+                orderBy: { saleDate: 'desc' },
+                take: limit,
+                skip: offset
+            }, req)),
+            db.machineSale.count(ensureBranchWhere({ where: branchFilter }, req))
+        ]);
+
+        // Enhance items with model and manufacturer from parameters
+        const machineParams = await db.machineParameter.findMany();
+        const { detectMachineParams } = require('../utils/machine-validation');
+
+        const enhancedItems = items.map(item => {
+            const detected = detectMachineParams(item.serialNumber, machineParams);
+            return {
+                ...item,
+                model: detected.model || '-',
+                manufacturer: detected.manufacturer || '-'
+            };
+        });
+
+        return { items: enhancedItems, total };
     },
 
     /**
@@ -170,6 +192,13 @@ const salesService = {
         if (!await canAccessBranch({ user }, machine.branchId, db)) throw new AppError('ليس لديك صلاحية الوصول لهذه الماكينة', 403);
         if (machine.status === 'SOLD') throw new AppError('هذه الماكينة مباعة بالفعل', 400);
 
+        // Ensure model/manufacturer are populated from parameters if missing
+        const { detectMachineParams } = require('../utils/machine-validation');
+        const machineParams = await db.machineParameter.findMany();
+        const detected = detectMachineParams(serialNumber, machineParams);
+        machine.model = machine.model || detected.model || '-';
+        machine.manufacturer = machine.manufacturer || detected.manufacturer || '-';
+
         // 4. Serial conflict check
         await ensureSerialNotAssignedToCustomer(serialNumber);
 
@@ -178,7 +207,7 @@ const salesService = {
         const customer = await db.customer.findFirst(ensureBranchWhere({
             where: { bkcode: customerBkcode }
         }, req));
-        if (!customer) throw new NotFoundError('الالعميل');
+        if (!customer) throw new NotFoundError('العميل');
         if (!await canAccessBranch({ user }, customer.branchId, db)) throw new AppError('ليس لديك صلاحية الوصول لهذا العميل', 403);
 
         const actualCustomerId = customer.id;
@@ -245,8 +274,7 @@ const salesService = {
                     model: machine.model,
                     manufacturer: machine.manufacturer,
                     customerId: actualCustomerId,
-                    branchId,
-                    isMain: false
+                    branchId
                 }
             });
 
@@ -280,7 +308,18 @@ const salesService = {
                 }
             });
 
-            // F. Create Payment record
+            // F. System Log Action (Visible in Customer/Branch Audit)
+            await logAction({
+                entityType: 'CUSTOMER',
+                entityId: actualCustomerId,
+                action: 'MACHINE_SALE',
+                details: `بيع ماكينة ${machine.serialNumber} للعميل ${customer.client_name} (${type === 'CASH' ? 'كاش' : 'قسط'})`,
+                userId: user.id,
+                performedBy: performedBy || user.displayName || 'System',
+                branchId: branchId
+            }, tx);
+
+            // G. Create Payment record
             if (roundedPaidAmount > 0) {
                 await tx.payment.create({
                     data: {

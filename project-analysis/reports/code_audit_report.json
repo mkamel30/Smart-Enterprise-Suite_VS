@@ -1,0 +1,1240 @@
+{
+  "unsafeMapCalls": [
+    {
+      "file": "frontend\\src\\components\\AuditLogModal.tsx",
+      "line": 202,
+      "code": "{entries.map(([key, value]) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\AuditLogModal.tsx",
+      "line": 334,
+      "code": "{logs.map((log) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\CloseRequestModal.tsx",
+      "line": 44,
+      "code": "const models = part.compatibleModels.toLowerCase().split(';').map((m: string) => m.trim());"
+    },
+    {
+      "file": "frontend\\src\\components\\CloseRequestModal.tsx",
+      "line": 109,
+      "code": "setSelectedParts(selectedParts.map(p =>"
+    },
+    {
+      "file": "frontend\\src\\components\\CloseRequestModal.tsx",
+      "line": 129,
+      "code": "usedParts: selectedParts.map(p => ({"
+    },
+    {
+      "file": "frontend\\src\\components\\CloseRequestModal.tsx",
+      "line": 209,
+      "code": "filteredParts.map((part: any) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\CreateRequestModal.tsx",
+      "line": 181,
+      "code": "{[1, 2, 3].map((step) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\CreateRequestModal.tsx",
+      "line": 307,
+      "code": "{selectedCustomer.posMachines.map((machine: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\customers\\AllMachinesTable.tsx",
+      "line": 134,
+      "code": "{filtered.slice(0, 100).map(machine => ("
+    },
+    {
+      "file": "frontend\\src\\components\\customers\\AllSimCardsTable.tsx",
+      "line": 129,
+      "code": "{filtered.slice(0, 100).map(sim => ("
+    },
+    {
+      "file": "frontend\\src\\components\\customers\\CustomerQuickList.tsx",
+      "line": 29,
+      "code": "{customers?.slice(0, 50).map((customer: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\customers\\CustomerSearch.tsx",
+      "line": 37,
+      "code": "{searchResults.map((result: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\customers\\details\\CustomerMachinesTab.tsx",
+      "line": 48,
+      "code": "{customer.posMachines.map((machine: any) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\customers\\details\\CustomerMachinesTab.tsx",
+      "line": 153,
+      "code": "{customer.simCards.map((sim: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\dashboard\\RequestStatusPie.tsx",
+      "line": 26,
+      "code": "{data.map((_entry: any, index: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\dashboard\\RequestStatusPie.tsx",
+      "line": 39,
+      "code": "{data.map((entry: any, index: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\DatabaseAdmin.tsx",
+      "line": 268,
+      "code": "{backups.map(backup => ("
+    },
+    {
+      "file": "frontend\\src\\components\\DatabaseAdmin.tsx",
+      "line": 359,
+      "code": "{tables.map(t => ("
+    },
+    {
+      "file": "frontend\\src\\components\\DatabaseAdmin.tsx",
+      "line": 454,
+      "code": "{getColumns().map(col => ("
+    },
+    {
+      "file": "frontend\\src\\components\\DatabaseAdmin.tsx",
+      "line": 461,
+      "code": "{records.map((record, i) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\DatabaseAdmin.tsx",
+      "line": 463,
+      "code": "{getColumns().map(col => ("
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\AlertCard.tsx",
+      "line": 26,
+      "code": "{alerts.map((alert, index) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\BranchDetailModal.tsx",
+      "line": 54,
+      "code": "{branchData.revenue.trend.map((t, i) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\BranchDetailModal.tsx",
+      "line": 59,
+      "code": "height: `${Math.min(100, (t.amount / Math.max(...branchData.revenue.trend.map(x => x.amount || 1))) * 100)}%`"
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\BranchDetailModal.tsx",
+      "line": 98,
+      "code": "{branchData.inventory.lowStockItems.slice(0, 3).map((item, i) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\BranchRankingTable.tsx",
+      "line": 33,
+      "code": "{branches.slice(0, 10).map((branch, index) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\ForecastChart.tsx",
+      "line": 38,
+      "code": "...monthlyTrend.map(d => ({ ...d, type: 'actual' })),"
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\ForecastChart.tsx",
+      "line": 39,
+      "code": "...(forecast?.predictions || []).map(p => ({"
+    },
+    {
+      "file": "frontend\\src\\components\\ImportModal.tsx",
+      "line": 213,
+      "code": "{columns.map(col => ("
+    },
+    {
+      "file": "frontend\\src\\components\\ImportModal.tsx",
+      "line": 219,
+      "code": "{preview.map((row, idx) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\ImportModal.tsx",
+      "line": 221,
+      "code": "{columns.map(col => ("
+    },
+    {
+      "file": "frontend\\src\\components\\ImportModal.tsx",
+      "line": 295,
+      "code": "{result.errors.slice(0, 50).map((err: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\InstallmentsDashboard.tsx",
+      "line": 43,
+      "code": "{[1, 2, 3, 4].map(i => ("
+    },
+    {
+      "file": "frontend\\src\\components\\Layout.tsx",
+      "line": 131,
+      "code": "return allNavItems.map(item => {"
+    },
+    {
+      "file": "frontend\\src\\components\\Layout.tsx",
+      "line": 212,
+      "code": "{navItems.map((item, index) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\Layout.tsx",
+      "line": 255,
+      "code": "{item.children.map((child) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\MachineDetailsModal.tsx",
+      "line": 148,
+      "code": "{usedParts.map((part: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\MachineDetailsModal.tsx",
+      "line": 349,
+      "code": "{usedParts.map((part: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\MachineHistoryModal.tsx",
+      "line": 103,
+      "code": "{history.timeline.map((item: any, index: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\MachineHistoryModal.tsx",
+      "line": 135,
+      "code": "{item.details.usedParts.map((part: any, i: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\maintenance\\ActivityLog.tsx",
+      "line": 33,
+      "code": "{logs.map((log) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\NotificationBell.tsx",
+      "line": 146,
+      "code": "notifications.map((notification: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\PaymentFields.tsx",
+      "line": 89,
+      "code": "{PAYMENT_METHODS.map((method) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\PerformanceReportModal.tsx",
+      "line": 186,
+      "code": "{Object.entries(report.requestMetrics?.byStatus || {}).map(([status, count]: [string, any]) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\PerformanceReportModal.tsx",
+      "line": 230,
+      "code": "{report.performanceIndicators.recommendations.map((rec: string, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\PerformanceReportModal.tsx",
+      "line": 248,
+      "code": "{report.performanceIndicators.bottlenecks.map((bottleneck: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\PerformanceReportModal.tsx",
+      "line": 279,
+      "code": "{report.partsMetrics.topParts.slice(0, 5).map((part: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\ProcessingModal.tsx",
+      "line": 78,
+      "code": "setSelectedParts(prev => prev.map(p => {"
+    },
+    {
+      "file": "frontend\\src\\components\\ProcessingModal.tsx",
+      "line": 192,
+      "code": "{filteredParts.length > 0 ? filteredParts.map((part: any) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\BranchRankings.tsx",
+      "line": 31,
+      "code": "{branchPerformance.map((branch: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 27,
+      "code": "const chartData = rows.slice(0, 15).map((row: any, index: number) => ({"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 84,
+      "code": "{chartData.map((entry: any, index: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 111,
+      "code": "{rows.map((row: any, index: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryAnalytics.tsx",
+      "line": 49,
+      "code": "{inventory?.filter(i => i.quantity < 5).slice(0, 5).map(item => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryAnalytics.tsx",
+      "line": 112,
+      "code": "{movements.map((m: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 29,
+      "code": "return timeline.map((item: any) => ({"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 122,
+      "code": "{timeline.slice(0, 6).map((month: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 166,
+      "code": "{branchBreakdown.slice(0, 10).map((entry: any, index: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosSalesReport.tsx",
+      "line": 30,
+      "code": "return timeline.map((item: any) => ({"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosSalesReport.tsx",
+      "line": 123,
+      "code": "].map((item) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosSalesReport.tsx",
+      "line": 169,
+      "code": "{branchBreakdown.map((branch: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosSalesReport.tsx",
+      "line": 202,
+      "code": "{modelDistribution.slice(0, 5).map((model: any, index: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 96,
+      "code": "{modelChartData.map((entry: any, index: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 145,
+      "code": "{modelSummary?.slice(0, 5).map((model: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 152,
+      "code": "{rows.map((branch: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 160,
+      "code": "{modelSummary?.slice(0, 5).map((model: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 195,
+      "code": "{modelSummary?.slice(0, 5).map((model: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\AppearanceTab.tsx",
+      "line": 167,
+      "code": "{(['small', 'medium', 'large'] as const).map((size) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\AppearanceTab.tsx",
+      "line": 207,
+      "code": "{FONTS.map((font) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\PermissionsTab.tsx",
+      "line": 238,
+      "code": "{displayRoles.map(role => ("
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\PermissionsTab.tsx",
+      "line": 253,
+      "code": "{displayRoles.map(role => ("
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\PermissionsTab.tsx",
+      "line": 261,
+      "code": "{Object.entries(viewMode === 'pages' ? permissions.pages : permissions.actions).map(([key, rolePerms]) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\SecurityTab.tsx",
+      "line": 225,
+      "code": "{recoveryCodes.map((code, idx) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+      "line": 143,
+      "code": "const parsed = jsonData.map((row: any) => ({"
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+      "line": 162,
+      "code": "const exportData = parts.map((p: any) => ({"
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+      "line": 248,
+      "code": "{p.compatibleModels?.split(';').map((m: string, i: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+      "line": 311,
+      "code": "{importData.map((p, i) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimExchangeModal.tsx",
+      "line": 156,
+      "code": "{SIM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}"
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimExchangeModal.tsx",
+      "line": 178,
+      "code": "filteredSims.map((sim: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimExchangeModal.tsx",
+      "line": 223,
+      "code": "{PAYMENT_PLACES.map(p => <option key={p} value={p}>{p}</option>)}"
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimFormModal.tsx",
+      "line": 75,
+      "code": "{SIM_TYPES.map(t => ("
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimPurchaseModal.tsx",
+      "line": 123,
+      "code": "filteredSims.map((sim: any) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimPurchaseModal.tsx",
+      "line": 173,
+      "code": "{PAYMENT_PLACES.map(p => <option key={p} value={p}>{p}</option>)}"
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimTable.tsx",
+      "line": 51,
+      "code": ") : sims.map(sim => ("
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimTypeBreakdown.tsx",
+      "line": 20,
+      "code": "{Object.entries(counts.byType).map(([type, count]) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\transfers\\CreateTransferOrderForm.tsx",
+      "line": 165,
+      "code": "{visibleTypes.map(type => {"
+    },
+    {
+      "file": "frontend\\src\\components\\transfers\\CreateTransferOrderForm.tsx",
+      "line": 350,
+      "code": "{items.map((item, index) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\transfers\\TransferOrdersFilters.tsx",
+      "line": 59,
+      "code": "{ORDER_TYPES.map(t => ("
+    },
+    {
+      "file": "frontend\\src\\components\\transfers\\TransferOrdersTable.tsx",
+      "line": 36,
+      "code": "{orders.map((order: any) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\chart.tsx",
+      "line": 83,
+      "code": ".map("
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\chart.tsx",
+      "line": 87,
+      "code": ".map(([key, itemConfig]) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\chart.tsx",
+      "line": 188,
+      "code": "{(payload as any[]).map((item, index) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\chart.tsx",
+      "line": 290,
+      "code": "{(payload as any[]).map((item) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\data-table.tsx",
+      "line": 85,
+      "code": "const selectedItems = selectedIndices.map(idx => (data[parseInt(idx)] as any)?.id).filter(Boolean);"
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\data-table.tsx",
+      "line": 130,
+      "code": ".map((column) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\data-table.tsx",
+      "line": 150,
+      "code": "{table.getHeaderGroups().map((headerGroup) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\data-table.tsx",
+      "line": 152,
+      "code": "{headerGroup.headers.map((header) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\data-table.tsx",
+      "line": 168,
+      "code": "Array.from({ length: 5 }).map((_, i) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\data-table.tsx",
+      "line": 170,
+      "code": "{columns.map((_, j) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\data-table.tsx",
+      "line": 178,
+      "code": "table.getRowModel().rows.map((row, index) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\AddMachineModal.tsx",
+      "line": 147,
+      "code": "{branches.map((b) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineExchangeModal.tsx",
+      "line": 155,
+      "code": "filteredClients.map(c => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineExchangeModal.tsx",
+      "line": 198,
+      "code": "{clientMachines.map(m => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineImportModal.tsx",
+      "line": 219,
+      "code": "{COLUMNS.map(col => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineImportModal.tsx",
+      "line": 225,
+      "code": "{preview.map((row, idx) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineImportModal.tsx",
+      "line": 227,
+      "code": "{COLUMNS.map(col => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineImportModal.tsx",
+      "line": 312,
+      "code": "{result.errors.slice(0, 5).map((err: any, idx: number) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineLogsTable.tsx",
+      "line": 289,
+      "code": "Array.from({ length: 5 }).map((_, i) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineLogsTable.tsx",
+      "line": 305,
+      "code": "filteredLogs.map((log, index) => {"
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineReturnToCustomerModal.tsx",
+      "line": 129,
+      "code": "filteredClients.map(c => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineSaleModal.tsx",
+      "line": 263,
+      "code": "filteredClients.map(c => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineWarehouseStats.tsx",
+      "line": 83,
+      "code": "{stats.map((stat, index) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MaintenanceKanban.tsx",
+      "line": 100,
+      "code": "setMachines(prev => prev.map(m =>"
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MaintenanceKanban.tsx",
+      "line": 153,
+      "code": "{Object.entries(COLUMNS).map(([status, col]: [string, any]) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MaintenanceKanban.tsx",
+      "line": 171,
+      "code": "{getColumnMachines(status).map((machine, index) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\RepairModal.tsx",
+      "line": 57,
+      "code": "setUsedParts(usedParts.map(p => p.partId === partId ? { ...p, quantity: Math.max(1, qty) } : p));"
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\RepairModal.tsx",
+      "line": 117,
+      "code": "{(['REPAIRED', 'SCRAPPED', 'REJECTED_REPAIR'] as const).map((res) => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\RepairModal.tsx",
+      "line": 165,
+      "code": "usedParts.map(part => ("
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\TransferMachinesModal.tsx",
+      "line": 85,
+      "code": "{filteredBranches.map((b: any) => ("
+    },
+    {
+      "file": "frontend\\src\\lib\\permissions.ts",
+      "line": 228,
+      "code": ".map(([path]) => path);"
+    },
+    {
+      "file": "frontend\\src\\pages\\AdminBackups.tsx",
+      "line": 246,
+      "code": "Array(3).fill(0).map((_, i) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Approvals.tsx",
+      "line": 81,
+      "code": "{['PENDING', 'APPROVED', 'REJECTED'].map(status => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Assignments.tsx",
+      "line": 226,
+      "code": "].map((stat, i) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Assignments.tsx",
+      "line": 242,
+      "code": "{assignments.map((assignment) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\BranchesSettings.tsx",
+      "line": 345,
+      "code": "{branches?.filter((b: any) => b.type === 'MAINTENANCE_CENTER' && b.id !== editingBranch?.id).map((branch: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\BranchesSettings.tsx",
+      "line": 362,
+      "code": "{branches?.filter((b: any) => b.id !== editingBranch?.id).map((branch: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 112,
+      "code": "const requestData = stats?.requests?.distribution.map((d: any) => ({ name: d.name, value: d.value })) || [];"
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 126,
+      "code": "{PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}"
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 145,
+      "code": "{[selectedYear - 1, selectedYear, selectedYear + 1].map(y => <option key={y} value={y}>{y}</option>)}"
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 246,
+      "code": "{stats?.inventory?.lowStock?.slice(0, 5).map((item: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 158,
+      "code": "{branches.map((branch: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 290,
+      "code": "{data.revenueBreakdown.map((_entry, index) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 312,
+      "code": "].map(item => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 333,
+      "code": "{data.technicianProductivity.slice(0, 5).map((performer, index) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 354,
+      "code": "{data.forecast.predictions.map((pred, index) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MachineWarehouse.tsx",
+      "line": 237,
+      "code": "{tabs.map(tab => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MachineWarehouse.tsx",
+      "line": 386,
+      "code": "const items = machines?.filter((m: any) => selectedMachines.includes(m.id)).map((m: any) => ({"
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+      "line": 265,
+      "code": "{PERIODS.map(p => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+      "line": 276,
+      "code": "{MONTHS.map(m => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+      "line": 288,
+      "code": "{QUARTERS.map(q => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+      "line": 299,
+      "code": "{[selectedYear - 1, selectedYear, selectedYear + 1].map(y => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+      "line": 308,
+      "code": "{statsCards.map((stat, index) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+      "line": 374,
+      "code": "{requests.map((request) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+      "line": 402,
+      "code": "{parts.map((part: any, i: number) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceBoard.tsx",
+      "line": 125,
+      "code": "{maintenanceShipments.map((order: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceCenter.tsx",
+      "line": 378,
+      "code": "{statsCards.map((stat, index) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceCenter.tsx",
+      "line": 502,
+      "code": "{filteredMachines.map((machine) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceCenter.tsx",
+      "line": 582,
+      "code": "{actions.map((action, idx) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceMachineDetail.tsx",
+      "line": 185,
+      "code": "selectedParts: prev.selectedParts.map(p =>"
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceMachineDetail.tsx",
+      "line": 312,
+      "code": "{machine.parts.map((part: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Payments.tsx",
+      "line": 230,
+      "code": ") : filteredPayments.map((payment: Payment) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\PendingPayments.tsx",
+      "line": 218,
+      "code": "{payments.map((payment) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\ProductionReports.tsx",
+      "line": 148,
+      "code": "{TABS.map((tab) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Receipts.tsx",
+      "line": 395,
+      "code": "{Object.entries(groupedInstallments).map(([groupKey, groupInsts]: [string, any]) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\Receipts.tsx",
+      "line": 416,
+      "code": "{groupInsts.map((inst: any) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\Receipts.tsx",
+      "line": 531,
+      "code": "{[3, 6, 9, 12, 18, 24].map(n => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\ReceiveOrders.tsx",
+      "line": 321,
+      "code": "{historyOrders.map((order: any) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\Requests.tsx",
+      "line": 296,
+      "code": "{['day', 'week', 'month'].map((period) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\Requests.tsx",
+      "line": 376,
+      "code": "{requests?.filter((r: any) => activeTab === 'open' ? r.status !== 'Closed' : r.status === 'Closed').map((request: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Requests.tsx",
+      "line": 699,
+      "code": "{partsData.parts.map((part: any, i: number) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\ShipmentDetail.tsx",
+      "line": 102,
+      "code": "{shipment.items.map((item: any) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\SimWarehouse.tsx",
+      "line": 203,
+      "code": "setSelectedSims(new Set(filteredSims.map(s => s.id)));"
+    },
+    {
+      "file": "frontend\\src\\pages\\TechnicianDashboard.tsx",
+      "line": 108,
+      "code": "return res.map(m => ({"
+    },
+    {
+      "file": "frontend\\src\\pages\\TechnicianDashboard.tsx",
+      "line": 277,
+      "code": "{machines.map((machine) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\TrackMachines.tsx",
+      "line": 207,
+      "code": "const data = machines.map(m => ({"
+    },
+    {
+      "file": "frontend\\src\\pages\\TrackMachines.tsx",
+      "line": 323,
+      "code": "{statsCards.map((stat, index) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\TrackMachines.tsx",
+      "line": 413,
+      "code": "{filteredMachines.map((machine) => {"
+    },
+    {
+      "file": "frontend\\src\\pages\\TransferOrders.tsx",
+      "line": 213,
+      "code": "].map((dir) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Users.tsx",
+      "line": 168,
+      "code": "{options.map((b: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Users.tsx",
+      "line": 211,
+      "code": "{options.map((b: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Users.tsx",
+      "line": 420,
+      "code": "{getAvailableRoles().map(role => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Users.tsx",
+      "line": 502,
+      "code": "{getAvailableRoles().map(role => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Warehouse.tsx",
+      "line": 141,
+      "code": "const exportData = movements.map((mov: any) => ({"
+    },
+    {
+      "file": "frontend\\src\\pages\\Warehouse.tsx",
+      "line": 165,
+      "code": "const exportData = inventoryItems.map((item: any) => ({"
+    },
+    {
+      "file": "frontend\\src\\pages\\Warehouse.tsx",
+      "line": 224,
+      "code": "{availableModels.map((model: any) => ("
+    },
+    {
+      "file": "frontend\\src\\pages\\Warehouse.tsx",
+      "line": 505,
+      "code": "{importData.map((item: any, i) => ("
+    },
+    {
+      "file": "frontend\\src\\utils\\reports\\MaintenanceReport.ts",
+      "line": 49,
+      "code": "const paidPartsText = paidParts.map(p => `${p.name} (${p.quantity})`).join(' | ');"
+    },
+    {
+      "file": "frontend\\src\\utils\\reports\\MaintenanceReport.ts",
+      "line": 50,
+      "code": "const freePartsText = freeParts.map(p => `${p.name} (${p.quantity})`).join(' | ');"
+    },
+    {
+      "file": "frontend\\src\\utils\\reports\\SaleReport.ts",
+      "line": 137,
+      "code": "${installments.map((inst: any, idx: number) => `"
+    }
+  ],
+  "missingArrayChecks": [],
+  "chartWithoutDataCheck": [
+    {
+      "file": "frontend\\src\\components\\dashboard\\RequestStatusPie.tsx",
+      "line": 2,
+      "code": "import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';"
+    },
+    {
+      "file": "frontend\\src\\components\\dashboard\\RequestStatusPie.tsx",
+      "line": 32,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\ForecastChart.tsx",
+      "line": 4,
+      "code": "ComposedChart,"
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\ForecastChart.tsx",
+      "line": 11,
+      "code": "ResponsiveContainer"
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\ForecastChart.tsx",
+      "line": 59,
+      "code": "<ResponsiveContainer width=\"100%\" height={300}>"
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\ForecastChart.tsx",
+      "line": 60,
+      "code": "<ComposedChart data={chartData}>"
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\ForecastChart.tsx",
+      "line": 106,
+      "code": "</ComposedChart>"
+    },
+    {
+      "file": "frontend\\src\\components\\executive\\ForecastChart.tsx",
+      "line": 107,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\Layout.tsx",
+      "line": 19,
+      "code": "BarChart3,"
+    },
+    {
+      "file": "frontend\\src\\components\\Layout.tsx",
+      "line": 103,
+      "code": "{ path: '/reports', label: 'التقارير', icon: BarChart3 },"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\FinancialOverview.tsx",
+      "line": 8,
+      "code": "ResponsiveContainer,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\FinancialOverview.tsx",
+      "line": 68,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\">"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\FinancialOverview.tsx",
+      "line": 89,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\FinancialOverview.tsx",
+      "line": 100,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\">"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\FinancialOverview.tsx",
+      "line": 118,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 4,
+      "code": "BarChart,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 10,
+      "code": "ResponsiveContainer,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 74,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\">"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 75,
+      "code": "<BarChart data={chartData} layout=\"vertical\" margin={{ left: 80 }}>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 88,
+      "code": "</BarChart>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\GovernoratePerformance.tsx",
+      "line": 89,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 6,
+      "code": "BarChart,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 12,
+      "code": "ResponsiveContainer,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 85,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\">"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 112,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 156,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\">"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 157,
+      "code": "<BarChart data={branchBreakdown.slice(0, 10)} layout=\"vertical\" margin={{ left: 100 }}>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 170,
+      "code": "</BarChart>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\InventoryMovementReport.tsx",
+      "line": 171,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosSalesReport.tsx",
+      "line": 6,
+      "code": "BarChart,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosSalesReport.tsx",
+      "line": 12,
+      "code": "ResponsiveContainer,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosSalesReport.tsx",
+      "line": 79,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\">"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosSalesReport.tsx",
+      "line": 109,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 4,
+      "code": "BarChart,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 10,
+      "code": "ResponsiveContainer,"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 78,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\">"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 79,
+      "code": "<BarChart data={modelChartData}>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 100,
+      "code": "</BarChart>"
+    },
+    {
+      "file": "frontend\\src\\components\\reports\\PosStockReport.tsx",
+      "line": 101,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\chart.tsx",
+      "line": 61,
+      "code": "<RechartsPrimitive.ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\chart.tsx",
+      "line": 63,
+      "code": "</RechartsPrimitive.ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\pages\\AdminDashboard.tsx",
+      "line": 24,
+      "code": "ResponsiveContainer,"
+    },
+    {
+      "file": "frontend\\src\\pages\\AdminDashboard.tsx",
+      "line": 25,
+      "code": "BarChart,"
+    },
+    {
+      "file": "frontend\\src\\pages\\AdminDashboard.tsx",
+      "line": 235,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\" minWidth={0}>"
+    },
+    {
+      "file": "frontend\\src\\pages\\AdminDashboard.tsx",
+      "line": 236,
+      "code": "<BarChart data={globalStats?.branchPerformance || []}>"
+    },
+    {
+      "file": "frontend\\src\\pages\\AdminDashboard.tsx",
+      "line": 251,
+      "code": "</BarChart>"
+    },
+    {
+      "file": "frontend\\src\\pages\\AdminDashboard.tsx",
+      "line": 252,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 15,
+      "code": "FileBarChart,"
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 25,
+      "code": "ResponsiveContainer,"
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 171,
+      "code": "<FileBarChart size={20} /> <span className=\"whitespace-nowrap\">تقرير أداء الصيانة</span>"
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 218,
+      "code": "<ResponsiveContainer width=\"100%\" height=\"100%\">"
+    },
+    {
+      "file": "frontend\\src\\pages\\Dashboard.tsx",
+      "line": 232,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 7,
+      "code": "BarChart,"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 17,
+      "code": "ResponsiveContainer,"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 30,
+      "code": "BarChart3,"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 242,
+      "code": "<ResponsiveContainer width=\"100%\" height={300}>"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 262,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 267,
+      "code": "<ResponsiveContainer width=\"100%\" height={300}>"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 268,
+      "code": "<BarChart data={data.branchSummary.slice(0, 8)}>"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 276,
+      "code": "</BarChart>"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 277,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 282,
+      "code": "<ResponsiveContainer width=\"100%\" height={250}>"
+    },
+    {
+      "file": "frontend\\src\\pages\\ExecutiveDashboard.tsx",
+      "line": 296,
+      "code": "</ResponsiveContainer>"
+    },
+    {
+      "file": "frontend\\src\\pages\\Reports.tsx",
+      "line": 5,
+      "code": "import { BarChart3 } from 'lucide-react';"
+    }
+  ],
+  "typeImportIssues": [
+    {
+      "file": "frontend\\src\\components\\maintenance\\ApprovalStatusCard.tsx",
+      "line": 9,
+      "code": "import { approvalStatusConfig } from './MaintenanceTypes';"
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceMachineDetail.tsx",
+      "line": 48,
+      "code": "import { statusConfig } from '../components/maintenance/MaintenanceTypes';"
+    },
+    {
+      "file": "frontend\\src\\pages\\Settings.tsx",
+      "line": 13,
+      "code": "import { ClientTypesTab } from '../components/settings/ClientTypesTab';"
+    }
+  ],
+  "missingErrorHandling": []
+}

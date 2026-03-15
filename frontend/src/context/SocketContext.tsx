@@ -36,7 +36,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
         }
 
         // Create socket connection with authentication
-        const newSocket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+        const newSocket = io(import.meta.env.VITE_SOCKET_URL || `http://${window.location.hostname}:5002`, {
             auth: { token },
             transports: ['websocket', 'polling'],
             reconnection: true,
@@ -47,7 +47,6 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
         });
 
         newSocket.on('connect', () => {
-            console.log('⚡ Socket connected with ID:', newSocket.id);
             setIsConnected(true);
         });
 
@@ -92,7 +91,6 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
         });
 
         newSocket.on('disconnect', () => {
-            console.log('❌ Socket disconnected');
             setIsConnected(false);
         });
 

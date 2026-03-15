@@ -70,8 +70,10 @@ async function checkPartsAvailability(parts, branchId) {
 /**
  * Deduct parts from inventory (CRITICAL: only call after approval or for direct)
  */
-async function deductInventory(parts, branchId, reason, tx = db) {
+async function deductInventory(parts, branchId, reason, requestId, user, receiptNumber = null, tx = db) {
   const movements = [];
+  const performedBy = user?.displayName || user?.email || 'System';
+  const userId = user?.id || null;
 
   for (const part of parts) {
     // Deduct from inventory
@@ -97,11 +99,15 @@ async function deductInventory(parts, branchId, reason, tx = db) {
     const movement = await tx.stockMovement.create({
       data: {
         partId: part.partId,
-        type: 'STOCK_OUT',
+        type: 'OUT', // Changed from STOCK_OUT to OUT for UI consistency
         quantity: part.quantity,
         reason,
         branchId,
-        userId: null, // Will be filled by caller
+        requestId,
+        userId,
+        performedBy,
+        isPaid: part.isPaid || false,
+        receiptNumber: receiptNumber || null
       },
     });
 
@@ -318,6 +324,9 @@ async function completeDirect(data, user) {
       data.usedParts,
       assignment.centerBranchId,
       `Maintenance - Assignment ${data.assignmentId}`,
+      assignment.requestId || assignment.id,
+      user,
+      null, // receiptNumber
       tx
     );
 
@@ -383,6 +392,8 @@ async function completeDirect(data, user) {
 
     return { assignment: updatedAssignment, debt };
   });
+
+  return result;
 }
 
 /**
@@ -491,6 +502,9 @@ async function completeAfterApproval(data, user) {
       data.usedParts,
       assignment.centerBranchId,
       `Maintenance - Approved Assignment ${data.assignmentId}`,
+      assignment.requestId || assignment.id,
+      user,
+      null, // receiptNumber
       tx
     );
 
@@ -716,6 +730,43 @@ async function recordPayment(data, user) {
   });
 
   logger.db({ debtId: data.debtId, amount: data.amount }, 'Payment recorded');
+
+  // Fix: Sync receipt number to StockMovement log if fully or partially paid
+  try {
+    if (updatedDebt.status === 'PAID' || updatedDebt.status === 'PARTIALLY_PAID') {
+      // Find Assignment to trace back to Request ID used in StockMovement
+      const assignmentId = debt.referenceId;
+      if (assignmentId) {
+        const assignment = await db.serviceAssignment.findUnique({
+          where: { id: assignmentId },
+          select: { id: true, requestId: true }
+        });
+
+        if (assignment) {
+          // Identify possible requestIds used in StockMovement
+          const possibleRequestIds = [assignment.id];
+          if (assignment.requestId) possibleRequestIds.push(assignment.requestId);
+
+          // Update related stock movements to reflect payment & receipt
+          await db.stockMovement.updateMany({
+            where: {
+              requestId: { in: possibleRequestIds },
+              branchId: debt.creditorBranchId, // The center branch
+              type: { in: ['OUT', 'STOCK_OUT'] }
+            },
+            data: {
+              receiptNumber: data.receiptNumber,
+              isPaid: true
+            }
+          });
+        }
+      }
+    }
+  } catch (error) {
+    logger.warn({ error: error.message, debtId: data.debtId }, 'Failed to sync receipt number to stock movement');
+    // Non-blocking error
+  }
+
   return updatedDebt;
 }
 
@@ -824,7 +875,7 @@ async function receiveShipment(id, user) {
     for (const item of order.items) {
       // Update machine to center's branch - machine could be at original branch
       await tx.warehouseMachine.updateMany({
-        where: { 
+        where: {
           serialNumber: item.serialNumber,
           OR: [
             { branchId: order.fromBranchId },  // At original branch
@@ -906,12 +957,12 @@ async function transitionMachine(serial, action, data, user) {
       if (!activeRequest) {
         // Find or create a system customer for center maintenance
         let systemCustomer = await tx.customer.findFirst({
-          where: { 
+          where: {
             bkcode: 'SYSTEM_CENTER',
             branchId: machine.branchId
           }
         });
-        
+
         if (!systemCustomer) {
           systemCustomer = await tx.customer.create({
             data: {
@@ -923,7 +974,7 @@ async function transitionMachine(serial, action, data, user) {
             }
           });
         }
-        
+
         activeRequest = await tx.maintenanceRequest.create({
           data: {
             branchId: machine.originBranchId || machine.branchId,
@@ -959,20 +1010,21 @@ async function transitionMachine(serial, action, data, user) {
         proposedParts: null,
         proposedTotalCost: null
       };
-      
+
       // Deduct parts from inventory - Apply spare parts withdrawal law
       if (data.parts && data.parts.length > 0) {
         // Format parts for inventory service
         const partsToDeduct = data.parts.map(p => ({
           partId: p.partId,
           name: p.name,
-          quantity: p.quantity || 1
+          quantity: p.quantity || 1,
+          isPaid: p.isPaid || false
         }));
-        
+
         // Deduct from center's inventory
         await inventoryService.deductParts(
           partsToDeduct,
-          machine.id, // Use machine ID as reference
+          activeRequest?.id || machine.requestId || machine.id, // Use request ID as reference for linking
           user.displayName || user.email,
           machine.branchId, // Center branch ID
           tx
@@ -988,16 +1040,16 @@ async function transitionMachine(serial, action, data, user) {
     }
 
     const updatedMachine = await tx.warehouseMachine.updateMany({
-      where: { 
+      where: {
         serialNumber: serial,
         branchId: { not: null }
       },
       data: updateData
     });
-    
+
     // Fetch the updated machine
     const refreshedMachine = await tx.warehouseMachine.findFirst({
-      where: { 
+      where: {
         serialNumber: serial,
         branchId: { not: null }
       }

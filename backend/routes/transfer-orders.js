@@ -5,7 +5,10 @@ const { z } = require('zod');
 const ExcelJS = require('exceljs');
 const { authenticateToken } = require('../middleware/auth');
 const { validateRequest, validateQuery } = require('../middleware/validation');
+const { requirePermission, PERMISSIONS } = require('../middleware/permissions');
 const transferService = require('../services/transferService');
+const { success, error, paginated } = require('../utils/apiResponse');
+const { TRANSFER_STATUS, ROLES } = require('../utils/constants');
 const { exportEntitiesToExcel, transformTransfersForExport, setExcelHeaders, generateExportFilename } = require('../utils/excelExport');
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -13,7 +16,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Validation Schemas
 const listQuerySchema = z.object({
     branchId: z.string().regex(/^[a-z0-9]{25}$/).optional(),
-    status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED']).optional(),
+    status: z.enum(Object.values(TRANSFER_STATUS)).optional(),
     type: z.enum(['MACHINE', 'SIM', 'SPARE_PART']).optional(),
     fromDate: z.string().datetime().optional(),
     toDate: z.string().datetime().optional(),
@@ -48,14 +51,16 @@ const rejectOrderSchema = z.object({
 // Routes for transfer orders are largely handled by the transferService.
 // This file serves as the main entry point for transfer-related API endpoints.
 
-// Get all transfer orders
+// Get all transfer orders - PAGINATED
 router.get('/', authenticateToken, validateQuery(listQuerySchema), async (req, res) => {
     try {
-        const orders = await transferService.listTransferOrders(req.query, req.user);
-        res.json(orders);
-    } catch (error) {
-        console.error('Failed to fetch transfer orders:', error);
-        res.status(500).json({ error: 'فشل في جلب الأذونات' });
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = parseInt(req.query.offset) || 0;
+        const { items, total } = await transferService.listTransferOrders({ ...req.query, limit, offset }, req.user);
+        return paginated(res, items, total, limit, offset);
+    } catch (err) {
+        console.error('Failed to fetch transfer orders:', err);
+        return error(res, 'فشل في جلب الأذونات');
     }
 });
 
@@ -66,10 +71,10 @@ router.get('/pending', authenticateToken, async (req, res) => {
             branchId: req.query.branchId,
             type: req.query.type
         }, req.user, req);
-        res.json(orders);
-    } catch (error) {
-        console.error('Failed to fetch pending orders:', error);
-        res.status(500).json({ error: 'فشل في جلب الأذونات المعلقة' });
+        return success(res, orders);
+    } catch (err) {
+        console.error('Failed to fetch pending orders:', err);
+        return error(res, 'فشل في جلب الأذونات المعلقة');
     }
 });
 
@@ -81,10 +86,10 @@ router.get('/pending-serials', authenticateToken, async (req, res) => {
             branchId: req.query.branchId,
             type: req.query.type
         }, req.user);
-        res.json(serials);
-    } catch (error) {
-        console.error('Failed to fetch pending serials:', error);
-        res.status(500).json({ error: 'فشل في جلب الماكينات قيد التحويل' });
+        return success(res, serials);
+    } catch (err) {
+        console.error('Failed to fetch pending serials:', err);
+        return error(res, 'فشل في جلب الماكينات قيد التحويل');
     }
 });
 
@@ -92,10 +97,10 @@ router.get('/pending-serials', authenticateToken, async (req, res) => {
 router.get('/stats/summary', authenticateToken, async (req, res) => {
     try {
         const stats = await transferService.getStatsSummary({ branchId: req.query.branchId, fromDate: req.query.fromDate, toDate: req.query.toDate }, req.user);
-        res.json(stats);
-    } catch (error) {
-        console.error('Failed to get stats:', error);
-        res.status(500).json({ error: 'فشل في جلب الإحصائيات' });
+        return success(res, stats);
+    } catch (err) {
+        console.error('Failed to get stats:', err);
+        return error(res, 'فشل في جلب الإحصائيات');
     }
 });
 
@@ -104,16 +109,16 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
  */
 router.get('/export-data', authenticateToken, async (req, res) => {
     try {
-        const orders = await transferService.listTransferOrders(req.query, req.user);
+        const { items: orders } = await transferService.listTransferOrders(req.query, req.user);
 
         const data = transformTransfersForExport(orders);
         const buffer = await exportEntitiesToExcel(data, 'transfers', 'transfer_orders_export');
 
         setExcelHeaders(res, generateExportFilename('transfer_orders_export'));
         res.send(buffer);
-    } catch (error) {
-        console.error('Failed to export transfer orders:', error);
-        res.status(500).json({ error: 'فشل في تصدير أذونات الصرف' });
+    } catch (err) {
+        console.error('Failed to export transfer orders:', err);
+        return error(res, 'فشل في تصدير أذونات الصرف');
     }
 });
 
@@ -158,9 +163,9 @@ router.get('/template/:type', authenticateToken, async (req, res) => {
 
         await workbook.xlsx.write(res);
         res.end();
-    } catch (error) {
-        console.error('Failed to generate template:', error);
-        res.status(500).json({ error: 'فشل في إنشاء القالب' });
+    } catch (err) {
+        console.error('Failed to generate template:', err);
+        return error(res, 'فشل في إنشاء القالب');
     }
 });
 
@@ -168,10 +173,10 @@ router.get('/template/:type', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
         const order = await transferService.getTransferOrderById(req.params.id, req.user);
-        res.json(order);
-    } catch (error) {
-        console.error('Failed to fetch transfer order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في جلب الإذن' });
+        return success(res, order);
+    } catch (err) {
+        console.error('Failed to fetch transfer order:', err);
+        return error(res, err.message || 'فشل في جلب الإذن', err.status || 500);
     }
 });
 
@@ -179,10 +184,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, validateRequest(createOrderSchema), async (req, res) => {
     try {
         const order = await transferService.createTransferOrder(req.body, req.user);
-        res.status(201).json(order);
-    } catch (error) {
-        console.error('========== TRANSFER ORDER ERROR ==========', error.message);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في إنشاء الإذن' });
+        return success(res, order, 201);
+    } catch (err) {
+        console.error('========== TRANSFER ORDER ERROR ==========', err.message);
+        return error(res, err.message || 'فشل في إنشاء الإذن', err.status || 500);
     }
 });
 
@@ -190,7 +195,7 @@ router.post('/', authenticateToken, validateRequest(createOrderSchema), async (r
 router.post('/import', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'ملف مطلوب' });
+            return error(res, 'ملف مطلوب', 400);
         }
         const result = await transferService.importTransferFromExcel(
             req.file.buffer,
@@ -201,17 +206,17 @@ router.post('/import', upload.single('file'), async (req, res) => {
             },
             req.user
         );
-        res.status(201).json(result);
-    } catch (error) {
-        console.error('Failed to import transfer order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في استيراد الإذن' });
+        return success(res, result, 201);
+    } catch (err) {
+        console.error('Failed to import transfer order:', err);
+        return error(res, err.message || 'فشل في استيراد الإذن', err.status || 500);
     }
 });
 
 
 
 // Receive order (confirm receipt)
-router.post('/:id/receive', authenticateToken, validateRequest(receiveOrderSchema), async (req, res) => {
+router.post('/:id/receive', authenticateToken, requirePermission(PERMISSIONS.INVENTORY_RECEIVE), validateRequest(receiveOrderSchema), async (req, res) => {
     try {
         const updated = await transferService.receiveTransferOrder(
             req.params.id,
@@ -222,15 +227,15 @@ router.post('/:id/receive', authenticateToken, validateRequest(receiveOrderSchem
             },
             req.user
         );
-        res.json(updated);
-    } catch (error) {
-        console.error('Failed to receive order:', error.message || error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في تأكيد الاستلام' });
+        return success(res, updated);
+    } catch (err) {
+        console.error('Failed to receive order:', err.message || err);
+        return error(res, err.message || 'فشل في تأكيد الاستلام', err.status || 500);
     }
 });
 
 // Reject order
-router.post('/:id/reject', authenticateToken, validateRequest(rejectOrderSchema), async (req, res) => {
+router.post('/:id/reject', authenticateToken, requirePermission(PERMISSIONS.INVENTORY_RECEIVE), validateRequest(rejectOrderSchema), async (req, res) => {
     try {
         const updated = await transferService.rejectOrder(
             req.params.id,
@@ -241,10 +246,10 @@ router.post('/:id/reject', authenticateToken, validateRequest(rejectOrderSchema)
             },
             req.user
         );
-        res.json(updated);
-    } catch (error) {
-        console.error('Reject order error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في رفض الإذن' });
+        return success(res, updated);
+    } catch (err) {
+        console.error('Reject order error:', err);
+        return error(res, err.message || 'فشل في رفض الإذن', err.status || 500);
     }
 });
 
@@ -252,10 +257,10 @@ router.post('/:id/reject', authenticateToken, validateRequest(rejectOrderSchema)
 router.post('/:id/cancel', authenticateToken, async (req, res) => {
     try {
         const result = await transferService.cancelOrder(req.params.id, req.user);
-        res.json(result);
-    } catch (error) {
-        console.error('Failed to cancel order:', error);
-        res.status(error.status || 500).json({ error: error.message || 'فشل في إلغاء الإذن' });
+        return success(res, result);
+    } catch (err) {
+        console.error('Failed to cancel order:', err);
+        return error(res, err.message || 'فشل في إلغاء الإذن', err.status || 500);
     }
 });
 

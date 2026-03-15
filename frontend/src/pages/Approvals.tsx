@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { CheckCircle, XCircle, Clock, DollarSign, MessageSquare } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, DollarSign, MessageSquare, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { translateStatus } from '../lib/translations';
 
@@ -13,6 +13,17 @@ export default function Approvals() {
     const [responseNotes, setResponseNotes] = useState('');
     const [showResponseModal, setShowResponseModal] = useState(false);
     const [responseType, setResponseType] = useState<'APPROVED' | 'REJECTED' | null>(null);
+
+    // ESC key handler for modal
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowResponseModal(false);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
 
     // Queries
     // We reuse getApprovals (need to ensure API client has this or similar, otherwise we might need to add it)
@@ -173,53 +184,57 @@ export default function Approvals() {
 
             {/* Response Modal */}
             {showResponseModal && selectedApproval && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm sm:max-w-md">
-                        <div className={`p-4 border-b flex justify-between items-center ${responseType === 'APPROVED' ? 'bg-green-50' : 'bg-red-50'
-                            }`}>
-                            <h2 className={`text-lg font-bold flex items-center gap-2 ${responseType === 'APPROVED' ? 'text-green-800' : 'text-red-800'
-                                }`}>
-                                {responseType === 'APPROVED' ? <CheckCircle /> : <XCircle />}
-                                {responseType === 'APPROVED' ? 'تأكيد الموافقة' : 'تأكيد الرفض'}
-                            </h2>
-                            <button onClick={() => setShowResponseModal(false)} className="text-slate-500 hover:text-slate-700">
-                                <XCircle size={20} />
+                <div className="modal-overlay" onClick={() => setShowResponseModal(false)}>
+                    <div className="modal-container modal-sm" onClick={(e) => e.stopPropagation()}>
+                        <div className={`modal-header ${responseType === 'APPROVED' ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+                            <div className="modal-header-content">
+                                {responseType === 'APPROVED' ?
+                                    <CheckCircle className="modal-icon text-emerald-600" size={24} /> :
+                                    <XCircle className="modal-icon text-rose-600" size={24} />
+                                }
+                                <h2 className={`modal-title ${responseType === 'APPROVED' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {responseType === 'APPROVED' ? 'تأكيد الموافقة' : 'تأكيد الرفض'}
+                                </h2>
+                            </div>
+                            <button type="button" className="modal-close" onClick={() => setShowResponseModal(false)}>
+                                <X size={20} />
                             </button>
                         </div>
 
-                        <div className="p-4 space-y-4">
-                            <p className="text-slate-600">
-                                أنت على وشك {responseType === 'APPROVED' ? 'الموافقة على' : 'رفض'} طلب الصيانة رقم <b>#{selectedApproval.request?.id?.slice(-6)}</b> بتكلفة <b>{selectedApproval.amount} ج.م</b>.
-                            </p>
+                        <div className="modal-body space-y-4">
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                <p className="text-sm text-slate-700 leading-relaxed">
+                                    أنت على وشك {responseType === 'APPROVED' ? 'الموافقة على' : 'رفض'} طلب الصيانة رقم <span className="font-bold text-primary">#{selectedApproval.request?.id?.slice(-6)}</span> بتكلفة <span className="font-bold text-emerald-600">{selectedApproval.amount} ج.م</span>.
+                                </p>
+                            </div>
 
-                            <div>
-                                <label className="block text-sm font-medium mb-1">ملاحظات الرد (اختياري)</label>
+                            <div className="modal-form-field">
+                                <label className="modal-form-label uppercase tracking-widest text-[10px]">ملاحظات الرد (اختياري)</label>
                                 <textarea
                                     value={responseNotes}
                                     onChange={e => setResponseNotes(e.target.value)}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                    rows={3}
-                                    placeholder={responseType === 'APPROVED' ? 'ملاحظات إضافية...' : 'سبب الرفض...'}
+                                    className="smart-input min-h-[100px] resize-none"
+                                    placeholder={responseType === 'APPROVED' ? 'ملاحظات إضافية بخصوص الموافقة...' : 'يرجى توضيح سبب الرفض هنا...'}
                                 />
                             </div>
+                        </div>
 
-                            <div className="flex gap-2 pt-2">
-                                <button
-                                    onClick={submitResponse}
-                                    disabled={responseMutation.isPending}
-                                    className={`flex-1 py-2 rounded-lg font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 ${responseType === 'APPROVED' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-                                        }`}
-                                >
-                                    {responseMutation.isPending && <Clock size={16} className="animate-spin" />}
-                                    تأكيد
-                                </button>
-                                <button
-                                    onClick={() => setShowResponseModal(false)}
-                                    className="flex-1 border py-2 rounded-lg hover:bg-slate-50"
-                                >
-                                    إلغاء
-                                </button>
-                            </div>
+                        <div className="modal-footer">
+                            <button
+                                onClick={() => setShowResponseModal(false)}
+                                className="smart-btn-secondary"
+                                disabled={responseMutation.isPending}
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                onClick={submitResponse}
+                                disabled={responseMutation.isPending}
+                                className={`smart-btn-primary ${responseType === 'APPROVED' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
+                            >
+                                {responseMutation.isPending && <Clock size={16} className="animate-spin" />}
+                                تأكيد العملية
+                            </button>
                         </div>
                     </div>
                 </div>

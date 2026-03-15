@@ -1,17 +1,19 @@
-﻿const { z } = require('zod');
+const { z } = require('zod');
 
 const createRequestSchema = z.object({
   customerId: z.string()
-    .min(1, 'Customer ID is required')
-    .regex(/^[a-z0-9]{25}$/, 'Invalid customer ID format'),
-  machineId: z.string()
+    .min(1, 'Customer ID is required'),
+  posMachineId: z.string()
     .regex(/^[a-z0-9]{25}$/, 'Invalid machine ID format')
     .optional()
     .nullable(),
-  problemDescription: z.string()
+  complaint: z.string()
     .min(5, 'Description must be at least 5 characters')
     .max(1000, 'Description cannot exceed 1000 characters')
     .trim(),
+  serialNumber: z.string().optional(),
+  machineModel: z.string().optional(),
+  machineManufacturer: z.string().optional(),
   branchId: z.string()
     .regex(/^[a-z0-9]{25}$/, 'Invalid branch ID format')
     .optional()

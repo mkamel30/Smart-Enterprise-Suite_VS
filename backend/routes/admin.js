@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
 
@@ -33,9 +33,6 @@ const listQuerySchema = z.object({
 
 const createBranchSchema = z.object({
   name: z.string().min(2, 'Branch name required').max(100),
-  location: z.string().min(2).max(255).optional(),
-  manager: z.string().email('Valid email required'),
-  phone: z.string().regex(/^[0-9\+\-\s]{1,20}$/).optional(),
   address: z.string().max(500).optional(),
   code: z.string().min(2).max(50).optional()
 });
@@ -67,7 +64,7 @@ const systemSettingsSchema = z.object({
  * @returns {Object} Paginated audit logs
  */
 router.get(
-  '/admin/audit-logs',
+  '/audit-logs',
   authenticateToken,
   requireSuperAdmin,
   validateQuery(listQuerySchema),
@@ -105,13 +102,15 @@ router.get(
 
     // Fetch logs
     const [logs, total] = await Promise.all([
-      db.systemLog.findMany({
+      db.systemLog.findMany(ensureBranchWhere({
         where,
         orderBy: { [validated.sortBy]: validated.sortOrder },
         take: limit,
         skip: offset
-      }),
-      db.systemLog.count({ where })
+      }, req)),
+      db.systemLog.count(ensureBranchWhere({
+        where
+      }, req))
     ]);
 
     res.json({
@@ -129,7 +128,7 @@ router.get(
  * @returns {Object} Audit log details
  */
 router.get(
-  '/admin/audit-logs/:id',
+  '/audit-logs/:id',
   authenticateToken,
   requireSuperAdmin,
   asyncHandler(async (req, res) => {
@@ -155,7 +154,7 @@ router.get(
  * @returns {Object} Deletion result
  */
 router.delete(
-  '/admin/audit-logs/older-than/:days',
+  '/audit-logs/older-than/:days',
   authenticateToken,
   requireSuperAdmin,
   deleteLimiter,
@@ -200,7 +199,7 @@ router.delete(
  * @returns {Object} System settings
  */
 router.get(
-  '/admin/settings',
+  '/settings',
   authenticateToken,
   requireAdmin,
   asyncHandler(async (req, res) => {
@@ -230,7 +229,7 @@ router.get(
  * @returns {Object} Updated settings
  */
 router.put(
-  '/admin/settings',
+  '/settings',
   authenticateToken,
   requireSuperAdmin,
   validateRequest(systemSettingsSchema),
@@ -282,10 +281,13 @@ router.put(
  * @returns {Object} System statistics
  */
 router.get(
-  '/admin/system/status',
+  '/system/status',
   authenticateToken,
   requireAdmin,
   asyncHandler(async (req, res) => {
+    // Use standard branch filtering for all counts
+    const filter = ensureBranchWhere({}, req);
+
     const [
       totalUsers,
       totalCustomers,
@@ -295,12 +297,12 @@ router.get(
       openRequests,
       recentLogs
     ] = await Promise.all([
-      db.user.count(ensureBranchWhere({}, req)),
-      db.customer.count(ensureBranchWhere({}, req)),
-      db.maintenanceRequest.count(ensureBranchWhere({}, req)),
-      db.posMachine.count(ensureBranchWhere({}, req)),
+      db.user.count(filter),
+      db.customer.count(filter),
+      db.maintenanceRequest.count(filter),
+      db.posMachine.count(filter),
       db.branch.count(), // Branches are global
-      db.maintenanceRequest.count(ensureBranchWhere({ where: { status: 'Open' } }, req)),
+      db.maintenanceRequest.count(ensureBranchWhere({ where: { status: { in: ['Pending', 'Open'] } } }, req)),
       db.systemLog.count(ensureBranchWhere({
         where: {
           createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
@@ -341,20 +343,20 @@ router.get(
  * @returns {Array} Recent logs
  */
 router.get(
-  '/admin/system/logs/recent',
+  '/system/logs/recent',
   authenticateToken,
   requireAdmin,
   asyncHandler(async (req, res) => {
     const hours = Math.min(parseInt(req.query.hours) || 24, 168); // Max 7 days
     const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-    const logs = await db.systemLog.findMany({
+    const logs = await db.systemLog.findMany(ensureBranchWhere({
       where: {
         createdAt: { gte: cutoffTime }
       },
       orderBy: { createdAt: 'desc' },
       take: 500
-    });
+    }, req));
 
     res.json(logs);
   })
@@ -369,7 +371,7 @@ router.get(
  * @returns {Array} List of branches
  */
 router.get(
-  '/admin/branches',
+  '/branches',
   authenticateToken,
   requireSuperAdmin,
   asyncHandler(async (req, res) => {
@@ -397,7 +399,7 @@ router.get(
  * @returns {Object} Created branch
  */
 router.post(
-  '/admin/branches',
+  '/branches',
   authenticateToken,
   requireSuperAdmin,
   createLimiter,
@@ -420,9 +422,6 @@ router.post(
     const branch = await db.branch.create({
       data: {
         name: validated.name,
-        location: validated.location,
-        manager: validated.manager,
-        phone: validated.phone,
         address: validated.address,
         code: validated.code || null
       }
@@ -451,7 +450,7 @@ router.post(
  * @returns {Object} Updated branch
  */
 router.put(
-  '/admin/branches/:id',
+  '/branches/:id',
   authenticateToken,
   requireSuperAdmin,
   updateLimiter,

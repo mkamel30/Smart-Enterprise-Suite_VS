@@ -3,14 +3,8 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { Truck, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-interface SendToCenterModalProps {
-    request: any;
-    onClose: () => void;
-    onSuccess: () => void;
-}
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+
 
 interface SendToCenterModalProps {
     request: any;
@@ -56,76 +50,74 @@ export function SendToCenterModal({ request, onClose, onSuccess }: SendToCenterM
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-md" dir="rtl">
-                <DialogHeader className="bg-slate-50 p-6 pb-4 border-b shrink-0">
-                    <DialogTitle className="flex items-center gap-2 text-xl">
-                        <Truck className="text-primary" />
-                        إرسال لمركز الصيانة
-                    </DialogTitle>
-                    <DialogDescription>
-                        إنشاء إذن نقل للماكينة إلى مركز الصيانة
-                    </DialogDescription>
+            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-sm rounded-2xl shadow-2xl bg-white" dir="rtl">
+                <DialogHeader className="bg-slate-50/50 p-4 md:p-5 border-b shrink-0 text-right">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                            <Truck size={16} />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-base font-black text-slate-900 leading-tight">إرسال لمركز الصيانة</DialogTitle>
+                            <DialogDescription className="text-[10px] text-slate-400 font-bold mt-0.5 opacity-80">نقل الماكينة لمركز الصيانة الرئيسي</DialogDescription>
+                        </div>
+                    </div>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    <div className="bg-blue-50 p-4 rounded-2xl text-sm text-blue-800 border border-blue-100 leading-relaxed shadow-sm">
-                        سيتم إنشاء إذن نقل للماكينة رقم <b className="font-mono text-lg mx-1">{request.posMachine?.serialNumber}</b> وتغيير حالة الطلب.
+                <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4">
+                    <div className="bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
+                        <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
+                            سيتم إنشاء إذن نقل للماكينة رقم <span className="font-mono text-sm font-black mx-0.5">{request.posMachine?.serialNumber}</span> وتوجيه الطلب.
+                        </p>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="block text-sm font-black text-slate-700">مركز الصيانة المستلم *</label>
+                    <div className="space-y-1.5">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">مركز الصيانة المستهدف</label>
                         {isLoadingBranches ? (
-                            <div className="flex items-center gap-2 text-sm text-slate-500 animate-pulse bg-slate-50 p-3 rounded-xl border border-dashed">
-                                <Loader2 size={16} className="animate-spin" />
-                                جاري تحميل المراكز...
+                            <div className="flex items-center gap-2 text-xs text-slate-400 animate-pulse bg-slate-50 p-2.5 rounded-lg border border-dashed border-slate-200">
+                                <Loader2 size={12} className="animate-spin" />
+                                جاري التحميل...
                             </div>
                         ) : (
-                            <div className="relative">
+                            <div className="relative group">
                                 <select
                                     value={selectedCenterId}
                                     onChange={e => setSelectedCenterId(e.target.value)}
-                                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-bold appearance-none bg-background"
+                                    className="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all bg-white"
                                 >
                                     <option value="">-- اختر المركز --</option>
                                     {branches?.map((b: any) => (
                                         <option key={b.id} value={b.id}>{b.name}</option>
                                     ))}
                                 </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="block text-sm font-black text-slate-700">ملاحظات</label>
+                    <div className="space-y-1.5">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">ملاحظات التوجيه</label>
                         <textarea
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
-                            className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all resize-none bg-slate-50/30 focus:bg-white"
-                            rows={3}
-                            placeholder="أي ملاحظات إضافية..."
+                            className="w-full border border-slate-200 rounded-lg p-3 text-xs font-bold outline-none focus:border-indigo-500 bg-slate-50/30 focus:bg-white transition-all min-h-[70px]"
+                            placeholder="أي ملاحظات إضافية للفنيين بالمركز..."
                         />
                     </div>
                 </div>
 
-                <div className="p-6 border-t bg-slate-50/50 shrink-0 flex gap-3">
+                <div className="p-4 border-t bg-slate-50 flex items-center gap-2">
                     <button
                         onClick={onClose}
-                        className="flex-1 bg-white border border-slate-200 text-slate-700 py-3 rounded-xl font-bold hover:bg-slate-50 transition-colors"
+                        className="h-10 px-4 border border-slate-200 text-slate-500 font-bold text-xs rounded-lg hover:bg-slate-100 transition-all"
                     >
                         إلغاء
                     </button>
                     <button
                         onClick={() => transferMutation.mutate()}
                         disabled={transferMutation.isPending || !selectedCenterId}
-                        className="flex-[2] bg-primary text-white py-3 rounded-xl font-black hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all hover:translate-y-[-1px] active:translate-y-[1px]"
+                        className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        {transferMutation.isPending ? <Loader2 className="animate-spin" size={20} /> : <Truck size={20} />}
-                        تأكيد وإرسال
+                        {transferMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Truck size={14} />}
+                        تأكيد التوجيه
                     </button>
                 </div>
             </DialogContent>

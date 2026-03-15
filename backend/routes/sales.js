@@ -41,12 +41,15 @@ router.get('/stats', authenticateToken, asyncHandler(async (req, res) => {
     res.json(stats);
 }));
 
+const { parsePaginationParams, createPaginationResponse } = require('../utils/pagination');
+
 /**
- * GET All Sales
+ * GET All Sales - PAGINATED
  */
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
-    const sales = await salesService.getAllSales(req);
-    res.json(sales);
+    const { limit, offset } = parsePaginationParams(req.query);
+    const { items, total } = await salesService.getAllSales(req, { limit, offset });
+    res.json(createPaginationResponse(items, total, limit, offset));
 }));
 
 /**
@@ -94,7 +97,7 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
  */
 const { exportToExcel } = require('../utils/excel');
 router.get('/export', authenticateToken, asyncHandler(async (req, res) => {
-    const sales = await salesService.getAllSales(req);
+    const { items: sales } = await salesService.getAllSales(req);
 
     const data = sales.map(s => ({
         'التاريخ': s.saleDate ? new Date(s.saleDate).toLocaleDateString('ar-EG') : '-',

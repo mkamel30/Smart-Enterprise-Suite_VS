@@ -9,24 +9,25 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const { authenticateToken, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
-const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const { success, error, paginated } = require('../utils/apiResponse');
+const { ROLES, isGlobalRole } = require('../utils/constants');
 const { logAction } = require('../utils/logger');
 const asyncHandler = require('../utils/asyncHandler');
+const { parsePaginationParams } = require('../utils/pagination');
 
-// GET all users (admin only)
+// GET all users (admin only) - PAGINATED
 router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) => {
     const { branchId, role, isActive } = req.query;
+    const { limit, offset } = parsePaginationParams(req.query);
 
     const where = {};
 
     // Branch filtering based on user role
     const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
-    if (req.user.role === 'SUPER_ADMIN') {
-        // Super admin can see ALL users (including those with null branchId)
-        if (branchId) where.branchId = branchId;
-        // If no filter, show all users (including admin users without branch)
-    } else if (['MANAGEMENT', 'ADMIN_AFFAIRS'].includes(req.user.role)) {
-        // These roles also see all for now, but following the pattern
+    const isUserGlobal = isGlobalRole(req.user.role);
+
+    if (isUserGlobal) {
+        // Global administrative roles see all users
         if (branchId) {
             where.branchId = branchId;
         }
@@ -44,25 +45,30 @@ router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) =
     if (role) where.role = role;
     if (isActive !== undefined) where.isActive = isActive === 'true';
 
-    const users = await db.user.findMany({
-        where,
-        select: {
-            id: true,
-            email: true,
-            displayName: true,
-            role: true,
-            branchId: true,
-            canDoMaintenance: true,
-            isActive: true,
-            createdAt: true,
-            branch: {
-                select: { id: true, name: true, code: true }
-            }
-        },
-        orderBy: { displayName: 'asc' }
-    });
+    const [users, total] = await Promise.all([
+        db.user.findMany({
+            where,
+            select: {
+                id: true,
+                email: true,
+                displayName: true,
+                role: true,
+                branchId: true,
+                canDoMaintenance: true,
+                isActive: true,
+                createdAt: true,
+                branch: {
+                    select: { id: true, name: true, code: true }
+                }
+            },
+            take: limit,
+            skip: offset,
+            orderBy: { displayName: 'asc' }
+        }),
+        db.user.count({ where })
+    ]);
 
-    res.json(users);
+    return paginated(res, users, total, limit, offset);
 }));
 
 // GET single user
@@ -93,49 +99,48 @@ router.get('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res
     });
 
     if (!user) {
-        return res.status(404).json({ error: 'المستخدم غير موجود' });
+        return error(res, 'المستخدم غير موجود', 404);
     }
 
-    res.json(user);
+    return success(res, user);
 }));
 
 // POST create user (super admin only)
 router.post('/', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
     const { email, displayName, password, role, branchId, canDoMaintenance } = req.body;
 
-    // Admin roles (SUPER_ADMIN, MANAGEMENT) don't require branchId
-    const isAdminRole = ['SUPER_ADMIN', 'MANAGEMENT'].includes(role);
+    // Admin roles don't require a specific branchId (HQ/Global)
+    const isAdminRole = isGlobalRole(role);
 
-    if (!email || !displayName) {
-        return res.status(400).json({ error: 'البريد الإلكتروني والاسم مطلوبين' });
+    // If it's a Branch Tech, email and password are optional
+    const isVirtualUser = role === ROLES.BRANCH_TECH;
+
+    if (!displayName) {
+        return res.status(400).json({ error: 'الاسم مطلوب' });
     }
 
-    // Non-admin roles require branchId
-    if (!isAdminRole && !branchId) {
-        return res.status(400).json({ error: 'يجب تحديد الفرع للمستخدمين غير الإداريين' });
+    if (!isVirtualUser && !email) {
+        return res.status(400).json({ error: 'البريد الإلكتروني مطلوب للمستخدمين النشطين' });
     }
 
-    // Check for duplicate email (search in all users)
-    const existing = await db.user.findFirst({
-        where: { email }
-    });
-
-    if (existing) {
-        return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
-    }
-
-    // Validate password (use policy)
-    const passwordToValidate = password || '1234567890Aa!'; // Default must meet 12 chars if none provided
-    const passwordValidation = require('../utils/passwordPolicy').validatePasswordStrength(passwordToValidate);
-    if (!passwordValidation.isValid) {
-        return res.status(400).json({
-            error: 'كلمة المرور غير صالحة',
-            details: passwordValidation.errors
+    // Check for duplicate email if one is provided
+    if (email) {
+        const existing = await db.user.findFirst({
+            where: { email }
         });
+        if (existing) {
+            return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
+        }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(passwordToValidate, 10);
+    // Hash password if provided, otherwise for virtual users use a dummy
+    let hashedPassword = null;
+    if (password) {
+        hashedPassword = await bcrypt.hash(password, 10);
+    } else if (!isVirtualUser) {
+        // Active users need a default password to prevent potential login/re-auth loops
+        hashedPassword = await bcrypt.hash('1234567890Aa!', 10);
+    }
 
     const user = await db.user.create({
         data: {
@@ -169,7 +174,7 @@ router.post('/', authenticateToken, requireSuperAdmin, asyncHandler(async (req, 
         branchId: branchId || req.user.branchId
     });
 
-    res.status(201).json(user);
+    return success(res, user, 201);
 }));
 
 // PUT update user (super admin only)
@@ -233,7 +238,7 @@ router.put('/:id', authenticateToken, requireSuperAdmin, asyncHandler(async (req
         branchId: updated?.branchId || req.user.branchId
     });
 
-    res.json(updated);
+    return success(res, updated);
 }));
 
 // DELETE user (super admin only)
@@ -265,7 +270,7 @@ router.delete('/:id', authenticateToken, requireSuperAdmin, asyncHandler(async (
         branchId: existing.branchId || req.user.branchId
     });
 
-    res.json({ success: true, message: 'تم حذف المستخدم بنجاح' });
+    return success(res, { success: true, message: 'تم حذف المستخدم بنجاح' });
 }));
 
 // POST reset user password (super admin only)
@@ -305,23 +310,22 @@ router.post('/:id/reset-password', authenticateToken, requireSuperAdmin, asyncHa
         branchId: existing.branchId || req.user.branchId
     });
 
-    res.json({ success: true, message: 'تم إعادة تعيين كلمة المرور بنجاح' });
+    return success(res, { success: true, message: 'تم إعادة تعيين كلمة المرور بنجاح' });
 }));
 
 // GET available roles
 router.get('/meta/roles', authenticateToken, async (req, res) => {
     const roles = [
-        { value: 'SUPER_ADMIN', label: 'مدير النظام' },
-        { value: 'MANAGEMENT', label: 'الإدارة' },
-        { value: 'CENTER_MANAGER', label: 'مدير مركز الصيانة' },
-        { value: 'CENTER_TECH', label: 'فني مركز الصيانة' },
-        { value: 'BRANCH_MANAGER', label: 'مدير الفرع' },
-        { value: 'BRANCH_TECH', label: 'فني الفرع' },
-        { value: 'CS_SUPERVISOR', label: 'مشرف خدمة العملاء' },
-        { value: 'CS_AGENT', label: 'موظف خدمة العملاء' },
-        { value: 'ADMIN_AFFAIRS', label: 'شؤون إدارية' }
+        { value: ROLES.SUPER_ADMIN, label: 'مدير النظام' },
+        { value: ROLES.MANAGEMENT, label: 'الإدارة' },
+        { value: ROLES.ADMIN_AFFAIRS, label: 'شؤون إدارية' },
+        { value: ROLES.BRANCH_MANAGER, label: 'مدير الفرع' },
+        { value: ROLES.CS_SUPERVISOR, label: 'مشرف خدمة العملاء' },
+        { value: ROLES.CS_AGENT, label: 'موظف خدمة العملاء' },
+        { value: ROLES.BRANCH_TECH, label: 'فني الفرع' },
+        { value: ROLES.TECHNICIAN, label: 'فني صيانة' }
     ];
-    res.json(roles);
+    return success(res, roles);
 });
 
 module.exports = router;

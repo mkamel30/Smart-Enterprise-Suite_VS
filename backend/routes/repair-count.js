@@ -2,15 +2,11 @@
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
-const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const { isGlobalRole } = require('../utils/constants');
-// NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
-// NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
 // GET monthly repair count for a machine
 router.get('/requests/machine/:serialNumber/monthly-count', authenticateToken, async (req, res) => {
     try {
-        // Get date from query or default to now
         const { serialNumber } = req.params;
         const dateParam = req.query.date ? new Date(req.query.date) : new Date();
 
@@ -18,13 +14,9 @@ router.get('/requests/machine/:serialNumber/monthly-count', authenticateToken, a
             return res.status(400).json({ error: 'Invalid date format' });
         }
 
-        // Calculate start and end of the month
-        const startOfMonth = new Date(dateParam.getFullYear(), dateParam.getMonth(), 1);
-        const startOfNextMonth = new Date(dateParam.getFullYear(), dateParam.getMonth() + 1, 1);
-
-        // Find the POS machine
-        const machine = await db.posMachine.findUnique({
-            where: { serialNumber },
+        // 1. Find the POS machine - MUST include branchId
+        const machine = await db.posMachine.findFirst({
+            where: { serialNumber, branchId: req.user.branchId || { not: null } },
             include: { customer: true }
         });
 
@@ -32,18 +24,22 @@ router.get('/requests/machine/:serialNumber/monthly-count', authenticateToken, a
             return res.json({ count: 0 });
         }
 
-        // Authorization: check branch access
-        if (req.user.branchId && machine.customer?.branchId && machine.customer.branchId !== req.user.branchId) {
-            const isAdmin = isGlobalRole(req.user.role);
-            if (!isAdmin) {
+        // Authorization: check branch access if needed (findFirst already filters, but double check)
+        if (req.user.branchId && machine.branchId && machine.branchId !== req.user.branchId) {
+            if (!isGlobalRole(req.user.role)) {
                 return res.status(403).json({ error: 'Access denied' });
             }
         }
 
-        // Count closed requests for this machine this month
+        // Calculate start and end of the month
+        const startOfMonth = new Date(dateParam.getFullYear(), dateParam.getMonth(), 1);
+        const startOfNextMonth = new Date(dateParam.getFullYear(), dateParam.getMonth() + 1, 1);
+
+        // 2. Count closed requests - MUST include branchId
         const count = await db.maintenanceRequest.count({
             where: {
                 posMachineId: machine.id,
+                branchId: machine.branchId,
                 status: 'Closed',
                 closingTimestamp: {
                     gte: startOfMonth,

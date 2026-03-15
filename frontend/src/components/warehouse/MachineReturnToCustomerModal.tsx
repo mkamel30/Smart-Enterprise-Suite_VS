@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, UserCheck, Search, MessageSquare, Monitor, Loader2 } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
+import { X, UserCheck, Search, MessageSquare, Monitor, Loader2, User, Hash, FileText, AlertCircle, Building2, CheckCircle, Smartphone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/client';
-
+import { Dialog, DialogContent } from '../ui/dialog';
+import { cn } from '../../lib/utils';
 
 interface MachineReturnToCustomerModalProps {
     isOpen: boolean;
@@ -27,6 +24,25 @@ export const MachineReturnToCustomerModal: React.FC<MachineReturnToCustomerModal
     const [showClientList, setShowClientList] = useState(false);
     const [selectedClient, setSelectedClient] = useState<any>(null);
     const [notes, setNotes] = useState('');
+
+    // ESC key handler
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [onClose]);
+
+    // Reset state on open
+    useEffect(() => {
+        if (isOpen) {
+            setClientSearch('');
+            setSelectedClient(null);
+            setNotes('');
+            setShowClientList(false);
+        }
+    }, [isOpen]);
 
     // Live search for customers using server-side filtering
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -60,126 +76,186 @@ export const MachineReturnToCustomerModal: React.FC<MachineReturnToCustomerModal
         onSubmit(selectedClient.bkcode, notes);
     };
 
-    if (!isOpen) return null;
-
     return (
-        <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200"
-                    dir="rtl"
-                >
-                    <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
-                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                            <UserCheck className="text-emerald-600" size={24} />
-                            إرجاع ماكينة للعميل
-                        </h2>
-                        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-                            <X size={24} />
-                        </button>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] h-auto overflow-hidden sm:max-w-lg rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
+
+                {/* Header Section with Emerald/Teal Gradient */}
+                <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-emerald-600 to-teal-700 relative overflow-hidden">
+                    {/* Visual Decor */}
+                    <div className="absolute top-0 left-0 w-full h-full opacity-15 pointer-events-none">
+                        <div className="absolute -top-1/2 -left-1/4 w-[150%] h-[150%] bg-white rounded-full blur-[100px] rotate-12"></div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scroll">
-                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                                <div className="flex items-center gap-2 text-slate-400 mb-2">
-                                    <Monitor size={16} />
-                                    <span className="text-xs font-bold uppercase tracking-wider">الماكينة المستلمة</span>
-                                </div>
-                                <p className="font-mono font-bold text-lg text-slate-800">{selectedMachine?.serialNumber}</p>
-                                <p className="text-sm text-slate-500">{selectedMachine?.model} ({selectedMachine?.status === 'CLIENT_REPAIR' ? 'صيانة عملاء' : 'مخزن'})</p>
+                    <div className="modal-header-content relative z-10 text-right">
+                        <div className="flex items-center gap-5">
+                            <div className="p-4 bg-white/15 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl text-white">
+                                <UserCheck size={28} strokeWidth={3} />
                             </div>
-
-                            <div className="space-y-2 relative">
-                                <Label>البحث عن العميل (المستلم)</Label>
-                                <div className="relative group">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
-                                    <Input
-                                        placeholder="اسم العميل أو الكود..."
-                                        value={clientSearch}
-                                        onChange={(e) => {
-                                            setClientSearch(e.target.value);
-                                            setSelectedClient(null);
-                                            setShowClientList(true);
-                                        }}
-                                        onFocus={() => setShowClientList(true)}
-                                        className="pl-10 rounded-xl"
-                                    />
+                            <div className="text-right">
+                                <h2 className="modal-title text-2xl font-black text-white leading-tight tracking-tight">إرجاع الماكينة للعميل</h2>
+                                <div className="flex items-center gap-2 mt-1 justify-end">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></div>
+                                    <p className="text-emerald-50 font-bold text-[10px] uppercase tracking-widest opacity-90">إعادة تسليم لعهدة العميل</p>
                                 </div>
-                                <AnimatePresence>
-                                    {showClientList && clientSearch.length > 0 && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: -10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto"
-                                        >
-                                            {isSearching ? (
-                                                <div className="p-4 text-center text-slate-500 flex items-center justify-center gap-2">
-                                                    <Loader2 size={16} className="animate-spin" />
-                                                    جاري البحث...
-                                                </div>
-                                            ) : filteredClients.length === 0 ? (
-                                                <div className="p-4 text-center text-slate-500">
-                                                    لا توجد نتائج
-                                                </div>
-                                            ) : (
-                                                filteredClients.map(c => (
-                                                    <button
-                                                        key={c.bkcode}
-                                                        type="button"
-                                                        onClick={() => handleSelectClient(c)}
-                                                        className="w-full text-right p-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
-                                                    >
-                                                        <div className="font-bold text-slate-800">{c.client_name}</div>
-                                                        <div className="text-xs text-slate-500">{c.bkcode}</div>
-                                                    </button>
-                                                ))
-                                            )}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
                             </div>
+                        </div>
+                    </div>
+                    <button type="button" className="modal-close bg-white/10 hover:bg-white/20 text-white transition-all p-2 rounded-xl backdrop-blur-sm" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
 
-                            <div className="space-y-2">
-                                <Label className="flex items-center gap-2">
-                                    <MessageSquare size={16} className="text-slate-400" />
-                                    ملاحظات الإصلاح / التسليم
-                                </Label>
-                                <textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    className="w-full border border-slate-200 rounded-xl p-3 h-24 focus:ring-emerald-500/20 outline-none resize-none"
-                                    placeholder="..."
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden bg-slate-50/30">
+                    <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8 custom-scroll">
+
+                        {/* Machine Context Display */}
+                        <div className="relative group">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-[2.2rem] blur opacity-15 group-hover:opacity-25 transition duration-500"></div>
+                            <div className="relative bg-white border border-slate-100/50 rounded-[2rem] p-6 flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center border-2 border-white shadow-inner shrink-0 leading-none">
+                                        <Monitor size={24} strokeWidth={2.5} />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">الماكينة المستلمة</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xl font-black text-slate-900 font-mono tracking-wider">{selectedMachine?.serialNumber}</span>
+                                            <span className="px-2.5 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg border border-blue-100 uppercase tracking-widest leading-none mt-0.5">Ready to Return</span>
+                                        </div>
+                                        <p className="text-[11px] font-bold text-slate-500 mt-2">
+                                            {selectedMachine?.model} • {selectedMachine?.manufacturer}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Customer Live Search Interface */}
+                        <div className="space-y-4 relative group/search">
+                            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 leading-none">
+                                <User size={14} className="text-emerald-500" />
+                                البحث عن العميل المستلم (كود أو اسم)
+                            </label>
+                            <div className="relative">
+                                <div className="absolute top-1/2 -translate-y-1/2 right-6 p-2 bg-emerald-50 text-emerald-600 rounded-xl group-focus-within/search:bg-emerald-600 group-focus-within/search:text-white transition-all duration-300 pointer-events-none z-10">
+                                    <Search size={22} strokeWidth={3} />
+                                </div>
+                                <input
+                                    placeholder="ابدأ بكتابة اسم العميل أو الكود الخاص به..."
+                                    value={clientSearch}
+                                    onChange={(e) => {
+                                        setClientSearch(e.target.value);
+                                        setSelectedClient(null);
+                                        setShowClientList(true);
+                                    }}
+                                    onFocus={() => setShowClientList(true)}
+                                    className="smart-input h-20 pr-18 pl-8 text-sm font-black bg-white border-2 border-slate-100 focus:border-emerald-500 shadow-sm transition-all"
                                 />
                             </div>
+
+                            {/* Dropdown Results */}
+                            {showClientList && clientSearch.length > 0 && (
+                                <div className="absolute z-[110] w-full bg-white border-2 border-slate-100 rounded-[2rem] shadow-2xl mt-3 max-h-64 overflow-y-auto custom-scroll animate-in fade-in slide-in-from-top-4 duration-500 text-right">
+                                    {isSearching ? (
+                                        <div className="p-8 text-center text-slate-500 flex flex-col items-center justify-center gap-4">
+                                            <Loader2 size={32} className="animate-spin text-emerald-500" />
+                                            <span className="font-black text-xs uppercase tracking-widest text-slate-400">جاري مسح قاعدة البيانات...</span>
+                                        </div>
+                                    ) : filteredClients.length === 0 ? (
+                                        <div className="p-8 text-center text-slate-400 flex flex-col items-center gap-4">
+                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100">
+                                                <AlertCircle size={32} className="opacity-20" />
+                                            </div>
+                                            <span className="font-black text-xs uppercase tracking-widest">لم يتم العثور على العميل</span>
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 space-y-2">
+                                            {filteredClients.map(c => (
+                                                <button
+                                                    key={c.bkcode}
+                                                    type="button"
+                                                    onClick={() => handleSelectClient(c)}
+                                                    className="w-full group flex items-center justify-between p-5 bg-white hover:bg-emerald-50/50 rounded-2xl transition-all border-2 border-transparent hover:border-emerald-100 text-right active:scale-[0.98]"
+                                                >
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="font-black text-slate-900 text-base group-hover:text-emerald-700 transition-colors uppercase">{c.client_name}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <Building2 size={12} className="text-slate-300" />
+                                                            <span className="text-[10px] font-bold text-slate-400 tracking-tight truncate max-w-[200px]">{c.client_address || 'العنوان غير مسجل'}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">{c.bkcode}</span>
+                                                        </div>
+                                                        <Hash size={18} className="text-slate-200 group-hover:text-emerald-300 transition-colors" opacity={0.5} />
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
-                        <div className="p-6 border-t bg-slate-50/50 shrink-0 flex gap-3">
-                            <Button
-                                type="submit"
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-6 font-bold shadow-lg shadow-emerald-500/20 transition-all font-bold"
-                                disabled={isLoading || !selectedClient}
-                            >
-                                {isLoading ? 'جاري الحفظ...' : 'تأكيد إرجاع الماكينة'}
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onClose}
-                                className="rounded-xl py-6 border-slate-200 hover:bg-slate-50"
-                            >
-                                إلغاء
-                            </Button>
+                        {/* Notes Section with visual feedback */}
+                        <div className="space-y-4">
+                            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 leading-none">
+                                <FileText size={14} className="text-teal-500" />
+                                ملاحظات التسليم / الحالة النهائية
+                            </label>
+                            <textarea
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                className="smart-input min-h-[140px] p-6 text-sm font-bold bg-white border-2 border-slate-100 focus:border-emerald-500 shadow-inner resize-none leading-relaxed transition-all"
+                                placeholder="صف حالة الماكينة عند التسليم، هل تم تسليمها والتشييك عليها أمام العميل؟"
+                            />
+                            <div className="flex gap-4 p-5 bg-blue-50/50 rounded-3xl border border-blue-100/30 animate-in fade-in slide-in-from-top-4 duration-500">
+                                <Smartphone className="text-blue-500 shrink-0" size={20} strokeWidth={2.5} />
+                                <p className="text-[11px] font-bold text-blue-700 leading-relaxed">
+                                    <span className="block font-black mb-1">معلومة لوجستية:</span>
+                                    بمجرد الحفظ، سيتم نقل ملكية الماكينة في النظام من "المخزن" إلى "عهدة العميل" المختار فوراً.
+                                </p>
+                            </div>
                         </div>
-                    </form>
-                    <div className="hidden">
-                        {/* Hidden triggers to keep imports usage if any */}
                     </div>
-                </motion.div>
-            </div>
-        </AnimatePresence>
+
+                    {/* Footer Actions */}
+                    <div className="modal-footer p-8 bg-white border-t border-slate-100 shrink-0 gap-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="smart-btn-secondary flex-1 h-16 border-2 border-slate-100 text-slate-500 px-8 font-black text-sm"
+                        >
+                            تراجع عن العملية
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isLoading || !selectedClient}
+                            className={cn(
+                                "smart-btn-primary flex-[2] h-16 font-black text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] disabled:grayscale disabled:opacity-40",
+                                selectedClient
+                                    ? "bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 shadow-emerald-100 text-white"
+                                    : "bg-slate-200 text-slate-400 border-0 shadow-none"
+                            )}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    جاري المعالجة...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle size={24} strokeWidth={2.5} />
+                                    تأكيد التسليم للعميل
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 };
+

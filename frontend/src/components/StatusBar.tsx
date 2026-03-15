@@ -20,7 +20,7 @@ export default function StatusBar() {
     const checkHealth = async () => {
         try {
             // Use lightweight /health to avoid rate-limit bucket with /api
-            const response = await fetch('http://localhost:5000/health', {
+            const response = await fetch(`http://${window.location.hostname}:5002/health`, {
                 signal: AbortSignal.timeout(5000)
             });
 

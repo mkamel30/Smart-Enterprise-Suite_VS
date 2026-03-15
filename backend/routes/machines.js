@@ -6,6 +6,8 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validation');
 const { generateTemplate, parseExcelFile, exportToExcel } = require('../utils/excel');
+const { success, error, paginated } = require('../utils/apiResponse');
+const { ROLES } = require('../utils/constants');
 const { logAction } = require('../utils/logger');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 
@@ -30,9 +32,9 @@ router.get('/machines/template', authenticateToken, async (req, res) => {
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=customer_machines_import.xlsx');
         res.send(buffer);
-    } catch (error) {
-        console.error('Failed to generate Machines template:', error);
-        res.status(500).json({ error: 'فشل في إنشاء القالب' });
+    } catch (err) {
+        console.error('Failed to generate Machines template:', err);
+        return error(res, 'فشل في إنشاء القالب');
     }
 });
 
@@ -188,29 +190,28 @@ router.post('/machines/import', authenticateToken, upload.single('file'), async 
             branchId
         });
 
-        res.json({
-            success: true,
+        return success(res, {
             created: result.successCount,
             updated: result.updatedCount,
             skipped: skippedCount,
             errors: result.errors.length > 0 ? result.errors : undefined
         });
 
-    } catch (error) {
-        console.error('Failed to import Machines:', error);
-        res.status(500).json({ error: 'فشل في استيراد الماكينات' });
+    } catch (err) {
+        console.error('Failed to import Machines:', err);
+        return error(res, 'فشل في استيراد الماكينات');
     }
 });
 
 // GET export Machines to Excel
 router.get('/machines/export', authenticateToken, async (req, res) => {
     try {
-        const machines = await db.posMachine.findMany(ensureBranchWhere({
+        const machines = await db.posMachine.findMany({
             include: {
                 customer: true
             },
             orderBy: { serialNumber: 'asc' }
-        }, req));
+        });
 
         const data = machines.map(machine => ({
             serialNumber: machine.serialNumber,
@@ -236,31 +237,40 @@ router.get('/machines/export', authenticateToken, async (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename=machines-export.xlsx');
         res.send(buffer);
 
-    } catch (error) {
-        console.error('Failed to export Machines:', error);
-        res.status(500).json({ error: 'فشل في تصدير الماكينات' });
+    } catch (err) {
+        console.error('Failed to export Machines:', err);
+        return error(res, 'فشل في تصدير الماكينات');
     }
 });
 
-// GET all Machines with customer info
+// Pagination helpers removed as they are now in apiResponse
+
+// GET all Machines with customer info - PAGINATED
 router.get('/machines', authenticateToken, async (req, res) => {
     try {
-        const machines = await db.posMachine.findMany(ensureBranchWhere({
-            include: {
-                customer: {
-                    select: {
-                        bkcode: true,
-                        client_name: true
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = parseInt(req.query.offset) || 0;
+        const [machines, total] = await Promise.all([
+            db.posMachine.findMany({
+                include: {
+                    customer: {
+                        select: {
+                            bkcode: true,
+                            client_name: true
+                        }
                     }
-                }
-            },
-            orderBy: { serialNumber: 'asc' }
-        }, req));
+                },
+                take: limit,
+                skip: offset,
+                orderBy: { serialNumber: 'asc' }
+            }),
+            db.posMachine.count({})
+        ]);
 
-        res.json(machines);
-    } catch (error) {
-        console.error('Failed to fetch Machines:', error);
-        res.status(500).json({ error: 'فشل في جلب الماكينات' });
+        return paginated(res, machines, total, limit, offset);
+    } catch (err) {
+        console.error('Failed to fetch Machines:', err);
+        return error(res, 'فشل في جلب الماكينات');
     }
 });
 
@@ -271,7 +281,7 @@ router.post('/machines/apply-parameters', authenticateToken, validateRequest(app
         const machineParams = await db.machineParameter.findMany();
 
         // Find machines missing model or manufacturer
-        const machinesToUpdate = await db.posMachine.findMany(ensureBranchWhere({
+        const machinesToUpdate = await db.posMachine.findMany({
             where: {
                 OR: [
                     { model: null },
@@ -280,7 +290,7 @@ router.post('/machines/apply-parameters', authenticateToken, validateRequest(app
                     { manufacturer: '' }
                 ]
             }
-        }, req));
+        });
 
         let updatedCount = 0;
 
@@ -308,15 +318,14 @@ router.post('/machines/apply-parameters', authenticateToken, validateRequest(app
             }
         });
 
-        res.json({
-            success: true,
+        return success(res, {
             checked: machinesToUpdate.length,
             updated: updatedCount
         });
 
-    } catch (error) {
-        console.error('Failed to apply parameters:', error);
-        res.status(500).json({ error: 'فشل في تطبيق الإعدادات' });
+    } catch (err) {
+        console.error('Failed to apply parameters:', err);
+        return error(res, 'فشل في تطبيق الإعدادات');
     }
 });
 

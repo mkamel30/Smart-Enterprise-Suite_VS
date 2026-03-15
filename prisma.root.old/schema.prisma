@@ -1,0 +1,756 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String            @id @default(cuid())
+  uid                String?
+  email              String?
+  displayName        String?
+  role               Role?             @default(CS_AGENT)
+  canDoMaintenance   Boolean           @default(false)
+  password           String?
+  theme              String?           @default("light")
+  fontFamily         String?           @default("sans-serif")
+  fontSize           String?           @default("medium")
+  highlightEffect    Boolean           @default(true)
+  notificationSound  Boolean           @default(true)
+  mobilePush         Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  branchId           String?
+  passwordChangedAt  DateTime          @default(now())
+  mustChangePassword Boolean           @default(false)
+  lastLoginAt        DateTime?
+  loginCount         Int               @default(0)
+  mfaEnabled         Boolean           @default(false)
+  mfaSecret          String?
+  mfaRecoveryCodes   String?
+  mfaSetupPending    Boolean           @default(false)
+  mfaTempSecret      String?
+  isActive           Boolean           @default(true)
+  accountLockout     AccountLockout?
+  passwordHistory    PasswordHistory[]
+  refreshTokens      RefreshToken[]
+  branch             Branch?           @relation(fields: [branchId], references: [id])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Branch {
+  id                                              String                @id @default(cuid())
+  code                                            String                @unique
+  name                                            String
+  address                                         String?
+  type                                            BranchType            @default(BRANCH)
+  isActive                                        Boolean               @default(true)
+  parentBranchId                                  String?
+  maintenanceCenterId                             String?
+  createdAt                                       DateTime              @default(now())
+  Branch_Branch_maintenanceCenterIdToBranch       Branch?               @relation("Branch_maintenanceCenterIdToBranch", fields: [maintenanceCenterId], references: [id])
+  other_Branch_Branch_maintenanceCenterIdToBranch Branch[]              @relation("Branch_maintenanceCenterIdToBranch")
+  parentBranch                                    Branch?               @relation("BranchHierarchy", fields: [parentBranchId], references: [id])
+  childBranches                                   Branch[]              @relation("BranchHierarchy")
+  customers                                       Customer[]
+  Installment                                     Installment[]
+  inventory                                       InventoryItem[]
+  MachineMovementLog                              MachineMovementLog[]
+  MachineSale                                     MachineSale[]
+  MaintenanceApproval                             MaintenanceApproval[]
+  requests                                        MaintenanceRequest[]
+  Notification                                    Notification[]
+  Payment                                         Payment[]
+  PosMachine                                      PosMachine[]
+  RepairVoucher                                   RepairVoucher[]
+  SimCard                                         SimCard[]
+  SimMovementLog                                  SimMovementLog[]
+  StockMovement                                   StockMovement[]
+  SystemLog                                       SystemLog[]
+  sentTransfers                                   TransferOrder[]       @relation("SentTransfers")
+  receivedTransfers                               TransferOrder[]       @relation("ReceivedTransfers")
+  UsedPartLog                                     UsedPartLog[]
+  users                                           User[]
+  WarehouseMachine                                WarehouseMachine[]
+  WarehouseSim                                    WarehouseSim[]
+  adminStoreAssets                                AdminStoreAsset[]
+  adminStoreStocks                                AdminStoreStock[]
+}
+
+model Customer {
+  id              String               @id @default(cuid())
+  bkcode          String
+  client_name     String
+  supply_office   String?
+  operating_date  DateTime?
+  address         String?
+  contact_person  String?
+  scanned_id_path String?
+  national_id     String?
+  dept            String?
+  telephone_1     String?
+  telephone_2     String?
+  has_gates       Boolean?             @default(false)
+  bk_type         String?
+  notes           String?
+  papers_date     DateTime?
+  isSpecial       Boolean?             @default(false)
+  clienttype      String?
+  branchId        String?
+  branch          Branch?              @relation(fields: [branchId], references: [id])
+  MachineSale     MachineSale[]
+  requests        MaintenanceRequest[]
+  Payment         Payment[]
+  PosMachine      PosMachine[]
+  SimCard         SimCard[]
+
+  @@unique([bkcode, branchId])
+}
+
+model MachineParameter {
+  id           String @id @default(cuid())
+  prefix       String @unique
+  model        String
+  manufacturer String
+}
+
+model SparePart {
+  id               String          @id @default(cuid())
+  partNumber       String?
+  name             String
+  description      String?
+  compatibleModels String?
+  defaultCost      Float           @default(0)
+  isConsumable     Boolean?        @default(false)
+  allowsMultiple   Boolean?        @default(false)
+  inventoryItems   InventoryItem[]
+}
+
+model InventoryItem {
+  id       String    @id @default(cuid())
+  partId   String
+  quantity Int       @default(0)
+  minLevel Int       @default(0)
+  location String?
+  branchId String?
+  branch   Branch?   @relation(fields: [branchId], references: [id])
+  part     SparePart @relation(fields: [partId], references: [id])
+}
+
+model MaintenanceRequest {
+  id                  String               @id @default(cuid())
+  customerId          String
+  posMachineId        String?
+  customerName        String?
+  customerBkcode      String?
+  machineModel        String?
+  machineManufacturer String?
+  serialNumber        String?
+  status              RequestStatus        @default(Open)
+  branchId            String?
+  servicedByBranchId  String?
+  technicianId        String?
+  technician          String?
+  notes               String?
+  complaint           String?
+  actionTaken         String?
+  createdAt           DateTime             @default(now())
+  closingUserId       String?
+  closingUserName     String?
+  closingTimestamp    DateTime?
+  usedParts           String?
+  receiptNumber       String?
+  totalCost           Float?               @default(0)
+  approval            MaintenanceApproval?
+  branch              Branch?              @relation(fields: [branchId], references: [id])
+  customer            Customer             @relation(fields: [customerId], references: [id])
+  posMachine          PosMachine?          @relation(fields: [posMachineId], references: [id])
+  vouchers            RepairVoucher[]
+}
+
+model TransferOrder {
+  id               String              @id @default(cuid())
+  orderNumber      String              @unique
+  waybillNumber    String?
+  branchId         String?
+  fromBranchId     String
+  toBranchId       String
+  status           TransferStatus      @default(PENDING)
+  type             String
+  driverName       String?
+  driverPhone      String?
+  notes            String?
+  createdBy        String?
+  createdByName    String?
+  createdByUserId  String?
+  receivedByUserId String?
+  receivedAt       DateTime?
+  receivedBy       String?
+  receivedByName   String?
+  rejectionReason  String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  fromBranch       Branch              @relation("SentTransfers", fields: [fromBranchId], references: [id])
+  toBranch         Branch              @relation("ReceivedTransfers", fields: [toBranchId], references: [id])
+  items            TransferOrderItem[]
+}
+
+model TransferOrderItem {
+  id              String        @id @default(cuid())
+  transferOrderId String
+  serialNumber    String?
+  type            String?
+  model           String?
+  manufacturer    String?
+  isReceived      Boolean       @default(false)
+  receivedAt      DateTime?
+  notes           String?
+  transferOrder   TransferOrder @relation(fields: [transferOrderId], references: [id], onDelete: Cascade)
+}
+
+model PriceChangeLog {
+  id        String   @id @default(cuid())
+  partId    String
+  oldCost   Float
+  newCost   Float
+  changedAt DateTime @default(now())
+  userId    String?
+}
+
+model UsedPartLog {
+  id             String   @id @default(cuid())
+  requestId      String
+  customerId     String
+  customerName   String?
+  customerBkcode String?
+  posMachineId   String?
+  technician     String?
+  closedByUserId String?
+  closedAt       DateTime @default(now())
+  parts          String
+  receiptNumber  String?
+  branchId       String?
+  Branch         Branch?  @relation(fields: [branchId], references: [id])
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  partId      String
+  type        String
+  quantity    Int
+  reason      String?
+  requestId   String?
+  userId      String?
+  performedBy String?
+  branchId    String?
+  createdAt   DateTime @default(now())
+  Branch      Branch?  @relation(fields: [branchId], references: [id])
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  customerId    String?
+  customerName  String?
+  requestId     String?
+  amount        Float
+  type          String?
+  reason        String?
+  paymentPlace  String?
+  paymentMethod String?
+  receiptNumber String?
+  notes         String?
+  userId        String?
+  userName      String?
+  branchId      String?
+  createdAt     DateTime  @default(now())
+  Branch        Branch?   @relation(fields: [branchId], references: [id])
+  Customer      Customer? @relation(fields: [customerId], references: [id])
+}
+
+model MachineMovementLog {
+  id           String   @id @default(cuid())
+  machineId    String?
+  serialNumber String
+  action       String
+  details      String?
+  performedBy  String?
+  branchId     String?
+  createdAt    DateTime @default(now())
+  Branch       Branch?  @relation(fields: [branchId], references: [id])
+}
+
+model SystemLog {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  action      String
+  details     String?
+  performedBy String?
+  userId      String?
+  branchId    String?
+  createdAt   DateTime @default(now())
+  Branch      Branch?  @relation(fields: [branchId], references: [id])
+}
+
+model MaintenanceApproval {
+  id          String             @id @default(cuid())
+  requestId   String             @unique
+  cost        Float
+  parts       String
+  status      ApprovalStatus     @default(PENDING)
+  notes       String?
+  branchId    String?
+  createdAt   DateTime           @default(now())
+  respondedAt DateTime?
+  respondedBy String?
+  Branch      Branch?            @relation(fields: [branchId], references: [id])
+  request     MaintenanceRequest @relation(fields: [requestId], references: [id])
+}
+
+model RepairVoucher {
+  id        String             @id @default(cuid())
+  code      String             @unique
+  requestId String
+  type      String
+  parts     String
+  totalCost Float
+  branchId  String?
+  createdAt DateTime           @default(now())
+  createdBy String?
+  Branch    Branch?            @relation(fields: [branchId], references: [id])
+  request   MaintenanceRequest @relation(fields: [requestId], references: [id])
+}
+
+model PasswordHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AccountLockout {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  failedAttempts    Int       @default(0)
+  lastFailedAttempt DateTime?
+  lockedUntil       DateTime?
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([lockedUntil])
+}
+
+model BranchDebt {
+  id               String    @id
+  type             String
+  referenceId      String
+  machineSerial    String?
+  customerId       String?
+  customerName     String?
+  amount           Float
+  paidAmount       Float     @default(0)
+  remainingAmount  Float
+  partsDetails     String?
+  status           DebtStatus    @default(PENDING)
+  creditorBranchId String
+  debtorBranchId   String
+  receiptNumber    String?
+  paymentPlace     String?
+  paidAt           DateTime?
+  paidBy           String?
+  paidByUserId     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime
+
+  @@index([creditorBranchId, status])
+  @@index([debtorBranchId, status])
+  @@index([type, referenceId])
+}
+
+model ClientType {
+  id          String   @id
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Installment {
+  id            String      @id
+  saleId        String
+  dueDate       DateTime
+  amount        Float
+  isPaid        Boolean     @default(false)
+  paidAt        DateTime?
+  description   String?
+  paidAmount    Float?
+  paymentPlace  String?
+  receiptNumber String?
+  branchId      String?
+  Branch        Branch?     @relation(fields: [branchId], references: [id])
+  MachineSale   MachineSale @relation(fields: [saleId], references: [id])
+}
+
+model MachineSale {
+  id           String        @id
+  serialNumber String
+  customerId   String
+  saleDate     DateTime      @default(now())
+  type         String
+  totalPrice   Float
+  paidAmount   Float
+  status       String
+  notes        String?
+  branchId     String?
+  Installment  Installment[]
+  Branch       Branch?       @relation(fields: [branchId], references: [id])
+  Customer     Customer      @relation(fields: [customerId], references: [id])
+}
+
+model MaintenanceApprovalRequest {
+  id              String            @id
+  assignmentId    String            @unique
+  machineSerial   String
+  customerId      String?
+  customerName    String
+  proposedParts   String
+  proposedTotal   Float
+  diagnosis       String?
+  notes           String?
+  status          ApprovalStatus    @default(PENDING)
+  rejectionReason String?
+  respondedBy     String?
+  respondedById   String?
+  respondedAt     DateTime?
+  centerBranchId  String
+  originBranchId  String
+  createdAt       DateTime          @default(now())
+  assignment      ServiceAssignment @relation(fields: [assignmentId], references: [id])
+
+  @@index([centerBranchId, status])
+  @@index([originBranchId, status])
+}
+
+model Notification {
+  id        String   @id
+  userId    String?
+  branchId  String?
+  link      String?
+  type      String
+  title     String
+  message   String
+  data      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  Branch    Branch?  @relation(fields: [branchId], references: [id])
+}
+
+model PosMachine {
+  id           String               @id
+  serialNumber String               @unique
+  posId        String?
+  model        String?
+  manufacturer String?
+  customerId   String?
+  isMain       Boolean?             @default(false)
+  branchId     String?
+  requests     MaintenanceRequest[]
+  Branch       Branch?              @relation(fields: [branchId], references: [id])
+  Customer     Customer?            @relation(fields: [customerId], references: [id])
+}
+
+model RolePermission {
+  id             String   @id
+  role           String
+  permissionType String
+  permissionKey  String
+  isAllowed      Boolean  @default(true)
+  updatedAt      DateTime
+  updatedBy      String?
+
+  @@unique([role, permissionType, permissionKey])
+}
+
+model ServiceAssignment {
+  id                   String                      @id
+  machineId            String
+  serialNumber         String
+  technicianId         String
+  technicianName       String
+  status               MachineStatus               @default(UNDER_MAINTENANCE)
+  proposedParts        String?
+  proposedTotal        Float                       @default(0)
+  usedParts            String?
+  totalCost            Float                       @default(0)
+  needsApproval        Boolean                     @default(false)
+  approvedAt           DateTime?
+  rejectedAt           DateTime?
+  rejectionReason      String?
+  actionTaken          String?
+  resolution           String?
+  assignedAt           DateTime                    @default(now())
+  startedAt            DateTime?
+  completedAt          DateTime?
+  customerId           String?
+  customerName         String?
+  customerBkcode       String?
+  requestId            String?
+  branchId             String?
+  centerBranchId       String?
+  originBranchId       String
+  WarehouseMachine     WarehouseMachine            @relation(fields: [machineId], references: [id])
+  ApprovalRequest      MaintenanceApprovalRequest?
+  ServiceAssignmentLog ServiceAssignmentLog[]
+
+  @@index([centerBranchId, status])
+  @@index([machineId, status])
+  @@index([originBranchId, status])
+}
+
+model ServiceAssignmentLog {
+  id                String            @id
+  assignmentId      String
+  action            String
+  details           String?
+  performedBy       String
+  performedById     String?
+  performedAt       DateTime          @default(now())
+  ServiceAssignment ServiceAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId, performedAt])
+}
+
+model SimCard {
+  id           String    @id
+  serialNumber String    @unique
+  type         String?
+  networkType  String?
+  customerId   String?
+  branchId     String?
+  Branch       Branch?   @relation(fields: [branchId], references: [id])
+  Customer     Customer? @relation(fields: [customerId], references: [id])
+}
+
+model SimMovementLog {
+  id           String   @id
+  simId        String
+  serialNumber String
+  action       String
+  details      String?
+  performedBy  String?
+  branchId     String?
+  createdAt    DateTime @default(now())
+  Branch       Branch?  @relation(fields: [branchId], references: [id])
+}
+
+model WarehouseMachine {
+  id                    String              @id
+  serialNumber          String              @unique
+  model                 String?
+  manufacturer          String?
+  status                MachineStatus       @default(NEW)
+  resolution            String?
+  notes                 String?
+  complaint             String?
+  importDate            DateTime            @default(now())
+  updatedAt             DateTime
+  originalOwnerId       String?
+  branchId              String?
+  requestId             String?
+  customerId            String?
+  customerName          String?
+  customerBkcode        String?
+  readyForPickup        Boolean             @default(false)
+  currentAssignmentId   String?
+  currentTechnicianId   String?
+  currentTechnicianName String?
+  originBranchId        String?
+  proposedParts         String?
+  proposedRepairNotes   String?
+  proposedTotalCost     Float?              @default(0)
+  repairNotes           String?
+  totalCost             Float?              @default(0)
+  usedParts             String?
+  ServiceAssignment     ServiceAssignment[]
+  Branch                Branch?             @relation(fields: [branchId], references: [id])
+}
+
+model WarehouseSim {
+  id           String   @id
+  serialNumber String   @unique
+  type         String?
+  networkType  String?
+  status       String   @default("NEW")
+  notes        String?
+  importDate   DateTime @default(now())
+  updatedAt    DateTime
+  branchId     String?
+  Branch       Branch?  @relation(fields: [branchId], references: [id])
+}
+
+model AdminStoreItemType {
+  id           String             @id @default(cuid())
+  code         String             @unique
+  name         String
+  category     String?
+  trackingMode String?
+  defaultUnit  String?
+  description  String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt @default(now())
+  assets       AdminStoreAsset[]
+  stocks       AdminStoreStock[]
+  cartons      AdminStoreCarton[]
+}
+
+model AdminStoreAsset {
+  id             String               @id @default(cuid())
+  serialNumber   String               @unique
+  itemTypeCode   String
+  model          String?
+  manufacturer   String?
+  simProvider    String?
+  simNetworkType String?
+  cartonCode     String?
+  notes          String?
+  createdBy      String?
+  status         String               @default("IN_ADMIN_STORE")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt @default(now())
+  branchId       String?
+  itemType       AdminStoreItemType   @relation(fields: [itemTypeCode], references: [code])
+  carton         AdminStoreCarton?    @relation(fields: [cartonCode], references: [cartonCode])
+  branch         Branch?              @relation(fields: [branchId], references: [id])
+  movements      AdminStoreMovement[]
+}
+
+model AdminStoreMovement {
+  id           String          @id @default(cuid())
+  assetId      String
+  type         String
+  fromBranchId String?
+  toBranchId   String?
+  fromStatus   String?
+  toStatus     String?
+  notes        String?
+  performedBy  String?
+  createdAt    DateTime        @default(now())
+  asset        AdminStoreAsset @relation(fields: [assetId], references: [id])
+}
+
+model AdminStoreStock {
+  id           String             @id @default(cuid())
+  itemTypeCode String
+  branchId     String?
+  quantity     Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt @default(now())
+  itemType     AdminStoreItemType @relation(fields: [itemTypeCode], references: [code])
+  branch       Branch?            @relation(fields: [branchId], references: [id])
+
+  @@unique([itemTypeCode, branchId])
+}
+
+model AdminStoreStockMovement {
+  id           String   @id @default(cuid())
+  itemTypeCode String
+  type         String
+  quantity     Int
+  fromBranchId String?
+  toBranchId   String?
+  notes        String?
+  performedBy  String?
+  createdAt    DateTime @default(now())
+}
+
+model AdminStoreCarton {
+  id                 String             @id @default(cuid())
+  cartonCode         String             @unique
+  itemTypeCode       String
+  machinesCount      Int
+  isSerialContinuous Boolean
+  firstSerialNumber  String?
+  lastSerialNumber   String?
+  notes              String?
+  createdBy          String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt @default(now())
+  itemType           AdminStoreItemType @relation(fields: [itemTypeCode], references: [code])
+  assets             AdminStoreAsset[]
+}
+
+enum Role {
+  SUPER_ADMIN
+  MANAGEMENT
+  ADMIN_AFFAIRS
+  BRANCH_MANAGER
+  CS_SUPERVISOR
+  CS_AGENT
+  BRANCH_TECH
+  TECHNICIAN
+}
+
+enum BranchType {
+  BRANCH
+  MAINTENANCE_CENTER
+  ADMIN_AFFAIRS
+}
+
+enum RequestStatus {
+  Open
+  InProgress @map("In Progress")
+  Pending
+  Done
+  Closed
+  Cancelled
+}
+
+enum TransferStatus {
+  PENDING
+  IN_TRANSIT
+  COMPLETED
+  RECEIVED
+  CANCELLED
+  REJECTED
+}
+
+enum DebtStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum MachineStatus {
+  NEW
+  STANDBY
+  ASSIGNED
+  UNDER_MAINTENANCE @map("UNDER_MAINTENANCE")
+  REPAIRED
+  READY_FOR_PICKUP @map("READY_FOR_PICKUP")
+  TOTAL_LOSS @map("TOTAL_LOSS")
+  SCRAPPED
+  SOLD
+  DISPOSED
+  IN_TRANSIT @map("IN_TRANSIT")
+  LOST
+  STOLEN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

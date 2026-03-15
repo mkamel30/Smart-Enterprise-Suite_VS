@@ -24,7 +24,7 @@ export function SecurityTab() {
     const fetchMfaStatus = async () => {
         try {
             const response = await api.getMFAStatus();
-            setMfaStatus(response.data);
+            setMfaStatus(response?.data);
         } catch (err) {
             console.error('Failed to fetch MFA status', err);
         }
@@ -35,7 +35,7 @@ export function SecurityTab() {
         setError('');
         try {
             const response = await api.setupMFA();
-            setMfaSetupData(response.data);
+            setMfaSetupData(response?.data);
         } catch (err: any) {
             setError(err.message || 'فشل تهيئة المصادقة الثنائية');
         } finally {
@@ -52,8 +52,8 @@ export function SecurityTab() {
             setMfaStatus({ enabled: true, setupPending: false });
             setMfaSetupData(null);
             setMfaToken('');
-            if (response.data.backupCodes) {
-                setRecoveryCodes(response.data.backupCodes);
+            if (response?.data.backupCodes) {
+                setRecoveryCodes(response?.data.backupCodes);
             }
             setMessage('تم تفعيل المصادقة الثنائية بنجاح');
         } catch (err: any) {
@@ -190,10 +190,10 @@ export function SecurityTab() {
 
                     <button
                         type="submit"
-                        disabled={changePasswordMutation.isLoading}
+                        disabled={changePasswordMutation.isPending}
                         className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black text-lg hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2"
                     >
-                        {changePasswordMutation.isLoading ? <RefreshCw className="animate-spin" /> : null}
+                        {changePasswordMutation.isPending ? <RefreshCw className="animate-spin" /> : null}
                         تحديث كلمة المرور
                     </button>
                 </form>

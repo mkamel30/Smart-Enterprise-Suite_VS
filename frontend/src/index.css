@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/modal-system.css";
 
 @theme {
   /* Smart Enterprise Suite Brand Colors */
@@ -16,38 +17,25 @@
   --color-brand-orange: #E86B3A;
   --font-sans: 'Inter', var(--font-arabic);
   --font-inter: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
 }
 
 :root {
   /* --- SMART ENTERPRISE SUITE BRAND COLORS --- */
-  /* Primary Navy Blue (from logo) */
-  --primary: 225 86% 25%;        /* #0A2472 */
+  /* Primary Navy Blue (from logo) #0A2472 */
+  --primary: 225 86% 25%;
   --primary-foreground: 0 0% 100%;
 
-  /* Brand Accent Colors (PANTONE Palette) */
-  --brand-cyan: #6CE4F0;         /* PANTONE 2727 C */
-  --brand-purple: #7E5BAB;       /* PANTONE 525 C */
-  --brand-pink: #C85C8E;         /* PANTONE 674 C */
-  --brand-orange: #E86B3A;       /* PANTONE 7578 C */
-  --brand-yellow: #F5C451;       /* PANTONE 141 C */
-  --brand-green: #80C646;        /* PANTONE 367 C */
-  --brand-teal: #31625C;         /* PANTONE 555 C */
-
-  --background: 210 20% 98%;
-  --foreground: 222 47% 11%;
-
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  /* Secondary Navy #1E3A8A */
+  --secondary: 224 64% 33%;
+  --secondary-foreground: 210 40% 98%;
 
   /* Muted / Surface Colors */
-  --muted: 210 20% 96%;
+  --muted: 210 40% 96%;
   --muted-foreground: 215 16% 47%;
 
-  --accent: 229 100% 96%;
-  --accent-foreground: 225 86% 25%;  /* Match primary */
+  --accent: 225 86% 25%;
+  --accent-foreground: 0 0% 100%;
 
   --border: 214 32% 91%;
   --input: 214 32% 91%;
@@ -74,9 +62,27 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-smart-glow: 0 0 20px rgba(108, 228, 240, 0.3);
   --shadow-smart-card: 0 10px 15px -3px rgba(10, 36, 114, 0.1);
+  /* --- SEMANTIC TOKENS --- */
+  --success: 85 54% 53%;
+  /* #80C646 */
+  --success-foreground: 0 0% 100%;
+
+  --warning: 39 88% 64%;
+  /* #F5C451 */
+  --warning-foreground: 222 47% 11%;
+
+  --info: 185 81% 68%;
+  /* #6CE4F0 */
+  --info-foreground: 225 86% 25%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+
+  /* High-Contrast Highlights */
+  --highlight: 39 88% 64%;
+  /* Yellow/Orange Pop */
 }
 
-/* Global Container Cleanup */
 html,
 body,
 #root {
@@ -85,6 +91,16 @@ body,
   padding: 0;
   overflow: hidden;
   font-family: var(--font-inter), var(--font-arabic), sans-serif;
+}
+
+/* Base Styles */
+.carbody,
+html {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-inter), var(--font-arabic), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Responsive Table Helper */
@@ -116,11 +132,11 @@ body,
   .modal-content-padding {
     @apply p-4;
   }
-  
+
   .modal-header-padding {
     @apply p-4 pb-2;
   }
-  
+
   .modal-footer-padding {
     @apply p-4 pt-2;
   }
@@ -132,7 +148,8 @@ select,
 textarea {
   border-radius: var(--radius-sm);
   background-color: hsl(var(--card));
-  @apply text-sm sm:text-base; /* Better for mobile touch */
+  @apply text-sm sm:text-base;
+  /* Better for mobile touch */
 }
 
 button {
@@ -143,15 +160,6 @@ button {
   direction: ltr;
   text-align: left;
   unicode-bidi: embed;
-}
-
-.carbody,
-html {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: var(--font-arabic);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 .card {
@@ -208,18 +216,22 @@ html[data-font-size="large"] {
 
 /* Highlight Animation for Notifications */
 @keyframes highlight-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
     transform: scale(1);
   }
+
   50% {
     box-shadow: 0 0 0 12px hsl(var(--primary) / 0);
     transform: scale(1.02);
   }
 }
 
-.animate-highlight-pulse {
-  animation: highlight-pulse 1.5s ease-in-out 2;
+/* Smart Enterprise Suite - Unified Gradient Utility */
+.bg-smart-gradient {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
 }
 
 /* ===== SMART ENTERPRISE SUITE DEFAULT DESIGN SYSTEM ===== */
@@ -371,4 +383,29 @@ html[data-font-size="large"] {
 /* RTL Adjustments for Smart Design */
 [dir="rtl"] .smart-select {
   background-position: right 0.5rem center;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Background Patterns */
+.pattern-grid-lg {
+  background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(to right, currentColor 1px, transparent 1px);
+  background-size: 40px 40px;
 }

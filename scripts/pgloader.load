@@ -1,0 +1,23 @@
+load database
+     from sqlite:///data/prisma/dev.db
+     into postgresql://postgres:postgres@postgres/smart_enterprise
+
+ -- Revert to Full Schema Creation mode (fixes FK quoting issues)
+ with include drop, create tables, create indexes, reset sequences, quote identifiers
+
+ -- Exclude migrations
+ excluding table names like '_prisma_migrations'
+
+ -- Rename tables (Separate commands)
+ alter table names matching 'PosMachine' rename to 'ClientPos'
+ alter table names matching 'SimCard'    rename to 'ClientSimCard'
+
+ -- Helper casts
+ cast type datetime to timestamp
+        drop default drop not null using zero-dates-to-null,
+      type date to date
+        drop default drop not null using zero-dates-to-null,
+      type bigint to integer
+        drop typemod
+
+  set work_mem to '16MB', maintenance_work_mem to '512 MB';

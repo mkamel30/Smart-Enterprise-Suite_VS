@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { CreditCard, Search, Download, Upload } from 'lucide-react';
 import { api } from '../../api/client';
+import { downloadFile } from '../../api/baseClient';
 import ImportModal from '../ImportModal';
 
 interface AllSimCardsTableProps {
@@ -27,15 +28,7 @@ export default function AllSimCardsTable({ customers }: AllSimCardsTableProps) {
 
     const handleDownloadTemplate = async () => {
         try {
-            const blob = await api.getSimCardTemplate();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'customer_sims_import.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            await downloadFile('/sim-cards/template', 'customer_sims_import.xlsx');
         } catch (error) {
             toast.error('فشل تنزيل القالب');
         }
@@ -43,15 +36,7 @@ export default function AllSimCardsTable({ customers }: AllSimCardsTableProps) {
 
     const handleExport = async () => {
         try {
-            const blob = await api.exportSimCards();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `simcards-export-${new Date().toISOString().split('T')[0]}.xlsx`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            await downloadFile('/sim-cards/export', `simcards-export-${new Date().toISOString().split('T')[0]}.xlsx`);
         } catch (error) {
             toast.error('فشل التصدير');
         }

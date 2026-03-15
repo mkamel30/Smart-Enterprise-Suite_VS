@@ -40,6 +40,12 @@ import ProductionReports from './pages/ProductionReports';
 // Maintenance Center Pages
 import MaintenanceCenter from './pages/MaintenanceCenter';
 import MaintenanceMachineDetail from './pages/MaintenanceMachineDetail';
+import AdminBackups from './pages/AdminBackups';
+import AdminStoreInventory from './pages/AdminStoreInventory';
+import AdminStoreSettings from './pages/AdminStoreSettings';
+import AdminAffairsDashboard from './pages/AdminAffairsDashboard';
+import AccountantDashboard from './pages/AccountantDashboard';
+import MonthlyClosing from './pages/MonthlyClosing';
 
 import { useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
@@ -69,7 +75,12 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <Routes>
-                <Route path="/" element={user?.role === 'SUPER_ADMIN' ? <AdminDashboard /> : <Dashboard />} />
+                <Route path="/" element={
+                  ['SUPER_ADMIN', 'BRANCH_ADMIN'].includes(user?.role || '') ? <AdminDashboard /> :
+                    user?.role === 'ACCOUNTANT' ? <AccountantDashboard /> :
+                      user?.role === 'ADMIN_AFFAIRS' ? <AdminAffairsDashboard /> :
+                        <Dashboard />
+                } />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/requests" element={<Requests />} />
@@ -77,7 +88,11 @@ function AppContent() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/warehouse" element={<Warehouse />} />
                 <Route path="/reports" element={<Reports />} />
-                <Route path="/payments" element={<Payments />} />
+                <Route path="/payments" element={
+                  <ProtectedRoute allowedRoles={['ACCOUNTANT', 'SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS', 'BRANCH_MANAGER']}>
+                    {user?.role === 'ACCOUNTANT' || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGEMENT' ? <AccountantDashboard /> : <Payments />}
+                  </ProtectedRoute>
+                } />
                 <Route path="/receipts" element={<Receipts />} />
                 <Route path="/warehouse-machines" element={<MachineWarehouse />} />
                 <Route path="/warehouse-sims" element={<SimWarehouse />} />
@@ -85,6 +100,16 @@ function AppContent() {
                 <Route path="/transfer-orders" element={<TransferOrders />} />
                 <Route path="/receive-orders" element={<ReceiveOrders />} />
                 <Route path="/approvals" element={<Approvals />} />
+                <Route path="/admin-store" element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS']}>
+                    <AdminStoreInventory />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin-store/settings" element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS']}>
+                    <AdminStoreSettings />
+                  </ProtectedRoute>
+                } />
                 {/* Service Center Workflow Routes */}
                 <Route path="/maintenance/shipments" element={
                   <ProtectedRoute allowedRoles={['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN']}>
@@ -116,6 +141,12 @@ function AppContent() {
                   </ProtectedRoute>
                 } />
                 <Route path="/production-reports" element={<ProductionReports />} />
+                <Route path="/monthly-closing" element={<MonthlyClosing />} />
+                <Route path="/admin/backups" element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGEMENT']}>
+                    <AdminBackups />
+                  </ProtectedRoute>
+                } />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>

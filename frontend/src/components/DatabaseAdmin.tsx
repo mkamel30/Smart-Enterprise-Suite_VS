@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Trash2, Plus, RefreshCw, Database, ChevronDown, HardDrive, Download, Upload, AlertTriangle } from 'lucide-react';
+import { Trash2, Plus, RefreshCw, Database, ChevronDown, HardDrive, Download, Upload, AlertTriangle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { api } from '../api/client';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5002/api`;
 
 interface Table {
     name: string;
@@ -16,6 +16,13 @@ interface Backup {
     createdAt: string;
 }
 
+interface PaginationState {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+}
+
 export function DatabaseAdmin() {
     const [tables, setTables] = useState<Table[]>([]);
     const [selectedTable, setSelectedTable] = useState<string>('');
@@ -25,10 +32,29 @@ export function DatabaseAdmin() {
     const [newRecord, setNewRecord] = useState<string>('{}');
     const [error, setError] = useState<string>('');
 
+    // Pagination state
+    const [pagination, setPagination] = useState<PaginationState>({
+        page: 1,
+        limit: 50,
+        total: 0,
+        pages: 1
+    });
+
     // Backup state
     const [backups, setBackups] = useState<Backup[]>([]);
     const [backupLoading, setBackupLoading] = useState(false);
     const [showRestoreConfirm, setShowRestoreConfirm] = useState<string | null>(null);
+
+    // ESC key handler for modals
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowRestoreConfirm(null);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
 
     // Fetch tables list
     useEffect(() => {
@@ -113,23 +139,46 @@ export function DatabaseAdmin() {
     };
 
 
-    // Fetch records when table changes
+    // Fetch records when table or page changes
     useEffect(() => {
         if (selectedTable) {
             loadRecords();
         }
+    }, [selectedTable, pagination.page]);
+
+    // Reset page when table changes
+    useEffect(() => {
+        setPagination(prev => ({ ...prev, page: 1, total: 0, pages: 1 }));
     }, [selectedTable]);
 
     const loadRecords = async () => {
         if (!selectedTable) return;
         setLoading(true);
         setError('');
+
         try {
-            const res = await fetch(`${API_URL}/db/${selectedTable}`);
+            const offset = (pagination.page - 1) * pagination.limit;
+            const res = await fetch(`${API_URL}/db/${selectedTable}?limit=${pagination.limit}&offset=${offset}`);
             const data = await res.json();
-            // Ensure data is an array
+
+            // Handle both legacy array response and new paginated response
             if (Array.isArray(data)) {
                 setRecords(data);
+                // For legacy response, we don't know total, so we guess
+                setPagination(prev => ({
+                    ...prev,
+                    total: data.length, // Only known total
+                    pages: 1
+                }));
+            } else if (data.data && Array.isArray(data.data)) {
+                setRecords(data.data);
+                if (data.pagination) {
+                    setPagination(prev => ({
+                        ...prev,
+                        total: data.pagination.total,
+                        pages: data.pagination.pages
+                    }));
+                }
             } else {
                 console.error('Invalid records response:', data);
                 setRecords([]);
@@ -227,7 +276,7 @@ export function DatabaseAdmin() {
                             النسخ المتاحة ({backups.length})
                         </div>
                         <div className="divide-y">
-                            {backups.map(backup => (
+                            {Array.isArray(backups) && backups.map(backup => (
                                 <div key={backup.filename} className="p-3 hover:bg-slate-50 flex items-center justify-between">
                                     <div className="flex-1">
                                         <div className="font-medium text-sm">{backup.filename}</div>
@@ -263,29 +312,40 @@ export function DatabaseAdmin() {
 
             {/* Restore Confirmation Dialog */}
             {showRestoreConfirm && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <div className="flex items-center gap-2 text-orange-600 mb-4">
-                            <AlertTriangle size={24} />
-                            <h3 className="font-bold text-lg">تحذير!</h3>
-                        </div>
-                        <p className="mb-4">
-                            استرجاع النسخة الاحتياطية سيستبدل قاعدة البيانات الحالية بالكامل.
-                            سيتم إنشاء نسخة احتياطية تلقائية قبل الاسترجاع للحفاظ على البيانات الحالية.
-                        </p>
-                        <p className="mb-6 font-bold">هل تريد المتابعة؟</p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => handleRestoreBackup(showRestoreConfirm)}
-                                className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700"
-                            >
-                                نعم، استرجع
+                <div className="modal-overlay" onClick={() => setShowRestoreConfirm(null)}>
+                    <div className="modal-container modal-sm" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header bg-red-50 py-4">
+                            <div className="modal-header-content">
+                                <AlertTriangle className="modal-icon text-red-600" size={24} />
+                                <h2 className="modal-title text-red-900">تحذير: استرجاع البيانات</h2>
+                            </div>
+                            <button type="button" className="modal-close" onClick={() => setShowRestoreConfirm(null)}>
+                                <X size={20} />
                             </button>
+                        </div>
+                        <div className="modal-body space-y-4 pt-6">
+                            <div className="bg-red-50 border border-red-100 p-4 rounded-xl">
+                                <p className="text-red-900 font-bold text-sm leading-relaxed mb-3">
+                                    استرجاع النسخة الاحتياطية سيستبدل قاعدة البيانات الحالية بالكامل.
+                                </p>
+                                <p className="text-red-700 text-xs leading-relaxed">
+                                    سيتم إنشاء نسخة احتياطية تلقائية قبل الاسترجاع للحفاظ على البيانات الحالية في حال حدوث أي خطأ.
+                                </p>
+                            </div>
+                            <p className="font-black text-slate-700 text-center py-2 underline decoration-red-200 decoration-4 underline-offset-4">هل تريد المتابعة في عملية الاسترجاع؟</p>
+                        </div>
+                        <div className="modal-footer pt-2">
                             <button
                                 onClick={() => setShowRestoreConfirm(null)}
-                                className="flex-1 border py-2 rounded-lg hover:bg-slate-50"
+                                className="smart-btn-secondary"
                             >
                                 إلغاء
+                            </button>
+                            <button
+                                onClick={() => handleRestoreBackup(showRestoreConfirm)}
+                                className="smart-btn-primary bg-red-600 hover:bg-red-700 shadow-red-100"
+                            >
+                                نعم، استرجع البيانات الآن
                             </button>
                         </div>
                     </div>
@@ -318,7 +378,7 @@ export function DatabaseAdmin() {
                                 className="w-full border rounded-lg px-3 py-2 appearance-none"
                             >
                                 <option value="">-- اختر جدول --</option>
-                                {tables.map(t => (
+                                {Array.isArray(tables) && tables.map(t => (
                                     <option key={t.name} value={t.name}>{t.label} ({t.name})</option>
                                 ))}
                             </select>
@@ -382,8 +442,32 @@ export function DatabaseAdmin() {
                 {/* Records Table */}
                 {selectedTable && !loading && records.length > 0 && (
                     <div className="border rounded-lg overflow-hidden">
-                        <div className="bg-slate-100 p-2 text-sm">
-                            إجمالي: {records.length} سجل
+                        <div className="bg-slate-100 p-2 text-sm flex justify-between items-center">
+                            <div>
+                                إجمالي: {pagination.total} سجل
+                                {pagination.pages > 1 && ` • صفحة ${pagination.page} من ${pagination.pages}`}
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {pagination.pages > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
+                                        disabled={pagination.page === 1}
+                                        className="p-1 rounded hover:bg-slate-200 disabled:opacity-50"
+                                    >
+                                        <ChevronRight size={16} />
+                                    </button>
+                                    <span className="text-xs font-medium">{pagination.page}</span>
+                                    <button
+                                        onClick={() => setPagination(p => ({ ...p, page: Math.min(pagination.pages, p.page + 1) }))}
+                                        disabled={pagination.page === pagination.pages}
+                                        className="p-1 rounded hover:bg-slate-200 disabled:opacity-50"
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
@@ -396,7 +480,7 @@ export function DatabaseAdmin() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {records.map((record, i) => (
+                                    {Array.isArray(records) && records.map((record, i) => (
                                         <tr key={record.id || i} className="border-b hover:bg-slate-50">
                                             {getColumns().map(col => (
                                                 <td key={col} className="p-2 max-w-xs truncate">

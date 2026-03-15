@@ -3,14 +3,31 @@ import { getReportStyles, getReportSidebar, getReportScripts } from './SharedRep
 interface SaleReportProps {
     sale: any;
     installments: any[];
+    mode?: 'original' | 'accumulated';
 }
 
 export function generateSaleReport(props: SaleReportProps): string {
-    const { sale, installments } = props;
+    const { sale, installments, mode = 'accumulated' } = props;
     const customer = sale.customer;
     const dateStr = new Date(sale.saleDate).toLocaleDateString('ar-EG');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const filename = `Sale_${customer.bkcode || 'Client'}_${timestamp}`;
+
+    // Calculate Original vs Accumulated values
+    const totalInstallmentsPaid = installments
+        .filter(i => i.isPaid)
+        .reduce((sum, i) => sum + (i.paidAmount || i.amount), 0);
+
+    const downPayment = sale.paidAmount - totalInstallmentsPaid;
+
+    // Data to display based on mode
+    const displayPaidAmount = mode === 'original' ? downPayment : sale.paidAmount;
+    const displayRemaining = sale.totalPrice - displayPaidAmount;
+    const displayInstallments = mode === 'original'
+        ? installments.map(i => ({ ...i, isPaid: false }))
+        : installments;
+
+    const reportTitle = mode === 'original' ? 'عقد بيع / استلام ماكينة (التعاقد الأصلي)' : 'عقد بيع / استلام ماكينة (كشف حساب جاري)';
+    const filename = `Sale_${mode}_${customer.bkcode || 'Client'}_${timestamp}`;
 
     return `
 <!DOCTYPE html>
@@ -59,7 +76,7 @@ export function generateSaleReport(props: SaleReportProps): string {
                 <div>التاريخ: ${dateStr}</div>
             </div>
             <div class="header-center">
-                <h1>عقد بيع / استلام ماكينة</h1>
+                <h1>${reportTitle}</h1>
             </div>
             <div class="logo">
                 <img src="/logo.png" alt="شركة سمارت" onerror="this.outerHTML='<b>شركة سمارت</b>'" />
@@ -88,17 +105,17 @@ export function generateSaleReport(props: SaleReportProps): string {
                 <thead>
                     <tr>
                         <th>إجمالي السعر</th>
-                        <th>المدفوع (مقدم / كامل)</th>
-                        <th>الباقي</th>
+                        <th>${mode === 'original' ? 'المقدم المدفوع' : 'إجمالي المحصل'}</th>
+                        <th>المتبقي</th>
                         <th>طريقة الدفع</th>
                         <th>ملاحظات</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>${sale.totalPrice}</td>
-                        <td>${sale.paidAmount}</td>
-                        <td>${sale.totalPrice - sale.paidAmount}</td>
+                        <td>${sale.totalPrice.toLocaleString()}</td>
+                        <td>${displayPaidAmount.toLocaleString()}</td>
+                        <td>${displayRemaining.toLocaleString()}</td>
                         <td>${sale.paymentMethod || '-'}</td>
                         <td>${sale.notes || '-'}</td>
                     </tr>
@@ -109,15 +126,15 @@ export function generateSaleReport(props: SaleReportProps): string {
         ${installments && installments.length > 0 ? `
         <div style="display: flex; gap: 20px; margin-bottom: 15px;">
             <div style="flex: 1; background: #e8f5e9; border: 1px solid #a5d6a7; padding: 10px; border-radius: 4px; text-align: center;">
-                <div style="font-size: 9pt; color: #2e7d32;">المقدم المدفوع</div>
-                <div style="font-size: 14pt; font-weight: bold; color: #1b5e20;">${sale.paidAmount.toLocaleString()} ج.م</div>
+                <div style="font-size: 9pt; color: #2e7d32; font-weight: bold;">${mode === 'original' ? 'المقدم' : 'إجمالي المدفوع'}</div>
+                <div style="font-size: 14pt; font-weight: bold; color: #1b5e20;">${displayPaidAmount.toLocaleString()} ج.م</div>
             </div>
             <div style="flex: 1; background: #fff3e0; border: 1px solid #ffcc80; padding: 10px; border-radius: 4px; text-align: center;">
-                <div style="font-size: 9pt; color: #e65100;">المتبقي (أقساط)</div>
-                <div style="font-size: 14pt; font-weight: bold; color: #bf360c;">${(sale.totalPrice - sale.paidAmount).toLocaleString()} ج.م</div>
+                <div style="font-size: 9pt; color: #e65100; font-weight: bold;">المتبقي</div>
+                <div style="font-size: 14pt; font-weight: bold; color: #bf360c;">${displayRemaining.toLocaleString()} ج.م</div>
             </div>
             <div style="flex: 1; background: #e3f2fd; border: 1px solid #90caf9; padding: 10px; border-radius: 4px; text-align: center;">
-                <div style="font-size: 9pt; color: #1565c0;">عدد الأقساط</div>
+                <div style="font-size: 9pt; color: #1565c0; font-weight: bold;">عدد الأقساط</div>
                 <div style="font-size: 14pt; font-weight: bold; color: #0d47a1;">${installments.length} قسط</div>
             </div>
         </div>
@@ -134,7 +151,9 @@ export function generateSaleReport(props: SaleReportProps): string {
                     </tr>
                 </thead>
                 <tbody>
-                    ${installments.map((inst: any, idx: number) => `
+                    ${Array.isArray(displayInstallments) && [...displayInstallments]
+                .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+                .map((inst: any, idx: number) => `
                     <tr>
                         <td>${idx + 1}</td>
                         <td>${new Date(inst.dueDate).toLocaleDateString('ar-EG')}</td>
@@ -183,3 +202,4 @@ export function openSaleReport(props: SaleReportProps) {
         printWindow.document.close();
     }
 }
+

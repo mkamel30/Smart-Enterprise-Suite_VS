@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
@@ -6,24 +6,33 @@ const { ensureBranchWhere } = require('../prisma/branchHelpers');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
-// Get all branches
+const { parsePaginationParams, createPaginationResponse } = require('../utils/pagination');
+const { ROLES, isGlobalRole } = require('../utils/constants');
+
+// Get all branches - PAGINATED
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const branches = await db.branch.findMany({
-            orderBy: { createdAt: 'desc' },
-            include: {
-                parentBranch: { select: { id: true, name: true, code: true } },
-                maintenanceCenter: { select: { id: true, name: true, code: true } },
-                _count: {
-                    select: {
-                        users: true,
-                        customers: true,
-                        requests: true
+        const { limit, offset } = parsePaginationParams(req.query);
+        const [branches, total] = await Promise.all([
+            db.branch.findMany({
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    parentBranch: { select: { id: true, name: true, code: true } },
+                    maintenanceCenter: { select: { id: true, name: true, code: true } },
+                    _count: {
+                        select: {
+                            users: true,
+                            customers: true,
+                            requests: true
+                        }
                     }
-                }
-            }
-        });
-        res.json(branches);
+                },
+                take: limit,
+                skip: offset
+            }),
+            db.branch.count()
+        ]);
+        res.json(createPaginationResponse(branches, total, limit, offset));
     } catch (error) {
         console.error('Failed to fetch branches:', error);
         res.status(500).json({ error: 'فشل في جلب الفروع' });
@@ -38,8 +47,8 @@ router.get('/authorized', authenticateToken, async (req, res) => {
 
         let where = {};
 
-        // Super Admin & Management see all branches
-        if (['SUPER_ADMIN', 'MANAGEMENT'].includes(role)) {
+        // Global roles see all branches
+        if (isGlobalRole(role)) {
             // No filter
         } else {
             // Others see only authorized branches
@@ -54,7 +63,15 @@ router.get('/authorized', authenticateToken, async (req, res) => {
         const branches = await db.branch.findMany({
             where,
             orderBy: { name: 'asc' },
-            select: { id: true, name: true, code: true, type: true }
+            select: {
+                id: true,
+                name: true,
+                code: true,
+                type: true,
+                isActive: true,
+                parentBranchId: true,
+                maintenanceCenterId: true
+            }
         });
 
         res.json(branches);
@@ -102,18 +119,38 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create branch
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { code, name, address, type, maintenanceCenterId, parentBranchId, isActive } = req.body;
+        let { code, name, address, type, maintenanceCenterId, parentBranchId, isActive } = req.body;
 
-        if (!code || !name) {
-            return res.status(400).json({ error: 'الكود والاسم مطلوبان' });
+        if (!name) {
+            return res.status(400).json({ error: 'الاسم مطلوب' });
         }
 
-        // Check for duplicate code
-        const existing = await db.branch.findUnique({
-            where: { code }
-        });
-        if (existing) {
-            return res.status(400).json({ error: 'كود الفرع موجود مسبقاً' });
+        if (!code) {
+           const branches = await db.branch.findMany({
+               where: { code: { startsWith: 'BR' } },
+               select: { code: true }
+           });
+           let nextNum = 1;
+           if (branches.length > 0) {
+              const maxNum = branches.map(b => {
+                 const match = b.code.match(/BR(\d+)/);
+                 return match ? parseInt(match[1], 10) : 0;
+              }).sort((a,b) => b - a)[0];
+              nextNum = maxNum + 1;
+           }
+           code = `BR${String(nextNum).padStart(3, '0')}`;
+           while (await db.branch.findUnique({ where: { code } })) {
+               nextNum++;
+               code = `BR${String(nextNum).padStart(3, '0')}`;
+           }
+        } else {
+            // Check for duplicate code if provided manually
+            const existing = await db.branch.findUnique({
+                where: { code }
+            });
+            if (existing) {
+                return res.status(400).json({ error: 'كود الفرع موجود مسبقاً' });
+            }
         }
 
         // Validate maintenanceCenterId if provided
@@ -183,11 +220,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
             data: {
                 code: code || existing.code,
                 name: name || existing.name,
-                address: address !== undefined ? address : existing.address,
+                address: address !== undefined ? (address || null) : existing.address,
                 type: type || existing.type,
                 isActive: isActive !== undefined ? isActive : existing.isActive,
-                maintenanceCenterId: maintenanceCenterId !== undefined ? maintenanceCenterId : existing.maintenanceCenterId,
-                parentBranchId: parentBranchId !== undefined ? parentBranchId : existing.parentBranchId
+                maintenanceCenterId: maintenanceCenterId !== undefined ? (maintenanceCenterId || null) : existing.maintenanceCenterId,
+                parentBranchId: parentBranchId !== undefined ? (parentBranchId || null) : existing.parentBranchId
             }
         });
 
@@ -226,8 +263,13 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             (branch._count.customers || 0);
 
         if (totalRelated > 0) {
+            const reasons = [];
+            if (branch._count.users > 0) reasons.push(`${branch._count.users} موظف`);
+            if (branch._count.customers > 0) reasons.push(`${branch._count.customers} عميل`);
+            if ((branch._count.sentTransfers || 0) + (branch._count.receivedTransfers || 0) > 0) reasons.push(`عمليات تحويل مخزني`);
+
             return res.status(400).json({
-                error: 'لا يمكن حذف الفرع لوجود بيانات مرتبطة به.'
+                error: `لا يمكن حذف الفرع لوجود: ${reasons.join('، ')}. يجب نقل هذه البيانات أولاً.`
             });
         }
 

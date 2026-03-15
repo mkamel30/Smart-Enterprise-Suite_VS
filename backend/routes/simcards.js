@@ -2,7 +2,8 @@
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
-const { getBranchFilter } = require('../middleware/permissions');
+const { success, error, paginated } = require('../utils/apiResponse');
+const { ROLES } = require('../utils/constants');
 const { generateTemplate, parseExcelFile, exportToExcel } = require('../utils/excel');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const multer = require('multer');
@@ -14,6 +15,7 @@ router.get('/simcards/template', authenticateToken, async (req, res) => {
         const columns = [
             { header: 'serialNumber', key: 'serialNumber', width: 25 },
             { header: 'type', key: 'type', width: 15 },
+            { header: 'networkType', key: 'networkType', width: 15 },
             { header: 'customerId', key: 'customerId', width: 15 }
         ];
 
@@ -22,9 +24,9 @@ router.get('/simcards/template', authenticateToken, async (req, res) => {
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=customer_sims_import.xlsx');
         res.send(buffer);
-    } catch (error) {
-        console.error('Failed to generate SimCards template:', error);
-        res.status(500).json({ error: 'Failed to generate template' });
+    } catch (err) {
+        console.error('Failed to generate SimCards template:', err);
+        return error(res, 'فشل في إنشاء القالب');
     }
 });
 
@@ -55,6 +57,9 @@ router.post('/simcards/import', authenticateToken, upload.single('file'), async 
 
                 const rawType = row.type || row['type'] || row['Type'];
                 const type = rawType ? String(rawType).trim() : null;
+
+                const rawNetworkType = row.networkType || row['networkType'] || row['NetworkType'] || row['Network Type'];
+                const networkType = rawNetworkType ? String(rawNetworkType).trim() : null;
 
                 const rawCustomerId = row.customerId || row['customerId'] || row['CustomerId'] || row['Customer ID'];
                 const customerId = rawCustomerId ? String(rawCustomerId).trim() : null;
@@ -126,6 +131,7 @@ router.post('/simcards/import', authenticateToken, upload.single('file'), async 
                     data: {
                         serialNumber,
                         type,
+                        networkType,
                         customerId: actualCustomerId,
                         branchId
                     }
@@ -137,16 +143,15 @@ router.post('/simcards/import', authenticateToken, upload.single('file'), async 
             }
         }
 
-        res.json({
-            success: true,
+        return success(res, {
             imported: successCount,
             skipped: skippedCount,
             errors: errors.length > 0 ? errors : undefined
         });
 
-    } catch (error) {
-        console.error('Failed to import SimCards:', error);
-        res.status(500).json({ error: 'Failed to import SimCards' });
+    } catch (err) {
+        console.error('Failed to import SimCards:', err);
+        return error(res, 'فشل في استيراد الشرائح');
     }
 });
 
@@ -154,19 +159,18 @@ router.post('/simcards/import', authenticateToken, upload.single('file'), async 
 router.get('/simcards/export', authenticateToken, async (req, res) => {
     try {
         const where = getBranchFilter(req);
-        const simCards = await db.simCard.findMany(ensureBranchWhere({
-            where: {
-                ...where
-            },
+        const simCards = await db.simCard.findMany({
+            where: {},
             include: {
                 customer: true
             },
             orderBy: { serialNumber: 'asc' }
-        }, req));
+        });
 
         const data = simCards.map(sim => ({
             serialNumber: sim.serialNumber,
             type: sim.type || '',
+            networkType: sim.networkType || '',
             customerId: sim.customerId || '',
             customerName: sim.customer?.client_name || ''
         }));
@@ -174,6 +178,7 @@ router.get('/simcards/export', authenticateToken, async (req, res) => {
         const columns = [
             { header: 'serialNumber', key: 'serialNumber', width: 25 },
             { header: 'type', key: 'type', width: 15 },
+            { header: 'networkType', key: 'networkType', width: 15 },
             { header: 'customerId', key: 'customerId', width: 15 },
             { header: 'customerName', key: 'customerName', width: 30 }
         ];
@@ -184,35 +189,41 @@ router.get('/simcards/export', authenticateToken, async (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename=simcards-export.xlsx');
         res.send(buffer);
 
-    } catch (error) {
-        console.error('Failed to export SimCards:', error);
-        res.status(500).json({ error: 'Failed to export SimCards' });
+    } catch (err) {
+        console.error('Failed to export SimCards:', err);
+        return error(res, 'فشل في تصدير الشرائح');
     }
 });
 
-// GET all SimCards with customer info
+// Pagination helpers removed
+
+// GET all SimCards with customer info - PAGINATED
 router.get('/simcards', authenticateToken, async (req, res) => {
     try {
-        const where = getBranchFilter(req);
-        const simCards = await db.simCard.findMany(ensureBranchWhere({
-            where: {
-                ...where
-            },
-            include: {
-                customer: {
-                    select: {
-                        bkcode: true,
-                        client_name: true
-                    }
-                }
-            },
-            orderBy: { serialNumber: 'asc' }
-        }, req));
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = parseInt(req.query.offset) || 0;
 
-        res.json(simCards);
-    } catch (error) {
-        console.error('Failed to fetch SimCards:', error);
-        res.status(500).json({ error: 'Failed to fetch SimCards' });
+        const [sims, total] = await Promise.all([
+            db.simCard.findMany({
+                include: {
+                    customer: {
+                        select: {
+                            bkcode: true,
+                            client_name: true
+                        }
+                    }
+                },
+                take: limit,
+                skip: offset,
+                orderBy: { serialNumber: 'asc' }
+            }),
+            db.simCard.count({})
+        ]);
+
+        return paginated(res, sims, total, limit, offset);
+    } catch (err) {
+        console.error('Failed to fetch SimCards:', err);
+        return error(res, 'فشل في جلب الشرائح');
     }
 });
 
@@ -220,14 +231,14 @@ router.get('/simcards', authenticateToken, async (req, res) => {
 router.get('/customers/:customerId/simcards', authenticateToken, async (req, res) => {
     try {
         const { customerId } = req.params;
-        const simCards = await db.simCard.findMany(ensureBranchWhere({
+        const simCards = await db.simCard.findMany({
             where: { customerId },
             orderBy: { serialNumber: 'desc' }
-        }, req));
-        res.json(simCards);
-    } catch (error) {
-        console.error('Failed to fetch customer SimCards:', error);
-        res.status(500).json({ error: 'Failed to fetch customer SimCards' });
+        });
+        return success(res, simCards);
+    } catch (err) {
+        console.error('Failed to fetch customer SimCards:', err);
+        return error(res, 'فشل في جلب شرائح العميل');
     }
 });
 
@@ -235,18 +246,14 @@ router.get('/customers/:customerId/simcards', authenticateToken, async (req, res
 router.get('/customers/:customerId/sim-history', authenticateToken, async (req, res) => {
     try {
         const { customerId } = req.params;
-        const where = getBranchFilter(req);
-        const history = await db.simMovementLog.findMany(ensureBranchWhere({
-            where: {
-                customerId,
-                ...where
-            },
+        const history = await db.simMovementLog.findMany({
+            where: { customerId },
             orderBy: { createdAt: 'desc' }
-        }, req));
-        res.json(history);
-    } catch (error) {
-        console.error('Failed to fetch SIM history:', error);
-        res.status(500).json({ error: 'Failed to fetch SIM history' });
+        });
+        return success(res, history);
+    } catch (err) {
+        console.error('Failed to fetch SIM history:', err);
+        return error(res, 'فشل في جلب سجل الشريحة');
     }
 });
 
@@ -254,30 +261,25 @@ router.get('/customers/:customerId/sim-history', authenticateToken, async (req, 
 router.put('/simcards/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { type } = req.body;
+        const { type, networkType } = req.body;
 
-        // Ensure user has access and add branchId to satisfy enforcer
         const existing = await db.simCard.findFirst({
-            where: { id, branchId: req.user.branchId }
+            where: { id }
         });
 
         if (!existing) {
-            return res.status(404).json({ error: 'SIM Card not found' });
+            return error(res, 'SIM Card not found', 404);
         }
 
-        await db.simCard.updateMany({
-            where: { id, branchId: req.user.branchId },
-            data: { type }
+        const updated = await db.simCard.update({
+            where: { id },
+            data: { type, networkType }
         });
 
-        const updated = await db.simCard.findFirst({
-            where: { id, branchId: req.user.branchId }
-        });
-
-        res.json(updated);
-    } catch (error) {
-        console.error('Failed to update SimCard:', error);
-        res.status(500).json({ error: 'Failed to update SimCard' });
+        return success(res, updated);
+    } catch (err) {
+        console.error('Failed to update SimCard:', err);
+        return error(res, 'Failed to update SimCard');
     }
 });
 

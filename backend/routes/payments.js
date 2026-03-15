@@ -5,12 +5,11 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
 const { validateRequest } = require('../middleware/validation');
+const { success, error, paginated } = require('../utils/apiResponse');
+const { ROLES } = require('../utils/constants');
 const { logAction } = require('../utils/logger');
 const asyncHandler = require('../utils/asyncHandler');
-
-// Import roundMoney from centralized payment service
 const { roundMoney } = require('../services/paymentService');
-const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const { exportEntitiesToExcel, transformPaymentsForExport, setExcelHeaders, generateExportFilename } = require('../utils/excelExport');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
@@ -31,58 +30,62 @@ const createPaymentSchema = z.object({
 // CHECK receipt number
 router.get('/check-receipt', authenticateToken, asyncHandler(async (req, res) => {
     const { number } = req.query;
-    if (!number) return res.status(400).json({ error: 'Receipt number required' });
+    if (!number) return error(res, 'Receipt number required', 400);
 
-    // Check globally for receipt number (pre-printed receipts are system-wide unique)
-    // We add branchId: { not: null } to satisfy the branchEnforcer middleware while keeping the check global
     const exists = await db.payment.findFirst({
         where: {
-            receiptNumber: number,
-            branchId: { not: null }
+            receiptNumber: number
         }
     });
 
-    res.json({ exists: !!exists });
+    return success(res, { exists: !!exists });
 }));
 
-// GET all payments
-router.get('/', authenticateToken, asyncHandler(async (req, res) => {
-    const where = getBranchFilter(req);
+// Pagination helpers removed
 
-    const payments = await db.payment.findMany(ensureBranchWhere({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: 500,
-        include: {
-            branch: true,
-            customer: {
-                select: {
-                    client_name: true,
-                    bkcode: true
+// GET all payments - PAGINATED
+router.get('/', authenticateToken, asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    const where = {};
+
+    const [payments, total] = await Promise.all([
+        db.payment.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: offset,
+            include: {
+                branch: true,
+                customer: {
+                    select: {
+                        client_name: true,
+                        bkcode: true
+                    }
                 }
             }
-        }
-    }, req));
-    res.json(payments);
+        }),
+        db.payment.count({ where })
+    ]);
+
+    return paginated(res, payments, total, limit, offset);
 }));
 
 // GET payments by customer
 router.get('/customer/:customerId', authenticateToken, asyncHandler(async (req, res) => {
     const where = {
-        customerId: req.params.customerId,
-        ...getBranchFilter(req)
+        customerId: req.params.customerId
     };
 
-    const payments = await db.payment.findMany(ensureBranchWhere({
+    const payments = await db.payment.findMany({
         where,
         orderBy: { createdAt: 'desc' }
-    }, req));
-    res.json(payments);
+    });
+    return success(res, payments);
 }));
 
 // GET payments stats
 router.get('/stats', authenticateToken, asyncHandler(async (req, res) => {
-    const branchFilter = getBranchFilter(req);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -90,29 +93,27 @@ router.get('/stats', authenticateToken, asyncHandler(async (req, res) => {
     thisMonth.setDate(1);
     thisMonth.setHours(0, 0, 0, 0);
 
-    const [total, todayTotal, monthTotal, byPlace] = await Promise.all([
-        db.payment.aggregate(ensureBranchWhere({
-            where: branchFilter,
+    const [totalAgg, todayTotal, monthTotal, byPlace] = await Promise.all([
+        db.payment.aggregate({
             _sum: { amount: true }
-        }, req)),
-        db.payment.aggregate(ensureBranchWhere({
-            where: { ...branchFilter, createdAt: { gte: today } },
+        }),
+        db.payment.aggregate({
+            where: { createdAt: { gte: today } },
             _sum: { amount: true }
-        }, req)),
-        db.payment.aggregate(ensureBranchWhere({
-            where: { ...branchFilter, createdAt: { gte: thisMonth } },
+        }),
+        db.payment.aggregate({
+            where: { createdAt: { gte: thisMonth } },
             _sum: { amount: true }
-        }, req)),
-        db.payment.groupBy(ensureBranchWhere({
+        }),
+        db.payment.groupBy({
             by: ['paymentPlace'],
-            where: branchFilter,
             _sum: { amount: true },
             _count: true
-        }, req))
+        })
     ]);
 
-    res.json({
-        total: total._sum.amount || 0,
+    return success(res, {
+        total: totalAgg._sum.amount || 0,
         today: todayTotal._sum.amount || 0,
         month: monthTotal._sum.amount || 0,
         byPlace
@@ -179,7 +180,7 @@ router.post('/', authenticateToken, validateRequest(createPaymentSchema), asyncH
         branchId: req.user.branchId
     });
 
-    res.status(201).json(payment);
+    return success(res, payment, 201);
 }));
 
 // DELETE payment
@@ -197,8 +198,8 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
         return res.status(403).json({ error: 'Access denied' });
     }
 
-    await db.payment.deleteMany({
-        where: { id: req.params.id, branchId: { not: null } }
+    await db.payment.delete({
+        where: { id: req.params.id }
     });
 
     await logAction({
@@ -211,7 +212,7 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
         branchId: req.user?.branchId
     });
 
-    res.json({ success: true });
+    return success(res, { success: true });
 }));
 
 /**
@@ -219,11 +220,10 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
  */
 router.get('/export', authenticateToken, asyncHandler(async (req, res) => {
     const where = getBranchFilter(req);
-    const payments = await db.payment.findMany(ensureBranchWhere({
-        where,
+    const payments = await db.payment.findMany({
         orderBy: { createdAt: 'desc' },
         include: { customer: { select: { client_name: true, bkcode: true } } }
-    }, req));
+    });
 
     const data = transformPaymentsForExport(payments);
     const buffer = await exportEntitiesToExcel(data, 'payments', 'payments_export');

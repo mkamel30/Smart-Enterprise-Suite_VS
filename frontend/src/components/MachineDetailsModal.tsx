@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { api } from '../api/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wrench, Package, Truck, FileText, RotateCcw, CheckCircle, Monitor } from 'lucide-react';
+import { Wrench, Package, Truck, FileText, RotateCcw, CheckCircle, Monitor, X } from 'lucide-react';
 
 interface MachineDetailsModalProps {
     isOpen: boolean;
@@ -26,8 +26,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
     const { data: machine, isLoading } = useQuery({
         queryKey: ['machine-details', serialNumber],
         queryFn: async () => {
-            const res = await api.get(`/maintenance-center/machines/by-serial/${serialNumber}`);
-            return res.data;
+            return await api.getMaintenanceCenterMachineBySerial(serialNumber);
         },
         enabled: isOpen
     });
@@ -37,8 +36,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
         queryKey: ['machine-logs', serialNumber],
         queryFn: async () => {
             try {
-                const res = await api.get(`/machines/${serialNumber}/history`);
-                return res || [];
+                return await api.getMachineHistory(serialNumber);
             } catch (e) {
                 return [];
             }
@@ -49,19 +47,18 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
     // Return to branch mutation
     const returnMutation = useMutation({
         mutationFn: async () => {
-            const res = await api.post('/maintenance-center/return/create', {
+            return await api.createReturnPackage({
                 machineIds: [machine?.id],
                 driverName,
                 driverPhone,
                 notes: returnNotes
             });
-            return res.data;
         },
-        onSuccess: (data) => {
+        onSuccess: (res: any) => {
             queryClient.invalidateQueries({ queryKey: ['shipment', shipmentId] });
             queryClient.invalidateQueries({ queryKey: ['machine-details', serialNumber] });
-            if (data?.data?.orders?.[0]) {
-                setCreatedOrder(data.data.orders[0]);
+            if (res?.data?.orders?.[0]) {
+                setCreatedOrder(res.data.orders[0]);
                 setShowShippingDoc(true);
             }
             setShowReturnConfirm(false);
@@ -72,6 +69,8 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
         return (
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
                 <DialogContent dir="rtl">
+                    <DialogTitle className="sr-only">جاري التحميل</DialogTitle>
+                    <DialogDescription className="sr-only">جاري تحميل بيانات الماكينة</DialogDescription>
                     <div className="text-center py-8">جاري التحميل...</div>
                 </DialogContent>
             </Dialog>
@@ -82,9 +81,8 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
         return (
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
                 <DialogContent dir="rtl">
-                    <div className="text-center py-8 text-red-500">
-                        لم يتم العثور على الماكينة في المخزن
-                    </div>
+                    <DialogTitle className="text-red-600">خطأ في البيانات</DialogTitle>
+                    <DialogDescription>لم يتم العثور على الماكينة في المخزن</DialogDescription>
                     <DialogFooter>
                         <Button variant="outline" onClick={onClose}>إغلاق</Button>
                     </DialogFooter>
@@ -106,22 +104,30 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-xl">
-                        <FileText className="w-6 h-6 text-blue-600" />
-                        تقرير الماكينة: {serialNumber}
-                    </DialogTitle>
-                </DialogHeader>
+            <DialogContent className="sm:max-w-2xl max-h-[92vh] flex flex-col p-0 border-0 overflow-hidden rounded-3xl shadow-2xl bg-white" dir="rtl">
+                <div className="shrink-0 p-5 md:p-6 pb-4 bg-gradient-to-b from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2.5 bg-blue-50 rounded-xl text-blue-600 shadow-sm">
+                            <FileText size={20} />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-xl font-black text-slate-900 leading-tight">تقرير الماكينة: {serialNumber}</DialogTitle>
+                            <DialogDescription className="text-xs text-slate-500 mt-1 font-bold">عرض تفاصيل الصيانة، قطع الغيار، وسجل الحركات</DialogDescription>
+                        </div>
+                    </div>
+                    <button type="button" className="p-1.5 bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-lg transition-all" onClick={onClose}>
+                        <X size={18} />
+                    </button>
+                </div>
 
-                <div className="space-y-6 py-4">
+                <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6 custom-scroll">
                     {/* Status Badge */}
                     <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
                         <span className="text-sm text-gray-600">الحالة الحالية:</span>
                         <Badge className={
                             isRepaired ? 'bg-green-100 text-green-700' :
-                            isReturned ? 'bg-blue-100 text-blue-700' :
-                            'bg-yellow-100 text-yellow-700'
+                                isReturned ? 'bg-blue-100 text-blue-700' :
+                                    'bg-yellow-100 text-yellow-700'
                         }>
                             {isRepaired ? 'تم الإصلاح' : isReturned ? 'تم الإرجاع للفرع' : machine?.status}
                         </Badge>
@@ -133,7 +139,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                             <Package className="w-5 h-5 text-orange-600" />
                             قطع الغيار المستخدمة
                         </h3>
-                        
+
                         {usedParts.length > 0 ? (
                             <div className="space-y-2">
                                 <table className="w-full">
@@ -145,7 +151,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {usedParts.map((part: any, idx: number) => (
+                                        {Array.isArray(usedParts) && usedParts.map((part: any, idx: number) => (
                                             <tr key={idx} className="border-b">
                                                 <td className="p-2">{part.name}</td>
                                                 <td className="p-2 text-center">{part.quantity}</td>
@@ -195,14 +201,18 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                             سجل الحركات
                         </h3>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {logs?.map((log: any, idx: number) => (
+                            {(logs as any)?.timeline?.map((log: any, idx: number) => (
                                 <div key={idx} className="flex items-start gap-3 p-2 bg-gray-50 rounded">
                                     <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
                                     <div className="flex-1">
-                                        <div className="font-medium text-sm">{log.action}</div>
-                                        <div className="text-xs text-gray-500">{new Date(log.createdAt).toLocaleString('ar-EG')}</div>
+                                        <div className="font-medium text-sm">{log.title}</div>
+                                        <div className="text-xs text-gray-500">{new Date(log.date).toLocaleString('ar-EG')}</div>
                                         {log.details && (
-                                            <div className="text-xs text-gray-600 mt-1">{JSON.stringify(log.details)}</div>
+                                            <div className="text-xs text-gray-600 mt-1">
+                                                {log.type === 'maintenance' ? log.details.complaint :
+                                                    log.type === 'movement' ? log.details.action :
+                                                        log.type === 'payment' ? `${log.details.amount} ج.م` : ''}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -217,9 +227,9 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                 <Truck className="w-5 h-5 text-orange-600" />
                                 إرجاع للفرع
                             </h3>
-                            
+
                             {!showReturnConfirm ? (
-                                <Button 
+                                <Button
                                     onClick={() => setShowReturnConfirm(true)}
                                     className="w-full bg-orange-600 hover:bg-orange-700"
                                 >
@@ -259,14 +269,14 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                         />
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             onClick={() => setShowReturnConfirm(false)}
                                             className="flex-1"
                                         >
                                             إلغاء
                                         </Button>
-                                        <Button 
+                                        <Button
                                             onClick={() => returnMutation.mutate()}
                                             disabled={returnMutation.isPending || !driverName}
                                             className="flex-1 bg-orange-600 hover:bg-orange-700"
@@ -285,7 +295,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                 <h2 className="text-xl font-bold text-green-800">بوليصة شحن - إرجاع من الصيانة</h2>
                                 <p className="text-gray-600 mt-1">رقم الإذن: <span className="font-mono font-bold">{createdOrder.orderNumber || 'تم الإنشاء'}</span></p>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div className="bg-gray-50 p-3 rounded-lg">
                                     <p className="text-sm text-gray-500">اسم السائق</p>
@@ -304,7 +314,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                     <p className="font-medium">{machine?.originBranch?.name || machine?.branchName || '-'}</p>
                                 </div>
                             </div>
-                            
+
                             <div className="border-t pt-4 mb-4">
                                 <p className="font-bold mb-2 flex items-center gap-2">
                                     <Monitor className="w-4 h-4 text-blue-600" />
@@ -329,7 +339,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                     </table>
                                 </div>
                             </div>
-                            
+
                             {usedParts.length > 0 && (
                                 <div className="border-t pt-4 mb-4">
                                     <p className="font-bold mb-2 flex items-center gap-2">
@@ -346,7 +356,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {usedParts.map((part: any, idx: number) => (
+                                                {Array.isArray(usedParts) && usedParts.map((part: any, idx: number) => (
                                                     <tr key={idx} className="border-t border-orange-200">
                                                         <td className="px-3 py-2">{part.name}</td>
                                                         <td className="px-3 py-2 text-center">{part.quantity}</td>
@@ -358,14 +368,14 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                     </div>
                                 </div>
                             )}
-                            
+
                             <div className="border-t-2 border-green-600 pt-4">
                                 <div className="flex justify-between items-center">
                                     <span className="font-bold text-lg">إجمالي التكلفة:</span>
                                     <span className="text-2xl font-bold text-green-700">{totalCost.toLocaleString()} ج.م</span>
                                 </div>
                             </div>
-                            
+
                             {createdOrder.notes && (
                                 <div className="border-t pt-4 mt-4">
                                     <p className="text-sm text-gray-500 mb-1">ملاحظات</p>
@@ -374,16 +384,16 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                     </div>
                                 </div>
                             )}
-                            
+
                             <div className="mt-4 pt-4 border-t flex gap-2 print:hidden">
-                                <Button 
-                                    onClick={() => window.print()} 
+                                <Button
+                                    onClick={() => window.print()}
                                     className="flex-1 bg-green-600 hover:bg-green-700"
                                 >
                                     <FileText className="w-4 h-4 ml-2" />
                                     طباعة بوليصة الشحن
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="outline"
                                     onClick={() => {
                                         setShowShippingDoc(false);
@@ -394,7 +404,7 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                                     إغلاق
                                 </Button>
                             </div>
-                            
+
                             <style>{`
                                 @media print {
                                     .print\\:hidden { display: none !important; }
@@ -416,9 +426,9 @@ export default function MachineDetailsModal({ isOpen, onClose, serialNumber, shi
                     )}
                 </div>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>إغلاق</Button>
-                </DialogFooter>
+                <div className="shrink-0 p-5 bg-slate-50 border-t border-slate-100 flex justify-end">
+                    <Button variant="outline" onClick={onClose} className="h-10 px-6 font-black text-xs">إغلاق</Button>
+                </div>
             </DialogContent>
         </Dialog>
     );

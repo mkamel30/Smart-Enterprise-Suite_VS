@@ -216,7 +216,7 @@ export default function ImportModal({ isOpen, onClose, title, onImport, onSucces
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
-                                        {preview.map((row, idx) => (
+                                        {Array.isArray(preview) && preview.map((row, idx) => (
                                             <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                                 {columns.map(col => (
                                                     <td key={col.key} className="p-3 max-w-[200px] truncate text-slate-600 font-medium">

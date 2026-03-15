@@ -27,7 +27,6 @@ export const usePushNotifications = () => {
     try {
       // Register service worker
       const registration = await navigator.serviceWorker.register('/service-worker.js');
-      console.log('Service Worker registered:', registration);
 
       // Wait for service worker to be ready
       await navigator.serviceWorker.ready;
@@ -49,13 +48,12 @@ export const usePushNotifications = () => {
   const subscribeToPush = async (registration: ServiceWorkerRegistration) => {
     const token = localStorage.getItem('token');
     if (!token || !user?.id) {
-      console.log('No token or user ID available for push subscription');
       return null;
     }
 
     try {
       // Get VAPID public key from backend
-      const response = await axios.get('http://localhost:5000/api/push/vapid-public-key');
+      const response = await axios.get(`http://${window.location.hostname}:5002/api/push/vapid-public-key`);
       const publicKey = response.data.publicKey;
 
       const subscription = await registration.pushManager.subscribe({
@@ -65,7 +63,7 @@ export const usePushNotifications = () => {
 
       // Send subscription to backend
       await axios.post(
-        'http://localhost:5000/api/push/subscribe',
+        `http://${window.location.hostname}:5002/api/push/subscribe`,
         {
           subscription: subscription.toJSON(),
           userId: user.id
@@ -108,7 +106,6 @@ export const usePushNotifications = () => {
   const unsubscribe = async () => {
     const token = localStorage.getItem('token');
     if (!token || !user?.id) {
-      console.log('No token or user ID for unsubscribe');
       return;
     }
 
@@ -119,7 +116,7 @@ export const usePushNotifications = () => {
 
         // Notify backend
         await axios.post(
-          'http://localhost:5000/api/push/unsubscribe',
+          `http://${window.location.hostname}:5002/api/push/unsubscribe`,
           { userId: user.id },
           {
             headers: {

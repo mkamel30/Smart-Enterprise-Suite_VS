@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Filter } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 interface FiltersProps {
     searchTerm: string;
@@ -19,24 +20,25 @@ export function SimFilters({
     branches
 }: FiltersProps) {
     return (
-        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-            <div className="relative w-full md:w-96">
-                <Search className="absolute right-3 top-2.5 text-slate-400" size={20} />
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+            <div className="relative flex-1 group">
+                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
                 <input
                     type="text"
-                    placeholder="بحث بمسلسل الشريحة، النوع..."
+                    placeholder="بحث بمسلسل الشريحة أو الشركة..."
                     value={searchTerm}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    className="w-full pr-10 pl-4 py-2 border rounded focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="w-full pr-12 pl-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-medium"
                 />
             </div>
+
             {isAdmin && (
-                <div className="flex items-center gap-2">
-                    <Filter size={18} className="text-slate-400" />
+                <div className="flex items-center gap-3 bg-slate-100/50 p-2 rounded-2xl border border-slate-200/50 shadow-sm">
+                    <Filter size={18} className="text-slate-400 mr-2" />
                     <select
                         value={filterBranchId}
                         onChange={(e) => onBranchChange(e.target.value)}
-                        className="border rounded-lg px-2 py-2 text-sm flex-1 md:w-auto"
+                        className="bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 outline-none min-w-[150px] cursor-pointer"
                     >
                         <option value="">كل الفروع</option>
                         {branches?.map((branch: any) => (

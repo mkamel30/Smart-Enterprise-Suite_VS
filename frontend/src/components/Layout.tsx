@@ -31,7 +31,8 @@ import {
     Eye,
     Truck,
     TrendingUp,
-    Database
+    Database,
+    CalendarCheck
 } from 'lucide-react';
 import { Menu } from 'lucide-react';
 
@@ -110,10 +111,11 @@ const allNavItems: NavItem[] = [
         icon: Settings,
         children: [
             { path: '/reports', label: 'التقارير', icon: BarChart3 },
+            { path: '/monthly-closing', label: 'إقفال الشهر', icon: CalendarCheck },
             { path: '/technicians', label: 'المستخدمين', icon: UserCircle },
             { path: '/approvals', label: 'الموافقات', icon: CheckCircle },
             { path: '/admin/backups', label: 'النسخ الاحتياطية', icon: Database },
-            { path: '/branches', label: 'الفروع', icon: Building },
+            { path: '/branches', label: 'المكاتب والفروع', icon: Building },
             { path: '/settings', label: 'الإعدادات', icon: Settings },
         ]
     }
@@ -139,7 +141,7 @@ export default function Layout({ children }: LayoutProps) {
         const userRole = user?.role || null;
 
         // Initial filtering based on permissions
-        let items = allNavItems.map(item => {
+        const items = allNavItems.map(item => {
             if ('children' in item) {
                 const filteredChildren = item.children.filter(child =>
                     canAccessRoute(userRole, child.path)
@@ -200,11 +202,12 @@ export default function Layout({ children }: LayoutProps) {
     });
 
     // Fetch pending transfer orders count for badge
+    // Fetch pending transfer orders count for badge
     const { data: pendingOrders } = useQuery({
-        queryKey: ['pending-orders'],
-        queryFn: () => api.getPendingTransferOrders(),
-        refetchInterval: 30000, // Refresh every 30 seconds
-        enabled: !!user // Only fetch if user is logged in
+        queryKey: ['pending-orders', activeBranchId], // Include branchId in key
+        queryFn: () => api.getPendingTransferOrders(activeBranchId || user?.branchId),
+        refetchInterval: 30000,
+        enabled: !!(user && (activeBranchId || user?.branchId)) // Only fetch if we have a target branch
     });
 
     const pendingOrdersCount = pendingOrders?.length || 0;

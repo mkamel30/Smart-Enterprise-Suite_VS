@@ -30,10 +30,7 @@ const MaintenanceShipments: React.FC = () => {
     const { data: shipments, isLoading, refetch } = useQuery({
         queryKey: ['maintenance-shipments', filterStatus],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            if (filterStatus) params.append('status', filterStatus);
-            const res = await api.get(`/maintenance/shipments?${params.toString()}`);
-            return res as Shipment[];
+            return await api.getShipments({ status: filterStatus === 'ALL' ? undefined : filterStatus });
         }
     });
 

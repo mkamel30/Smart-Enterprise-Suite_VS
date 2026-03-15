@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             api.setToken(storedToken);
 
             // Try to verify the token with a lightweight API call
-            api.get('/notifications/count')
+            api.getNotificationCount()
                 .then(() => {
                     // Token is valid, set state
                     setToken(storedToken);
@@ -93,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const logout = () => {
+        api.logout().catch(err => console.error('Logout error:', err));
         setToken(null);
         setUser(null);
         setActiveBranchIdState(null);

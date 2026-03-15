@@ -4,9 +4,9 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { createNotification } = require('./notifications');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
-const { isGlobalRole } = require('../utils/constants');
-// NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
-// NOTE: automated inserted imports for branch-filtering and safe raw SQL
+const { success, error, paginated } = require('../utils/apiResponse');
+const { DEBT_STATUS, BRANCH_TYPES, isGlobalRole } = require('../utils/constants');
+const { parsePaginationParams } = require('../utils/pagination');
 
 // Get all pending payments
 router.get('/', authenticateToken, async (req, res) => {
@@ -32,33 +32,42 @@ router.get('/', authenticateToken, async (req, res) => {
                 where: { id: req.user.branchId }
             });
 
-            if (userBranch?.type === 'MAINTENANCE_CENTER') {
+            if (userBranch?.type === BRANCH_TYPES.MAINTENANCE_CENTER) {
                 where.creditorBranchId = req.user.branchId;
             } else {
                 where.debtorBranchId = req.user.branchId;
             }
         }
 
-        if (status) where.status = status;
+        if (status) {
+            where.status = status;
+        } else {
+            where.status = DEBT_STATUS.PENDING;
+        }
 
         // Ensure at least one branch field exists to pass enforcer
-        // Use _skipBranchEnforcer marker for admin all-branches view
         const isAdmin = isGlobalRole(req.user.role);
         if (!where.debtorBranchId && !where.creditorBranchId) {
             if (isAdmin) {
-                where._skipBranchEnforcer = true;
+                where.debtorBranchId = { not: 'BYPASS' };
             }
         }
 
-        const payments = await db.branchDebt.findMany({
-            where,
-            orderBy: { createdAt: 'desc' }
-        });
+        const { limit, offset } = parsePaginationParams(req.query);
+        const [payments, total] = await Promise.all([
+            db.branchDebt.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                skip: offset
+            }),
+            db.branchDebt.count({ where })
+        ]);
 
-        res.json(payments);
-    } catch (error) {
-        console.error('Failed to fetch pending payments:', error);
-        res.status(500).json({ error: 'فشل في جلب المستحقات' });
+        return paginated(res, payments, total, limit, offset);
+    } catch (err) {
+        console.error('Failed to fetch pending payments:', err);
+        return error(res, 'فشل في جلب المستحقات');
     }
 });
 
@@ -67,7 +76,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
     try {
         const { branchId, centerBranchId } = req.query;
 
-        const where = { status: 'PENDING' };
+        const where = { status: DEBT_STATUS.PENDING };
 
         if (branchId) {
             where.debtorBranchId = branchId;
@@ -78,7 +87,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
                 where: { id: req.user.branchId }
             });
 
-            if (userBranch?.type === 'MAINTENANCE_CENTER') {
+            if (userBranch?.type === BRANCH_TYPES.MAINTENANCE_CENTER) {
                 where.creditorBranchId = req.user.branchId;
             } else {
                 where.debtorBranchId = req.user.branchId;
@@ -86,25 +95,25 @@ router.get('/summary', authenticateToken, async (req, res) => {
         }
 
         // Ensure at least one branch field exists to pass enforcer
-        // Use _skipBranchEnforcer marker for admin all-branches view
         const isAdmin = isGlobalRole(req.user.role);
         if (!where.debtorBranchId && !where.creditorBranchId) {
             if (isAdmin) {
-                where._skipBranchEnforcer = true;
+                where.debtorBranchId = { not: 'BYPASS' };
             }
         }
 
         const payments = await db.branchDebt.findMany({
-            where
+            where,
+            select: { remainingAmount: true }
         });
 
-        const totalAmount = payments.reduce((sum, p) => sum + p.remainingAmount, 0);
+        const totalAmount = payments.reduce((sum, p) => sum + (p.remainingAmount || 0), 0);
         const count = payments.length;
 
-        res.json({ totalAmount, count });
-    } catch (error) {
-        console.error('Failed to fetch payments summary:', error);
-        res.status(500).json({ error: 'فشل في جلب ملخص المستحقات' });
+        return success(res, { totalAmount, count });
+    } catch (err) {
+        console.error('Failed to fetch payments summary:', err);
+        return error(res, 'فشل في جلب ملخص المستحقات');
     }
 });
 
@@ -122,13 +131,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
         });
 
         if (!payment) {
-            return res.status(404).json({ error: 'المستحق غير موجود' });
+            return error(res, 'المستحق غير موجود', 404);
         }
 
-        res.json(payment);
-    } catch (error) {
-        console.error('Failed to fetch pending payment:', error);
-        res.status(500).json({ error: 'فشل في جلب المستحق' });
+        return success(res, payment);
+    } catch (err) {
+        console.error('Failed to fetch pending payment:', err);
+        return error(res, 'فشل في جلب المستحق');
     }
 });
 
@@ -138,7 +147,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         const { receiptNumber, paymentPlace } = req.body;
 
         if (!receiptNumber) {
-            return res.status(400).json({ error: 'يرجى إدخال رقم الإيصال' });
+            return error(res, 'يرجى إدخال رقم الإيصال', 400);
         }
 
         const payment = await db.branchDebt.findFirst({
@@ -146,11 +155,11 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         });
 
         if (!payment) {
-            return res.status(404).json({ error: 'المستحق غير موجود' });
+            return error(res, 'المستحق غير موجود', 404);
         }
 
-        if (payment.status !== 'PENDING') {
-            return res.status(400).json({ error: 'تم سداد هذا المستحق مسبقاً' });
+        if (payment.status !== DEBT_STATUS.PENDING) {
+            return error(res, 'تم سداد هذا المستحق مسبقاً', 400);
         }
 
         // Check if receipt number already exists
@@ -159,7 +168,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         }, req));
 
         if (existingReceipt) {
-            return res.status(400).json({ error: 'رقم الإيصال مسجل من قبل' });
+            return error(res, 'رقم الإيصال مسجل من قبل', 400);
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -167,7 +176,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
             await tx.branchDebt.updateMany({
                 where: { id: req.params.id, debtorBranchId: req.user.branchId },
                 data: {
-                    status: 'PAID',
+                    status: DEBT_STATUS.PAID,
                     receiptNumber,
                     paymentPlace: paymentPlace || 'ضامن',
                     paidAt: new Date(),
@@ -227,10 +236,10 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
             link: '/pending-payments'
         });
 
-        res.json(result);
-    } catch (error) {
-        console.error('Failed to pay pending payment:', error);
-        res.status(500).json({ error: 'فشل في تسجيل السداد' });
+        return success(res, result);
+    } catch (err) {
+        console.error('Failed to pay pending payment:', err);
+        return error(res, 'فشل في تسجيل السداد');
     }
 });
 
@@ -249,7 +258,7 @@ router.get('/export', authenticateToken, async (req, res) => {
 
         const isAdmin = isGlobalRole(req.user.role);
         if (!where.debtorBranchId && !where.creditorBranchId && isAdmin) {
-            where._skipBranchEnforcer = true;
+            where.debtorBranchId = { not: 'BYPASS' };
         }
 
         const payments = await db.branchDebt.findMany({

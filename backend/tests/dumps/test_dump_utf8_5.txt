@@ -1,0 +1,329 @@
+﻿
+> smart-enterprise-suite-backend@1.0.0 test
+> jest --detectOpenHandles --forceExit backend/tests/services/transferService.test.js
+
+node.exe : FAIL tests
+/services/transferSer
+vice.test.js
+At line:1 char:1
++ & "C:\Program Files
+\nodejs/node.exe" "C:
+\Users\mkame\AppData\
+Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (FAIL te   
+ sts/serv...Servi    
+ce.test.js:Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+  TransferService
+    
+createTransferOrder
+      ظêأ should 
+create machine 
+transfer order 
+successfully (24 ms)
+      ظêأ should 
+create SIM transfer 
+order successfully 
+(6 ms)
+      ظêأ should 
+create maintenance 
+transfer order 
+successfully (6 ms)
+      ظêأ should 
+throw error when 
+validation fails (66 
+ms)
+      ظêأ should 
+generate order 
+number correctly (9 
+ms)
+      ظêأ should set 
+machine status to 
+IN_TRANSIT when 
+creating order (4 ms)
+      ظêأ should log 
+machine movement 
+when creating order 
+(4 ms)
+      ظêأ should 
+update maintenance 
+request status to 
+PENDING_TRANSFER (4 
+ms)
+      ظêأ should 
+create notification 
+for destination 
+branch (4 ms)
+    
+createBulkTransfer
+      ظêأ should 
+create bulk 
+maintenance transfer 
+successfully (5 ms)
+      ظêأ should 
+throw error when no 
+serial numbers 
+provided (11 ms)
+      ظêأ should 
+throw error when 
+destination branch 
+missing (4 ms)
+      ظêأ should 
+update machine 
+status and notes for 
+bulk transfer (4 ms)
+    
+receiveTransferOrder
+      ظêأ should 
+receive transfer 
+order successfully 
+(5 ms)
+      ظêأ should 
+partially receive 
+transfer order (3 ms)
+      ظêأ should 
+throw error when 
+order not found (4 
+ms)
+      ظêأ should 
+throw error when 
+order not in PENDING 
+status (12 ms)
+      ظêأ should 
+deny access for 
+regular user from 
+different branch (3 
+ms)
+      ظêأ should 
+allow SUPER_ADMIN to 
+receive any order (3 
+ms)
+      ظêأ should set 
+machine status to 
+NEW when receiving 
+(3 ms)
+      ظêأ should set 
+machine status to 
+RECEIVED_AT_CENTER 
+when receiving at 
+maintenance center 
+(4 ms)
+      ظêأ should 
+update maintenance 
+request status when 
+receiving at center 
+(3 ms)
+      ظêأ should 
+handle SIM transfers 
+correctly (3 ms)
+    rejectOrder
+      ظêأ should 
+reject pending 
+transfer order (4 ms)
+      ظêأ should 
+restore machine 
+status when 
+rejecting (3 ms)
+      ظêأ should 
+restore maintenance 
+machine status to 
+DEFECTIVE when 
+rejecting 
+MAINTENANCE order (3 
+ms)
+      ظêأ should 
+throw error when 
+order not found (2 
+ms)
+      ظêأ should 
+throw error when 
+order not in PENDING 
+status (2 ms)
+    cancelOrder
+      ظêأ should 
+allow creator to 
+cancel pending order 
+(3 ms)
+      ظêأ should 
+allow admin to 
+cancel any pending 
+order (2 ms)
+      ظêأ should 
+deny non-creator 
+non-admin users (3 
+ms)
+      ظêأ should 
+throw error when 
+order not in PENDING 
+status (2 ms)
+      ظêأ should 
+restore machine 
+status when 
+cancelling (2 ms)
+      ظêأ should 
+restore maintenance 
+request status when 
+cancelling 
+MAINTENANCE order (3 
+ms)
+    
+listTransferOrders
+      ظêأ should 
+list orders with 
+filters (4 ms)
+      ظêأ should 
+enforce branch 
+isolation for 
+regular users (5 ms)
+      ظêأ should not 
+enforce branch 
+isolation for 
+SUPER_ADMIN (3 ms)
+    
+getTransferOrderById
+      ظêأ should get 
+order by ID for 
+authorized user (3 
+ms)
+      ├ù should 
+throw error when 
+order not found (5 
+ms)
+      ظêأ should 
+deny access to order 
+outside user 
+branches (6 ms)
+    getStatsSummary
+      ظêأ should 
+return transfer 
+statistics (5 ms)
+      ظêأ should 
+filter by date range 
+(3 ms)
+    Error scenarios
+      ظêأ should 
+handle database 
+errors gracefully (3 
+ms)
+      ظêأ should 
+handle transaction 
+failures (3 ms)
+      ظêأ should 
+handle missing 
+branch gracefully (3 
+ms)
+
+  ظù 
+TransferService ظ║ 
+getTransferOrderById 
+ظ║ should throw 
+error when order not 
+found
+
+    expect(received).
+rejects.toThrow()
+
+    Received promise 
+resolved instead of 
+rejected
+    Resolved to 
+value: {"branchId": 
+"branch-2", 
+"createdBy": "Test 
+User", 
+"createdByName": 
+"Test User", 
+"createdByUserId": 
+"user-123", 
+"fromBranch": {"id": 
+"branch-1", "name": 
+"Source Branch"}, 
+"fromBranchId": 
+"branch-1", "id": 
+"order-123", 
+"items": [{"id": 
+"item-123", 
+"isReceived": false, 
+"manufacturer": 
+"Ingenico", "model": 
+"POS-X200", 
+"serialNumber": 
+"SN123456", "type": 
+"MACHINE"}], 
+"notes": "Test 
+transfer", 
+"orderNumber": 
+"TO-20240115-001", 
+"status": "PENDING", 
+"toBranch": {"id": 
+"branch-2", "name": 
+"Destination 
+Branch"}, 
+"toBranchId": 
+"branch-2", "type": 
+"MAINTENANCE"}
+
+    [0m [90m 1177 
+|[39m       db[33m.
+[39mtransferOrder[3
+3m.[39mfindFirst[33
+m.[39mmockResolvedVa
+lue([36mnull[39m)[
+33m;[39m
+     [90m 1178 
+|[39m
+    [31m[1m>[22m[
+39m[90m 1179 |[39m 
+      
+[36mawait[39m expec
+t(transferService[33
+m.[39mgetTransferOrd
+erById([32m'invalid-
+id'[39m[33m,[39m 
+user))
+     [90m      
+|[39m             
+[31m[1m^[22m[39m
+     [90m 1180 
+|[39m         [33m.
+[39mrejects[33m.[3
+9mtoThrow([32m'╪د┘╪
+ح╪░┘ ╪║┘è╪▒ ┘à┘ê╪ش┘ê
+╪»'[39m)[33m;[39m
+     [90m 1181 
+|[39m     
+})[33m;[39m
+     [90m 1182 
+|[39m[0m
+
+      at expect (node
+_modules/expect/build
+/index.js:2116:15)
+      at 
+Object.expect (tests/
+services/transferServ
+ice.test.js:1179:13)
+
+Test Suites: 1 
+failed, 1 total
+Tests:       1 
+failed, 44 passed, 
+45 total
+Snapshots:   0 total
+Time:        1.132 
+s, estimated 2 s
+Ran all test suites 
+matching backend/test
+s/services/transferSe
+rvice.test.js.

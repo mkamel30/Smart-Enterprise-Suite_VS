@@ -206,12 +206,13 @@ logger.metric = (metric, value, unit = '') => {
  * @param {string} [params.userId] - ID of user performing action
  * @param {string} [params.performedBy] - Name of user performing action
  * @param {string} [params.branchId] - ID of user's branch
+ * @param {Object} [tx] - Optional Prisma transaction client
  */
-async function logAction({ entityType, entityId, action, details, userId, performedBy, branchId }) {
+async function logAction({ entityType, entityId, action, details, userId, performedBy, branchId }, tx) {
     try {
-        const db = require('../db');
+        const client = tx || require('../db');
 
-        await db.systemLog.create({
+        await client.systemLog.create({
             data: {
                 entityType,
                 entityId,
@@ -237,6 +238,7 @@ async function logAction({ entityType, entityId, action, details, userId, perfor
         // Don't throw, just log error so main flow isn't interrupted
     }
 }
+
 
 // Export both the logger and logAction for backward compatibility
 module.exports = logger;

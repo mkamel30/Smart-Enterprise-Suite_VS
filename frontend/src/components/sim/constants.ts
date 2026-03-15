@@ -1,4 +1,5 @@
-export const SIM_TYPES = ['Vodafone', 'Orange', 'Etisalat', 'WE', 'أخرى'];
+export const SIM_TYPES = ['Vodafone', 'Orange', 'Etisalat', 'WE'];
+export const NETWORK_TYPES = ['2G', '3G', '4G', '5G'];
 
 export const TYPE_COLORS: Record<string, string> = {
     'Vodafone': 'bg-red-50 border-red-200 text-red-700',

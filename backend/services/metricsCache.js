@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Executive Dashboard Metrics Cache Service
  * 
  * This service pre-calculates and caches dashboard metrics to improve
@@ -76,14 +76,14 @@ async function calculateAllMetrics() {
             }),
             db.branchDebt.aggregate({
                 where: {
-                    status: 'PENDING_PAYMENT',
+                    status: 'PENDING',
                     debtorBranchId: { not: '' }
                 },
                 _sum: { amount: true }
             }),
             db.branchDebt.aggregate({
                 where: {
-                    status: 'PENDING_PAYMENT',
+                    status: 'PENDING',
                     createdAt: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
                     debtorBranchId: { not: '' }
                 },
@@ -109,7 +109,7 @@ async function calculateAllMetrics() {
             }),
             db.maintenanceRequest.count({
                 where: {
-                    status: { in: ['Open', 'In Progress'] },
+                    status: { in: ['Pending', 'Open', 'In Progress'] },
                     createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
                     branchId: { not: null }
                 }
@@ -151,7 +151,7 @@ async function calculateAllMetrics() {
                 db.maintenanceRequest.count({
                     where: {
                         branchId: branch.id,
-                        status: { in: ['Open', 'In Progress'] }
+                        status: { in: ['Pending', 'Open', 'In Progress'] }
                     }
                 }),
                 db.maintenanceRequest.count({

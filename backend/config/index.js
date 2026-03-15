@@ -7,7 +7,7 @@ const config = {
   isProduction: process.env.NODE_ENV === 'production',
 
   // Server
-  port: parseInt(process.env.PORT, 10) || 5000,
+  port: parseInt(process.env.PORT, 10) || 5002,
   host: process.env.HOST || 'localhost',
 
   // Database
@@ -54,7 +54,7 @@ const config = {
 
   // URLs
   urls: {
-    api: process.env.API_URL || 'http://localhost:5000',
+    api: process.env.API_URL || 'http://localhost:5002',
     frontend: process.env.FRONTEND_URL || 'http://localhost:5173'
   },
 

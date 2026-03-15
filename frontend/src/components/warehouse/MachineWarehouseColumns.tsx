@@ -7,7 +7,9 @@ import {
     RotateCcw,
     UserCheck,
     CheckCircle,
-    AlertTriangle
+    AlertTriangle,
+    History,
+    ArrowUpDown
 } from "lucide-react";
 
 interface ActionHandlers {
@@ -16,6 +18,7 @@ interface ActionHandlers {
     onReturnToCustomer: (machine: any) => void;
     onRepair: (machine: any) => void;
     onAddParameter: (machine: any) => void;
+    onViewHistory: (machine: any) => void;
 }
 
 export const getMachineColumns = (
@@ -75,7 +78,18 @@ export const getMachineColumns = (
     columns.push(
         {
             accessorKey: "serialNumber",
-            header: "السيريال (S/N)",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="hover:bg-transparent px-0 font-bold text-slate-600"
+                    >
+                        السيريال (S/N)
+                        <ArrowUpDown className="mr-2 h-4 w-4" />
+                    </Button>
+                )
+            },
             cell: ({ row }: { row: any }) => {
                 const serial = row.getValue("serialNumber") as string;
                 const isPending = pendingSerials.includes(serial);
@@ -91,7 +105,18 @@ export const getMachineColumns = (
         },
         {
             accessorKey: "model",
-            header: "الموديل",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="hover:bg-transparent px-0 font-bold text-slate-600"
+                    >
+                        الموديل
+                        <ArrowUpDown className="mr-2 h-4 w-4" />
+                    </Button>
+                )
+            },
             cell: ({ row }: { row: any }) => {
                 const model = row.getValue("model") as string;
                 const machine = row.original;
@@ -113,11 +138,33 @@ export const getMachineColumns = (
         },
         {
             accessorKey: "manufacturer",
-            header: "المصنع",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="hover:bg-transparent px-0 font-bold text-slate-600"
+                    >
+                        المصنع
+                        <ArrowUpDown className="mr-2 h-4 w-4" />
+                    </Button>
+                )
+            },
         },
         {
             accessorKey: "importDate",
-            header: "تاريخ الإضافة",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="hover:bg-transparent px-0 font-bold text-slate-600"
+                    >
+                        تاريخ الإضافة
+                        <ArrowUpDown className="mr-2 h-4 w-4" />
+                    </Button>
+                )
+            },
             cell: ({ row }: { row: any }) => {
                 const date = row.getValue("importDate") as string;
                 return <span className="font-mono text-slate-500 whitespace-nowrap">{new Date(date).toLocaleDateString('en-CA')}</span>;
@@ -191,6 +238,9 @@ export const getMachineColumns = (
                                 <CheckCircle size={16} className="text-slate-400 hover:text-blue-600" />
                             </Button>
                         )}
+                        <Button variant="ghost" size="icon" onClick={() => handlers.onViewHistory(m)} title="السجل الفني" className="h-8 w-8">
+                            <History size={16} className="text-slate-400 hover:text-indigo-600" />
+                        </Button>
                     </div>
                 );
             }

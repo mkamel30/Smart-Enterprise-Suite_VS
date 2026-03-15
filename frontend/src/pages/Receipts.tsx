@@ -361,13 +361,24 @@ export default function Receipts() {
                                                     </td>
                                                     <td className="p-6">
                                                         <div className="flex items-center justify-center gap-2">
-                                                            <button
-                                                                onClick={() => openSaleReport({ sale, installments: sale.installments || [] })}
-                                                                className="w-10 h-10 bg-white border border-slate-100 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 rounded-xl transition-all flex items-center justify-center shadow-sm"
-                                                                title="طباعة عقد البيع"
-                                                            >
-                                                                <Printer size={18} strokeWidth={2.5} />
-                                                            </button>
+                                                            <div className="flex flex-col gap-1">
+                                                                <button
+                                                                    onClick={() => openSaleReport({ sale, installments: sale.installments || [], mode: 'accumulated' })}
+                                                                    className="w-10 h-10 bg-white border border-slate-100 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 rounded-xl transition-all flex items-center justify-center shadow-sm"
+                                                                    title="طباعة مجمع (بالمحصل)"
+                                                                >
+                                                                    <Printer size={18} strokeWidth={2.5} />
+                                                                </button>
+                                                                {sale.type === 'INSTALLMENT' && (
+                                                                    <button
+                                                                        onClick={() => openSaleReport({ sale, installments: sale.installments || [], mode: 'original' })}
+                                                                        className="w-10 h-6 bg-white border border-slate-100 text-[8px] font-black text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 rounded-md transition-all flex items-center justify-center shadow-sm"
+                                                                        title="طباعة التعاقد الأصلي (بالمقدم فقط)"
+                                                                    >
+                                                                        عقد
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                             {sale.type === 'INSTALLMENT' && (
                                                                 <button
                                                                     onClick={() => openEditModal(sale)}

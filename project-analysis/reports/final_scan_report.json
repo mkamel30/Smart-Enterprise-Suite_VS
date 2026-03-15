@@ -1,0 +1,182 @@
+[
+  {
+    "file": "frontend\\src\\components\\ImportModal.tsx",
+    "line": 213,
+    "variable": "columns",
+    "code": "{columns.map(col => ("
+  },
+  {
+    "file": "frontend\\src\\components\\Layout.tsx",
+    "line": 212,
+    "variable": "navItems",
+    "code": "{navItems.map((item, index) => {"
+  },
+  {
+    "file": "frontend\\src\\components\\PaymentFields.tsx",
+    "line": 89,
+    "variable": "PAYMENT_METHODS",
+    "code": "{PAYMENT_METHODS.map((method) => {"
+  },
+  {
+    "file": "frontend\\src\\components\\settings\\AppearanceTab.tsx",
+    "line": 207,
+    "variable": "FONTS",
+    "code": "{FONTS.map((font) => ("
+  },
+  {
+    "file": "frontend\\src\\components\\settings\\PermissionsTab.tsx",
+    "line": 238,
+    "variable": "displayRoles",
+    "code": "{displayRoles.map(role => ("
+  },
+  {
+    "file": "frontend\\src\\components\\settings\\PermissionsTab.tsx",
+    "line": 253,
+    "variable": "displayRoles",
+    "code": "{displayRoles.map(role => ("
+  },
+  {
+    "file": "frontend\\src\\components\\settings\\PermissionsTab.tsx",
+    "line": 271,
+    "variable": "displayRoles",
+    "code": "{displayRoles.map(role => {"
+  },
+  {
+    "file": "frontend\\src\\components\\settings\\SecurityTab.tsx",
+    "line": 225,
+    "variable": "recoveryCodes",
+    "code": "{recoveryCodes.map((code, idx) => ("
+  },
+  {
+    "file": "frontend\\src\\components\\sim\\SimExchangeModal.tsx",
+    "line": 156,
+    "variable": "SIM_TYPES",
+    "code": "{SIM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}"
+  },
+  {
+    "file": "frontend\\src\\components\\sim\\SimExchangeModal.tsx",
+    "line": 223,
+    "variable": "PAYMENT_PLACES",
+    "code": "{PAYMENT_PLACES.map(p => <option key={p} value={p}>{p}</option>)}"
+  },
+  {
+    "file": "frontend\\src\\components\\sim\\SimFormModal.tsx",
+    "line": 75,
+    "variable": "SIM_TYPES",
+    "code": "{SIM_TYPES.map(t => ("
+  },
+  {
+    "file": "frontend\\src\\components\\sim\\SimPurchaseModal.tsx",
+    "line": 173,
+    "variable": "PAYMENT_PLACES",
+    "code": "{PAYMENT_PLACES.map(p => <option key={p} value={p}>{p}</option>)}"
+  },
+  {
+    "file": "frontend\\src\\components\\transfers\\CreateTransferOrderForm.tsx",
+    "line": 165,
+    "variable": "visibleTypes",
+    "code": "{visibleTypes.map(type => {"
+  },
+  {
+    "file": "frontend\\src\\components\\transfers\\TransferOrdersFilters.tsx",
+    "line": 59,
+    "variable": "ORDER_TYPES",
+    "code": "{ORDER_TYPES.map(t => ("
+  },
+  {
+    "file": "frontend\\src\\components\\ui\\data-table.tsx",
+    "line": 170,
+    "variable": "columns",
+    "code": "{columns.map((_, j) => ("
+  },
+  {
+    "file": "frontend\\src\\components\\warehouse\\MachineImportModal.tsx",
+    "line": 219,
+    "variable": "COLUMNS",
+    "code": "{COLUMNS.map(col => ("
+  },
+  {
+    "file": "frontend\\src\\components\\warehouse\\MachineWarehouseStats.tsx",
+    "line": 83,
+    "variable": "stats",
+    "code": "{stats.map((stat, index) => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\Dashboard.tsx",
+    "line": 128,
+    "variable": "PERIODS",
+    "code": "{PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}"
+  },
+  {
+    "file": "frontend\\src\\pages\\Dashboard.tsx",
+    "line": 134,
+    "variable": "MONTHS",
+    "code": "{MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}"
+  },
+  {
+    "file": "frontend\\src\\pages\\Dashboard.tsx",
+    "line": 141,
+    "variable": "QUARTERS",
+    "code": "{QUARTERS.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}"
+  },
+  {
+    "file": "frontend\\src\\pages\\MachineWarehouse.tsx",
+    "line": 237,
+    "variable": "tabs",
+    "code": "{tabs.map(tab => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+    "line": 265,
+    "variable": "PERIODS",
+    "code": "{PERIODS.map(p => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+    "line": 276,
+    "variable": "MONTHS",
+    "code": "{MONTHS.map(m => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+    "line": 288,
+    "variable": "QUARTERS",
+    "code": "{QUARTERS.map(q => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\MaintenanceApprovals.tsx",
+    "line": 308,
+    "variable": "statsCards",
+    "code": "{statsCards.map((stat, index) => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\MaintenanceCenter.tsx",
+    "line": 378,
+    "variable": "statsCards",
+    "code": "{statsCards.map((stat, index) => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\ProductionReports.tsx",
+    "line": 148,
+    "variable": "TABS",
+    "code": "{TABS.map((tab) => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\TrackMachines.tsx",
+    "line": 323,
+    "variable": "statsCards",
+    "code": "{statsCards.map((stat, index) => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\Users.tsx",
+    "line": 168,
+    "variable": "options",
+    "code": "{options.map((b: any) => ("
+  },
+  {
+    "file": "frontend\\src\\pages\\Users.tsx",
+    "line": 211,
+    "variable": "options",
+    "code": "{options.map((b: any) => ("
+  }
+]

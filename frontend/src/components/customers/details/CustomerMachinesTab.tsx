@@ -70,9 +70,6 @@ export default function CustomerMachinesTab({
                                     </div>
 
                                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
-                                        {machine.isMain && (
-                                            <span className="bg-blue-500/10 text-blue-500 text-[10px] font-black px-2 py-1 rounded-full">رئيسية</span>
-                                        )}
                                         {hasOpenRequest && (
                                             <span className="bg-yellow-500/10 text-yellow-500 text-[10px] font-black px-2 py-1 rounded-full animate-pulse">تحت الصيانة</span>
                                         )}
@@ -172,7 +169,7 @@ export default function CustomerMachinesTab({
                                             className="p-2 bg-muted hover:bg-orange-500/10 hover:text-orange-500 rounded-lg transition-all active:scale-90"
                                             title="استبدال الشريحة"
                                         >
-                                            <RefreshCw size={14} />
+                                            <ArrowLeftRight size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -207,10 +204,10 @@ export default function CustomerMachinesTab({
                                     ) : (
                                         <div className="flex items-center gap-3">
                                             <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${sim.type === 'Vodafone' ? 'bg-red-500/10 text-red-500' :
-                                                    sim.type === 'Orange' ? 'bg-orange-500/10 text-orange-500' :
-                                                        sim.type === 'Etisalat' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                            sim.type === 'WE' ? 'bg-purple-500/10 text-purple-500' :
-                                                                'bg-slate-500/10 text-slate-500'
+                                                sim.type === 'Orange' ? 'bg-orange-500/10 text-orange-500' :
+                                                    sim.type === 'Etisalat' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                        sim.type === 'WE' ? 'bg-purple-500/10 text-purple-500' :
+                                                            'bg-slate-500/10 text-slate-500'
                                                 }`}>
                                                 {sim.type || 'غير محدد'}
                                             </span>

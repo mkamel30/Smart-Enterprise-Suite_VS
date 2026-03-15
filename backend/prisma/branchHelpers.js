@@ -1,9 +1,9 @@
 ﻿/**
  * Programmatically adds branch filter to Prisma query args
  * 
- * âڑ ï¸ڈ CRITICAL WARNING: NEVER use this helper with unique operations!
+ * ⚠️ CRITICAL WARNING: NEVER use this helper with unique operations!
  * 
- * â‌Œ DO NOT USE WITH:
+ * ❌ DO NOT USE WITH:
  * - findUnique()
  * - findUniqueOrThrow()
  * - update() - when using unique where (id, serialNumber, etc.)
@@ -11,7 +11,7 @@
  * - updateMany() - when using unique constraints
  * - deleteMany() - when using unique constraints
  * 
- * âœ… SAFE TO USE WITH:
+ * ✅ SAFE TO USE WITH:
  * - findMany()
  * - findFirst()
  * - count()
@@ -20,46 +20,40 @@
  * 
  * REASON: This helper wraps where in AND which breaks Prisma's unique input requirements.
  * 
- * Example of WRONG usage:
- * ```javascript
- * // â‌Œ BREAKS: Argument where of type NotificationWhereUniqueInput needs id
- * const notif = await db.notification.findUnique(
- *   ensureBranchWhere({ where: { id } }, req)
- * );
- * ```
- * 
- * Correct pattern for unique operations:
- * ```javascript
- * // âœ… CORRECT: Fetch by unique field, authorize in code
- * const notif = await db.notification.findUnique({ where: { id } });
- * if (!notif) throw new NotFoundError();
- * if (notif.branchId !== user.branchId && !isAdmin) {
- *   throw new ForbiddenError();
- * }
- * ```
- * 
  * @param {Object} args - Prisma query arguments
  * @param {Object} req - Express request object with user context
+ * @param {Object} options - Optional configuration
+ * @param {string} options.fieldName - Override default field name (default: 'branchId')
  * @returns {Object} Modified args with branch filter
  */
-function ensureBranchWhere(args = {}, req) {
+function ensureBranchWhere(args = {}, req, options = {}) {
   if (!req || !req.user) return args;
 
+  const fieldName = options.fieldName || 'branchId';
   const userRole = req.user.role;
   const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS', 'CS_SUPERVISOR', 'CENTER_MANAGER'].includes(userRole);
 
-  // Check for the special marker in the top-level or in args.where
+  // Check for the special marker in query or where
   const hasMarker = args._skipBranchEnforcer === true || (args.where && args.where._skipBranchEnforcer === true);
 
   if (hasMarker) {
-    // Strip the marker to avoid Prisma initialization errors
     if (args.where) delete args.where._skipBranchEnforcer;
     delete args._skipBranchEnforcer;
 
-    // For admin/management roles, we truly skip. For others, we might still want the filter
-    // but the marker shouldn't be what triggers it.
+    // For Super Admins, if they want to skip branch enforcer, we provide a "Dummy" filter 
+    // that satisfy the middleware check but returns everything.
     if (['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role)) {
-      return args;
+      const dummyFilter = { not: 'SYSTEM_BYPASS_INTERNAL_ID' };
+      return {
+        ...args,
+        where: {
+          ...args.where,
+          OR: [
+            { [fieldName]: dummyFilter },
+            { [fieldName]: null }
+          ]
+        }
+      };
     }
   }
   // Resolve authorized branch IDs
@@ -89,11 +83,23 @@ function ensureBranchWhere(args = {}, req) {
       finalBranchFilter = 'FORBIDDEN_ACCESS_' + Math.random();
     }
   } else {
-    // No specific branch requested
     if (isAdmin && !userBranchId) {
-      // Super admin without specific branch -> skip
-      if (!args.where) return { ...args, where: { _skipBranchEnforcer: true } };
-      return { ...args, where: { ...args.where, _skipBranchEnforcer: true } };
+      // Super admin without specific branch -> skip using dummy filter
+      // Use OR with null only if the field is nullable, but enforcer just needs ANY branch field
+      const dummyFilter = { OR: [{ [fieldName]: { not: 'BYPASS' } }, { [fieldName]: null }] };
+
+      if (!args.where) return { ...args, where: dummyFilter };
+
+      // Merge with existing where
+      return {
+        ...args,
+        where: {
+          AND: [
+            dummyFilter,
+            args.where
+          ]
+        }
+      };
     }
 
     // Use the list of authorized branches
@@ -106,12 +112,12 @@ function ensureBranchWhere(args = {}, req) {
 
   // Apply the filter
   if (!args.where) {
-    return { ...args, where: { branchId: finalBranchFilter } };
+    return { ...args, where: { [fieldName]: finalBranchFilter } };
   }
 
   const where = { ...args.where };
-  if (typeof where === 'object' && !Object.prototype.hasOwnProperty.call(where, 'branchId')) {
-    return { ...args, where: { AND: [{ branchId: finalBranchFilter }, where] } };
+  if (typeof where === 'object' && !Object.prototype.hasOwnProperty.call(where, fieldName)) {
+    return { ...args, where: { AND: [{ [fieldName]: finalBranchFilter }, where] } };
   }
 
   return args;

@@ -81,7 +81,7 @@ export function GovernoratePerformance({ data }: GovernoratePerformanceProps) {
                                     formatter={(value: any) => [value.toLocaleString(), 'الأنشطة']}
                                 />
                                 <Bar dataKey="activities" radius={[0, 8, 8, 0]}>
-                                    {chartData.map((entry: any, index: number) => (
+                                    {Array.isArray(chartData) && chartData.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Bar>
@@ -108,7 +108,7 @@ export function GovernoratePerformance({ data }: GovernoratePerformanceProps) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {rows.map((row: any, index: number) => (
+                                {Array.isArray(rows) && rows.map((row: any, index: number) => (
                                     <tr key={row.branchId} className="border-b border-border hover:bg-muted/50 transition-colors">
                                         <td className="py-3 px-4 font-bold">{row.branchName}</td>
                                         <td className="py-3 px-4 text-center">

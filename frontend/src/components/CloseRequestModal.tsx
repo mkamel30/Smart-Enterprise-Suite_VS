@@ -1,9 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, X, Package, ClipboardList, PenTool, CheckCircle2 } from 'lucide-react';
 import { api } from '../api/client';
 import { PaymentFields, usePaymentForm } from './PaymentFields';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 
 interface SelectedPart {
     partId: string;
@@ -30,8 +29,18 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
     const paymentForm = usePaymentForm();
     const [receiptError, setReceiptError] = useState<string | null>(null);
 
-    // Get machine model from request
-    const machineModel = request.posMachine?.model || '';
+    // ESC key handler
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [onClose]);
+
+    // Get machine display info with robust fallbacks
+    const machineModel = request.machineModel || request.posMachine?.model || request.model || 'POS TERMINAL';
+    const serialNumber = request.serialNumber || request.posMachine?.serialNumber || request.machineSerial || request.serial || 'N/A';
 
     // Filter parts by model compatibility and stock level
     const compatibleParts = useMemo(() => {
@@ -72,12 +81,12 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
     // Validate Receipt
     useEffect(() => {
         const timeout = setTimeout(async () => {
-            if (!paymentForm.data.receiptNumber) {
+            if (!paymentForm.data?.receiptNumber) {
                 setReceiptError(null);
                 return;
             }
             try {
-                const { exists } = await api.checkReceipt(paymentForm.data.receiptNumber);
+                const { exists } = await api.checkReceipt(paymentForm.data?.receiptNumber);
                 if (exists) setReceiptError('رقم الإيصال مسجل من قبل!');
                 else setReceiptError(null);
             } catch (e) {
@@ -85,7 +94,7 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
             }
         }, 500);
         return () => clearTimeout(timeout);
-    }, [paymentForm.data.receiptNumber]);
+    }, [paymentForm.data?.receiptNumber]);
 
     const [formError, setFormError] = useState<string | null>(null);
 
@@ -118,14 +127,14 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
             setFormError('يرجى تصحيح رقم الإيصال الموجود');
             return;
         }
-        if (totals.totalCost > 0 && !paymentForm.data.receiptNumber) {
+        if (totals.totalCost > 0 && !paymentForm.data?.receiptNumber) {
             setFormError('يرجى إدخال رقم الإيصال للمبلغ المدفوع');
             return;
         }
 
         const data = {
             actionTaken,
-            receiptNumber: paymentForm.data.receiptNumber,
+            receiptNumber: paymentForm.data?.receiptNumber,
             usedParts: selectedParts.map(p => ({
                 partId: p.partId,
                 name: p.name,
@@ -141,200 +150,256 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-2xl bg-white rounded-2xl shadow-2xl" dir="rtl">
-                <DialogHeader className="bg-gradient-to-r from-[#0A2472] to-[#0A2472]/90 text-white p-6 pb-4 shrink-0">
-                    <DialogTitle className="text-2xl font-black text-right text-white">إغلاق الطلب</DialogTitle>
-                    <DialogDescription className="text-[#6CE4F0]/90 text-right">
-                        إضافة الإجراء المتخذ والقطع المستخدمة
-                    </DialogDescription>
-                </DialogHeader>
+            <DialogContent className="p-0 border-0 flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-xl rounded-2xl shadow-2xl bg-slate-50 [&>button]:hidden" dir="rtl">
 
-                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 bg-gradient-to-br from-slate-50 to-blue-50/30">
-                    {/* Header Info */}
-                    <div className="bg-white border-2 border-[#0A2472]/10 p-5 rounded-xl shadow-sm space-y-3" dir="rtl">
-                        <div className="flex flex-row-reverse items-center gap-3">
-                            <span className="font-black text-[#0A2472] flex-1">{request.customer?.client_name}</span>
-                            <span className="text-sm text-slate-600 whitespace-nowrap font-bold">العميل:</span>
+                {/* Modal Header */}
+                <div className="modal-header shrink-0 p-4 md:p-5 pb-3 bg-white border-b flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-50 rounded-lg border border-indigo-100 text-indigo-600">
+                            <PenTool size={16} strokeWidth={2.5} />
                         </div>
-                        <div className="flex flex-row-reverse items-center gap-3">
-                            <span className="font-mono font-bold text-[#0A2472] flex-1">{request.posMachine?.serialNumber}</span>
-                            <span className="text-sm text-slate-600 whitespace-nowrap font-bold">الماكينة:</span>
+                        <div>
+                            <DialogTitle className="modal-title text-base font-black text-slate-900 leading-tight">إغلاق وتوريد الطلب</DialogTitle>
+                            <DialogDescription className="text-slate-500 font-bold text-[9px] mt-0.5 opacity-80">تسجيل التقرير النهائي وتكلفة قطع الغيار</DialogDescription>
                         </div>
-                        <div className="flex flex-row-reverse items-center gap-3">
-                            <span className="font-bold text-slate-700 flex-1">{machineModel || 'غير محدد'}</span>
-                            <span className="text-sm text-slate-600 whitespace-nowrap font-bold">الموديل:</span>
-                        </div>
-                        <div className="pt-3 mt-3 border-t border-[#0A2472]/10">
-                            <div className="flex flex-row-reverse items-start gap-3">
-                                <p className="text-sm text-slate-600 flex-1">{request.complaint}</p>
-                                <span className="text-sm font-black text-[#0A2472] whitespace-nowrap">الشكوى:</span>
+                    </div>
+                    <button type="button" className="p-1.5 bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-lg transition-all" onClick={onClose}>
+                        <X size={14} />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 md:px-5 py-3 pb-6 space-y-4 custom-scroll">
+
+                    {/* Machine & Customer Info Card */}
+                    <div className="bg-gradient-to-br from-indigo-900 to-slate-800 p-4 rounded-xl shadow-lg relative overflow-hidden group border border-indigo-800/20">
+                        {/* Decorative background elements */}
+                        <div className="absolute -top-10 -left-10 w-40 h-40 bg-indigo-600/20 rounded-full blur-3xl group-hover:bg-indigo-600/30 transition-all duration-700"></div>
+                        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-400/10 rounded-full blur-3xl group-hover:bg-indigo-400/20 transition-all duration-700"></div>
+
+                        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mb-1 opacity-70">العميل</p>
+                                <div className="flex flex-col gap-1">
+                                    <h3 className="text-white font-black text-base leading-tight">{request.customer?.client_name}</h3>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-indigo-200/70 font-mono text-[10px] font-bold px-1 py-0.5 bg-white/5 rounded border border-white/10">{request.customer?.bkcode}</span>
+                                        {request.customer?.clienttype && (
+                                            <span className="px-2 py-0.5 bg-indigo-500/30 border border-indigo-400/30 rounded text-[8px] font-black text-indigo-100 uppercase tracking-wider">
+                                                {request.customer.clienttype}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-1 md:text-left md:border-r md:border-white/10 md:pr-4">
+                                <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mb-1 opacity-70">الماكينة</p>
+                                <div className="flex flex-col md:items-end gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <Package size={14} className="text-indigo-400" />
+                                        <span className="text-white font-mono font-black text-lg tracking-tighter">
+                                            {serialNumber}
+                                        </span>
+                                    </div>
+                                    <span className="text-[9px] font-bold py-0.5 px-1.5 bg-white/10 text-white rounded border border-white/10 uppercase tracking-widest">
+                                        {machineModel}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="col-span-1 md:col-span-2 pt-3 mt-3 border-t border-white/10 flex gap-2.5">
+                                <div className="p-1.5 bg-white/10 rounded-lg">
+                                    <ClipboardList size={14} className="text-indigo-300" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[8px] font-black text-indigo-300 mb-0.5 opacity-70 uppercase">الشكوى</p>
+                                    <p className="text-indigo-50 text-[11px] font-medium italic leading-relaxed">"{request.complaint}"</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Action Taken */}
-                    <div dir="rtl">
-                        <label className="block text-sm font-black text-[#0A2472] mb-2 text-right">الإجراء المتخذ</label>
+                    {/* Action Taken Section */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-slate-800 font-black text-xs pr-1">
+                            <PenTool size={14} className="text-indigo-600" />
+                            الإجراء الذي تم اتخاذه
+                        </label>
                         <textarea
                             value={actionTaken}
                             onChange={(e) => setActionTaken(e.target.value)}
-                            className="w-full border-2 border-[#0A2472]/10 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-[#0A2472]/20 focus:border-[#0A2472]/30 outline-none resize-none font-medium text-slate-700 text-right"
-                            rows={2}
-                            placeholder="وصف الإجراء المتخذ..."
-                            dir="rtl"
+                            className="smart-input min-h-[60px] p-3 text-[11px] font-bold bg-white border-slate-200 focus:border-indigo-400 rounded-xl"
+                            placeholder="صف ما تم عمله لإصلاح الماكينة..."
                         />
                     </div>
 
-                    {/* Spare Parts Selection */}
-                    <div>
-                        <label className="block text-sm font-black text-[#0A2472] mb-2">قطع الغيار المستخدمة</label>
-
-                        {/* Search Box */}
-                        <div className="relative mb-3">
-                            <Search size={18} className="absolute right-3 top-3 text-[#0A2472]/40" />
-                            <input
-                                type="text"
-                                placeholder="بحث عن قطعة..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full border-2 border-[#0A2472]/10 rounded-xl pr-10 pl-4 py-2.5 bg-white focus:ring-2 focus:ring-[#0A2472]/20 focus:border-[#0A2472]/30 outline-none font-medium text-slate-700"
-                            />
+                    {/* Spare Parts Section */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                            <label className="flex items-center gap-2 text-slate-800 font-black text-xs">
+                                <Package size={14} className="text-indigo-600" />
+                                قطع الغيار المستهلكة
+                            </label>
+                            <span className="text-[8px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-lg">
+                                {compatibleParts.length} قطعة
+                            </span>
                         </div>
 
-                        {/* Parts List */}
-                        <div className="border-2 border-[#0A2472]/10 rounded-xl max-h-48 overflow-y-auto bg-white shadow-sm">
-                            {filteredParts.length === 0 ? (
-                                <p className="p-8 text-center text-slate-500 font-medium">لا توجد قطع متوافقة</p>
-                            ) : (
-                                filteredParts.map((part: any) => {
-                                    const selected = selectedParts.find(p => p.partId === part.id);
-                                    return (
-                                        <div key={part.id} className={`p-3 border-b border-[#0A2472]/5 last:border-0 hover:bg-[#0A2472]/3 transition-colors ${selected ? 'bg-[#0A2472]/5' : ''}`}>
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!selected}
-                                                    onChange={() => togglePart(part)}
-                                                    className="w-4 h-4 rounded border-[#0A2472]/20 text-[#0A2472] focus:ring-[#0A2472] accent-[#0A2472]"
-                                                />
+                        {/* Search & List */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                            <div className="p-2 border-b border-slate-100 bg-slate-50/50">
+                                <div className="relative group">
+                                    <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+                                    <input
+                                        type="text"
+                                        placeholder="بحث عن قطعة..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full bg-white border-slate-200 focus:border-indigo-400 rounded-lg pr-9 pl-4 h-9 text-xs font-bold outline-none transition-all placeholder:text-slate-400"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="max-h-48 overflow-y-auto custom-scroll divide-y divide-slate-50">
+                                {filteredParts.length === 0 ? (
+                                    <div className="p-6 text-center flex flex-col items-center gap-2">
+                                        <Search size={24} className="text-slate-200" />
+                                        <p className="text-slate-400 font-black text-[10px]">لا توجد قطع متوفرة</p>
+                                    </div>
+                                ) : (
+                                    filteredParts.map((part: any) => {
+                                        const selected = selectedParts.find(p => p.partId === part.id);
+                                        return (
+                                            <div
+                                                key={part.id}
+                                                className={`p-2.5 hover:bg-indigo-50/30 transition-all cursor-pointer flex items-center gap-3 ${selected ? 'bg-indigo-50/50' : ''}`}
+                                                onClick={() => togglePart(part)}
+                                            >
+                                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
+                                                    {selected && <CheckCircle2 size={12} className="text-white" />}
+                                                </div>
+
                                                 <div className="flex-1">
-                                                    <span className="font-bold text-sm text-[#0A2472]">{part.name}</span>
+                                                    <h5 className="font-black text-xs text-slate-800">{part.name}</h5>
                                                     <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className="text-slate-500 text-xs">{part.defaultCost} ج.م</span>
-                                                        <span className="bg-[#0A2472]/10 text-[#0A2472] px-2 py-0.5 rounded-lg text-[10px] font-bold">المتاح: {part.quantity}</span>
+                                                        <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                                                            {part.defaultCost} ج.م
+                                                        </span>
+                                                        <span className="text-[8px] font-bold text-slate-400 flex items-center gap-1">
+                                                            <Package size={8} />
+                                                            {part.quantity} متاح
+                                                        </span>
                                                     </div>
                                                 </div>
 
                                                 {selected && (
-                                                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
-                                                        {/* Quantity Selector for multi-parts */}
+                                                    <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300" onClick={e => e.stopPropagation()}>
+                                                        {/* Quantity for multi-parts */}
                                                         {part.allowsMultiple && (
-                                                            <div className="flex items-center bg-white rounded-lg p-0.5 border-2 border-[#0A2472]/10 shadow-sm">
+                                                            <div className="flex items-center bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden p-0.5">
                                                                 <button
                                                                     onClick={() => updatePart(part.id, { quantity: Math.max(1, selected.quantity - 1) })}
-                                                                    className="w-7 h-7 flex items-center justify-center hover:bg-[#0A2472]/10 text-[#0A2472] rounded disabled:opacity-50 font-bold"
+                                                                    className="w-6 h-6 flex items-center justify-center hover:bg-slate-50 text-slate-600 font-black text-xs"
                                                                 >-</button>
-                                                                <span className="w-8 text-center font-bold text-sm text-[#0A2472]">{selected.quantity}</span>
+                                                                <span className="w-5 text-center text-[10px] font-black text-slate-800">{selected.quantity}</span>
                                                                 <button
                                                                     onClick={() => updatePart(part.id, { quantity: selected.quantity + 1 })}
-                                                                    className="w-7 h-7 flex items-center justify-center bg-[#0A2472] text-white rounded shadow-sm hover:bg-[#0A2472]/90 font-bold"
+                                                                    className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded font-black text-xs"
                                                                 >+</button>
                                                             </div>
                                                         )}
 
-                                                        {/* Paid/Free Toggle */}
-                                                        <div className="relative">
+                                                        <div className="relative group/sel min-w-[80px]">
                                                             <select
                                                                 value={selected.isPaid ? 'paid' : 'free'}
                                                                 onChange={(e) => updatePart(part.id, { isPaid: e.target.value === 'paid' })}
-                                                                className={`appearance-none border-2 rounded-lg h-8 pl-3 pr-7 text-xs font-bold transition-colors cursor-pointer outline-none focus:ring-2 focus:ring-offset-1 ${selected.isPaid
-                                                                    ? 'bg-red-50 text-red-700 border-red-200 focus:ring-red-200'
-                                                                    : 'bg-green-50 text-green-700 border-green-200 focus:ring-green-200'
+                                                                className={`w-full appearance-none h-7 px-2.5 rounded-lg text-[9px] font-black outline-none border transition-all cursor-pointer ${selected.isPaid
+                                                                    ? 'bg-rose-50 text-rose-700 border-rose-100'
+                                                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                                                     }`}
                                                             >
-                                                                <option value="free">بدون مقابل</option>
-                                                                <option value="paid">بمقابل</option>
+                                                                <option value="free">مجاني</option>
+                                                                <option value="paid">مدفوع</option>
                                                             </select>
-                                                            <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                                                                <svg width="8" height="8" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                                </svg>
-                                                            </div>
                                                         </div>
                                                     </div>
                                                 )}
                                             </div>
-                                        </div>
-                                    );
-                                })
-                            )}
+                                        );
+                                    })
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Selected Parts Summary */}
+                    {/* Cost Summary Card */}
                     {selectedParts.length > 0 && (
-                        <div className="bg-white border-2 border-[#0A2472]/10 rounded-xl p-4" dir="rtl">
-                            <h4 className="font-bold text-sm mb-3 text-right">ملخص القطع المختارة</h4>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div className="bg-[#80C646]/10 p-3 rounded-lg border border-[#80C646]/20 text-center">
-                                    <div className="text-xs text-[#80C646] mb-1 font-bold">بدون مقابل</div>
-                                    <div className="font-black text-[#80C646]">{totals.totalFreeCount} قطعة</div>
+                        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-1 h-full bg-emerald-500"></div>
+                            <h4 className="font-black text-slate-800 text-[11px] mb-3">ملخص تكلفة القطع</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-emerald-50/50 border border-emerald-100 p-3 rounded-lg text-center">
+                                    <p className="text-[8px] font-black text-emerald-600 uppercase mb-0.5">قطع مجانية</p>
+                                    <div className="text-base font-black text-emerald-800">{totals.totalFreeCount} ق</div>
                                 </div>
-                                <div className="bg-red-50 p-3 rounded-lg border border-red-200 text-center">
-                                    <div className="text-xs text-red-600 mb-1 font-bold">بمقابل</div>
-                                    <div className="font-black text-red-700">{totals.totalPaidCount} قطعة</div>
+                                <div className="bg-rose-50/50 border border-rose-100 p-3 rounded-lg text-center">
+                                    <p className="text-[8px] font-black text-rose-600 uppercase mb-0.5">قطع مدفوعة</p>
+                                    <div className="text-base font-black text-rose-800">{totals.totalPaidCount} ق</div>
                                 </div>
-                                <div className="col-span-2 bg-[#80C646]/10 p-3 rounded-lg border border-[#80C646]/20 text-center">
-                                    <div className="text-xs text-[#80C646] mb-1 font-bold">الإجمالي المدفوع</div>
-                                    <div className="text-xl font-black text-[#80C646]">{totals.totalCost} ج.م</div>
+                                <div className="col-span-2 bg-indigo-600 p-4 rounded-xl shadow-lg shadow-indigo-100 flex justify-between items-center">
+                                    <div className="text-indigo-100 font-bold text-xs">الإجمالي المطلوب توريده:</div>
+                                    <div className="text-xl font-black text-white">{totals.totalCost} <span className="text-[10px]">ج.م</span></div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Payment Fields */}
+                    {/* Payment Form Section */}
                     {totals.totalCost > 0 && (
-                        <div className="bg-white border-2 border-[#0A2472]/10 p-4 rounded-xl" dir="rtl">
-                            <h4 className="font-bold text-sm mb-3 text-[#0A2472] text-right">بيانات التوريد</h4>
+                        <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-4">
+                            <div className="flex items-center gap-2 pb-2 border-b border-slate-50">
+                                <CheckCircle2 size={16} className="text-indigo-600" />
+                                <h4 className="font-black text-slate-800 text-xs italic">بيانات توريد النقدية</h4>
+                            </div>
+
                             <PaymentFields
                                 data={paymentForm.data}
                                 onChange={paymentForm.updateField}
                                 amountReadOnly={true}
                             />
+
                             {receiptError && (
-                                <div className="mt-3 text-red-600 text-xs bg-red-50 p-3 rounded-lg border border-red-100 flex flex-row-reverse items-center gap-2 font-bold animate-in slide-in-from-top-1">
-                                    <span>⚠️</span> {receiptError}
+                                <div className="bg-rose-50 border border-rose-100 text-rose-700 p-3 rounded-xl flex items-center gap-2">
+                                    <X className="w-4 h-4" />
+                                    <span className="font-black text-xs">{receiptError}</span>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* Error Message */}
+                    {/* Final Error Message */}
                     {formError && (
-                        <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl flex flex-row-reverse items-center gap-2 animate-in slide-in-from-top-1" dir="rtl">
-                            <span className="font-bold text-lg">!</span>
-                            <span className="font-medium text-sm">{formError}</span>
+                        <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-2xl text-center font-black text-sm animate-bounce">
+                            ⚠️ {formError}
                         </div>
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="p-6 border-t border-[#0A2472]/10 bg-white shrink-0 flex flex-row-reverse gap-3" dir="rtl">
-                    <Button
-                        variant="outline"
+                {/* Modal Footer */}
+                <div className="modal-footer p-4 bg-white border-t border-slate-100 flex items-center gap-2.5">
+                    <button
                         onClick={onClose}
-                        className="flex-1 h-11 font-bold border-2 border-[#0A2472]/20 text-[#0A2472] hover:bg-[#0A2472]/5 hover:border-[#0A2472]/30 transition-colors"
+                        className="h-9 px-5 border border-slate-200 text-slate-500 font-bold text-xs rounded-lg hover:bg-slate-50 transition-all"
                     >
-                        إغلاق
-                    </Button>
-                    <Button
+                        إلغاء
+                    </button>
+                    <button
                         onClick={handleSubmit}
-                        className="flex-[2] h-11 bg-gradient-to-r from-[#80C646] to-[#6DB840] hover:from-[#6DB840] hover:to-[#5CA630] text-white font-bold shadow-md hover:shadow-lg transition-all"
+                        className="h-9 flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black shadow-lg shadow-emerald-100/50"
                     >
-                        إغلاق الطلب وحفظ
-                    </Button>
+                        تأكيد التقرير وإغلاق الطلب
+                    </button>
                 </div>
             </DialogContent>
         </Dialog>
     );
 }
+

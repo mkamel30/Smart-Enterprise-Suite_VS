@@ -5,6 +5,7 @@ import { Bell, Check, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import { useSettings } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function NotificationBell() {
@@ -12,28 +13,34 @@ export default function NotificationBell() {
     const queryClient = useQueryClient();
     const { socket, isConnected } = useSocket();
     const { preferences } = useSettings();
+    const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     // Initialize audio
     useEffect(() => {
-        audioRef.current = new Audio('/notification.mp3?v=2');
-        audioRef.current.volume = 0.5;
-        // Preload audio
-        audioRef.current.load();
+        try {
+            audioRef.current = new Audio('/notification.mp3?v=2');
+            audioRef.current.volume = 0.5;
+            // Preload audio
+            audioRef.current.load();
+        } catch (e) {
+            console.warn('Notification audio failed to initialize');
+        }
     }, []);
 
     const { data: count } = useQuery({
         queryKey: ['notification-count'],
         queryFn: () => api.getNotificationCount(),
-        refetchInterval: 30000 // Refresh every 30 seconds
+        refetchInterval: 30000,
+        enabled: !!user
     });
 
     const { data: notifications } = useQuery({
         queryKey: ['notifications'],
         queryFn: () => api.getNotifications({ unreadOnly: true }),
-        enabled: isOpen
+        enabled: isOpen && !!user
     });
 
     const markReadMutation = useMutation({

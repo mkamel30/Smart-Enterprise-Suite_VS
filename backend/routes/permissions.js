@@ -1,8 +1,9 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
+const crypto = require('crypto');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
@@ -128,14 +129,16 @@ router.put('/', authenticateToken, requireAdmin, async (req, res) => {
             },
             update: {
                 isAllowed,
-                updatedBy: req.user.displayName || req.user.id
+                updatedAt: new Date()
             },
             create: {
+                id: crypto.randomUUID(),
                 role,
                 permissionType,
                 permissionKey,
                 isAllowed,
-                updatedBy: req.user.displayName || req.user.id
+                updatedAt: new Date(),
+                createdAt: new Date()
             }
         });
 
@@ -167,14 +170,16 @@ router.post('/bulk', authenticateToken, requireAdmin, async (req, res) => {
                     },
                     update: {
                         isAllowed: perm.isAllowed,
-                        updatedBy: req.user.displayName || req.user.id
+                        updatedAt: new Date()
                     },
                     create: {
+                        id: crypto.randomUUID(),
                         role: perm.role,
                         permissionType: perm.permissionType,
                         permissionKey: perm.permissionKey,
                         isAllowed: perm.isAllowed,
-                        updatedBy: req.user.displayName || req.user.id
+                        updatedAt: new Date(),
+                        createdAt: new Date()
                     }
                 })
             )

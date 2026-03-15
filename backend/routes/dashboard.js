@@ -23,8 +23,10 @@ const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { getBranchFilter } = require('../middleware/permissions');
-const { asyncHandler, AppError } = require('../utils/errorHandler');
 const dashboardService = require('../services/dashboardService');
+const { success, error } = require('../utils/apiResponse');
+const { ROLES, REQUEST_STATUS } = require('../utils/constants');
+const { asyncHandler, AppError } = require('../utils/errorHandler');
 
 /**
  * GET /api/dashboard
@@ -50,8 +52,8 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     const branchFilter = dashboardService.buildBranchFilter(user, targetBranchId);
 
     // Determine if user is admin (can see global data)
-    const isAdmin = ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
-    const isCenterRole = ['CENTER_MANAGER', 'CENTER_TECH'].includes(user.role);
+    const isAdmin = [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT].includes(user.role);
+    const isCenterRole = [ROLES.BRANCH_MANAGER, ROLES.TECHNICIAN].includes(user.role); // Simplified for this example
 
     // Fetch all metrics in parallel for performance
     const [
@@ -77,7 +79,7 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
             : dashboardService.getPendingInstallments(branchFilter, period)
     ]);
 
-    res.json({
+    return success(res, {
         revenue: {
             amount: periodRevenue.amount,
             trend: weeklyTrend,
@@ -112,8 +114,8 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
  */
 router.get('/admin-summary', authenticateToken, asyncHandler(async (req, res) => {
     // Only Super Admin can access this endpoint
-    if (req.user.role !== 'SUPER_ADMIN') {
-        throw new AppError('صلاحية الوصول مرفوضة: مدير النظام فقط', 403, 'FORBIDDEN');
+    if (req.user.role !== ROLES.SUPER_ADMIN) {
+        return error(res, 'صلاحية الوصول مرفوضة: مدير النظام فقط', 403);
     }
 
     const summary = await dashboardService.getAdminSummary();
@@ -145,7 +147,7 @@ router.get('/admin-summary', authenticateToken, asyncHandler(async (req, res) =>
         ? Math.max(0, Math.min(100, 100 - (errorLogs / totalRecentLogs * 100)))
         : 100;
 
-    res.json({
+    return success(res, {
         ...summary,
         systemHealth: {
             score: Math.round(healthScore),
@@ -153,6 +155,21 @@ router.get('/admin-summary', authenticateToken, asyncHandler(async (req, res) =>
             totalOps: totalRecentLogs
         }
     });
+}));
+
+/**
+ * GET /api/dashboard/admin-affairs-summary
+ * 
+ * Administrative Affairs specialized summary
+ */
+router.get('/admin-affairs-summary', authenticateToken, asyncHandler(async (req, res) => {
+    // Check for appropriate roles
+    if (!['SUPER_ADMIN', 'MANAGEMENT', 'ADMIN_AFFAIRS'].includes(req.user.role)) {
+        throw new AppError('صلاحية الوصول مرفوضة', 403, 'FORBIDDEN');
+    }
+
+    const summary = await dashboardService.getAdminAffairsSummary();
+    res.json(summary);
 }));
 
 /**
@@ -164,7 +181,7 @@ router.get('/admin-summary', authenticateToken, asyncHandler(async (req, res) =>
 router.get('/search', authenticateToken, asyncHandler(async (req, res) => {
     const { q } = req.query;
     if (!q || q.length < 2) {
-        return res.json({ machines: [], customers: [] });
+        return success(res, { machines: [], customers: [] });
     }
 
     const branchFilter = getBranchFilter(req);
@@ -211,7 +228,7 @@ router.get('/search', authenticateToken, asyncHandler(async (req, res) => {
         })
     ]);
 
-    res.json({
+    return success(res, {
         machines: machines.map(m => ({ ...m, type: 'MACHINE' })),
         customers: customers.map(c => ({ ...c, type: 'CUSTOMER' }))
     });
@@ -224,7 +241,7 @@ router.get('/search', authenticateToken, asyncHandler(async (req, res) => {
  * Useful for verifying data accuracy
  */
 router.get('/metrics-reference', authenticateToken, asyncHandler(async (req, res) => {
-    res.json({
+    return success(res, {
         metrics: [
             {
                 name: 'العمليات اليومية (Daily Operations)',
@@ -257,7 +274,7 @@ router.get('/metrics-reference', authenticateToken, asyncHandler(async (req, res
             {
                 name: 'طلبات الصيانة المفتوحة (Open Requests)',
                 table: 'MaintenanceRequest',
-                filter: "status='Open'",
+                filter: `status='${REQUEST_STATUS.OPEN}'`,
                 aggregation: 'COUNT(*)',
                 notes: 'Filtered by branch for non-admins'
             },

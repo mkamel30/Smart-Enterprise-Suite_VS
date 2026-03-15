@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Printer, Search } from 'lucide-react';
+import { Printer, Search, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../../lib/utils';
 
@@ -13,6 +13,7 @@ interface MachineLogsTableProps {
     branches: any[];
     searchTerm?: string;
     onSearchChange?: (term: string) => void;
+    onViewTechnicalReport: (serialNumber: string) => void;
 }
 
 const ACTION_MAP: Record<string, { label: string; color: string }> = {
@@ -42,11 +43,12 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
     openSaleReport,
     branches,
     searchTerm = '',
-    onSearchChange
+    onSearchChange,
+    onViewTechnicalReport
 }) => {
     // Smart Filtering Logic
     const filteredLogs = React.useMemo(() => {
-        if (!searchTerm) return logs;
+        if (!Array.isArray(logs) || !searchTerm) return Array.isArray(logs) ? logs : [];
 
         const term = searchTerm.toLowerCase().trim();
         return logs.filter(log => {
@@ -147,11 +149,11 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
                             {customerCode && <span className="text-slate-400 mr-1">({customerCode})</span>}
                             <div className="text-slate-500">{data.sale.type === 'CASH' ? 'كاش' : 'قسط'} | {data.sale.totalPrice?.toLocaleString()} ج.م</div>
                         </div>
-                        <button 
-                            onClick={() => openSaleReport({ 
-                                sale: data.sale, 
-                                installments: data.installments || [] 
-                            })} 
+                        <button
+                            onClick={() => openSaleReport({
+                                sale: data.sale,
+                                installments: data.installments || []
+                            })}
                             className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100"
                         >
                             <Printer size={14} />
@@ -173,15 +175,32 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
                 );
             }
 
-            // Handle Transfer Logs
+            // Handle Transfer In
+            if (log.action === 'TRANSFER_IN') {
+                return (
+                    <div className="text-xs">
+                        <span className="font-bold text-blue-700">
+                            استلام تحويل
+                        </span>
+                        <div className="text-slate-500">
+                            {data.fromBranchId ? `من فرع: ${getBranchName(data.fromBranchId)}` : 'من مصدر خارجي'}
+                            {data.orderId && <span className="block mt-1 font-mono text-[10px] text-slate-400">#{data.orderId}</span>}
+                            {data.notes && <div className="mt-1 italic text-slate-400">"{data.notes}"</div>}
+                        </div>
+                    </div>
+                );
+            }
+
+            // Handle Transfer Out
             if (log.action === 'TRANSFER_OUT') {
                 return (
                     <div className="text-xs">
                         <span className="font-bold text-indigo-700">
-                            تحويل لفرع: {data.toBranchName || 'غير محدد'}
+                            تحويل لفرع: {data.toBranchId ? getBranchName(data.toBranchId) : (data.toBranchName || 'غير محدد')}
                         </span>
                         <div className="text-slate-500">
-                            رقم الإذن: <span className="font-mono">{data.orderNumber}</span>
+                            {data.orderId && <span className="block mt-1 font-mono text-[10px] text-slate-400">#{data.orderId || data.orderNumber}</span>}
+                            {data.notes && <div className="mt-1 italic text-slate-400">"{data.notes}"</div>}
                         </div>
                     </div>
                 );
@@ -204,34 +223,35 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
 
             // Handle Bulk Transfer
             if (log.action === 'BULK_TRANSFER_TO_MAINTENANCE') {
-                // Try to regex extract order number if needed or just show the text
-                // Backend sets: `Bulk transfer to maintenance center - Order: ${orderNumber}, Waybill: ${waybillNumber}`
-                // Or we could parse it if it was consistent JSON. Currently it is string details in some places and JSON in other?
-                // In bulkTransfer: details is a string: `Bulk transfer...`
-                // Wait, we are inside `parseDetails` where `data` tries to parse JSON.
-                // If `data` is a string (meaning log.details was string and not JSON), `data` holds that string.
-                if (typeof data === 'string') {
-                    if (data.includes('Bulk transfer')) {
-                        const orderMatch = data.match(/Order: (TO-[^,]+)/);
-                        const waybillMatch = data.match(/Waybill: ([^$]+)/);
-                        return (
-                            <div className="text-xs">
-                                <span className="font-bold text-rose-700">إرسال مجمع للصيانة</span>
-                                <div className="text-slate-500">
-                                    رقم الإذن: <span className="font-mono">{orderMatch?.[1] || '-'}</span>
-                                    {waybillMatch && <span> | بوليصة: {waybillMatch[1]}</span>}
-                                </div>
+                if (typeof data === 'string' && data.includes('Bulk transfer')) {
+                    const orderMatch = data.match(/Order: (TO-[^,]+)/);
+                    const waybillMatch = data.match(/Waybill: ([^$]+)/);
+                    return (
+                        <div className="text-xs">
+                            <span className="font-bold text-rose-700">إرسال مجمع للصيانة</span>
+                            <div className="text-slate-500">
+                                رقم الإذن: <span className="font-mono">{orderMatch?.[1] || '-'}</span>
+                                {waybillMatch && <span> | بوليصة: {waybillMatch[1]}</span>}
                             </div>
-                        );
-                    }
+                        </div>
+                    );
                 }
+                // Handle JSON case for bulk transfer if applicable
+                return (
+                    <div className="text-xs">
+                        <span className="font-bold text-rose-700">إرسال مجمع للصيانة</span>
+                        <div className="text-slate-500">
+                            {data.orderId && <span className="block mt-1 font-mono text-[10px] text-slate-400">#{data.orderId}</span>}
+                        </div>
+                    </div>
+                );
             }
 
             if (log.action === 'RECEIVED_FROM_CENTER') {
                 return (
                     <div className="text-xs">
                         <span className="font-bold text-teal-700">تم الاستلام من الصيانة</span>
-                        <div className="text-slate-500">{data.details || data}</div>
+                        <div className="text-slate-500">{data.details || (typeof data === 'string' ? data : '')}</div>
                     </div>
                 );
             }
@@ -240,7 +260,12 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
             if (data.message) return data.message;
             if (data.notes) return data.notes;
 
-            return log.details;
+            // Fallback for unhandled JSON to avoid [object Object] or raw JSON dump
+            return (
+                <div className="text-xs text-slate-500" title={JSON.stringify(data, null, 2)}>
+                    {data.details || data.reason || 'تفاصيل إضافية...'}
+                </div>
+            );
         } catch (e) {
             // Fallback: try to regex extract common transfer fields if parsing failed
             if (log.details && typeof log.details === 'string') {
@@ -253,6 +278,7 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
                 }
                 return log.details || '-';
             }
+            return '-';
         }
     };
 
@@ -320,7 +346,18 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
                                                     {action.label}
                                                 </span>
                                             </td>
-                                            <td className="p-4 font-mono font-bold text-blue-600">{log.serialNumber}</td>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono font-bold text-blue-600">{log.serialNumber}</span>
+                                                    <button
+                                                        onClick={() => onViewTechnicalReport(log.serialNumber)}
+                                                        className="p-1 rounded-md hover:bg-indigo-50 text-slate-300 hover:text-indigo-600 transition-colors"
+                                                        title="السجل الفني"
+                                                    >
+                                                        <History size={14} />
+                                                    </button>
+                                                </div>
+                                            </td>
                                             <td className="p-4 max-w-md text-slate-600">
                                                 {parseDetails(log)}
                                             </td>

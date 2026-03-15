@@ -1,0 +1,122 @@
+
+================================
+FAIL: should return password expiration warnings
+Error: expect(received).toContain(expected) // indexOf
+
+Expected value: StringMatching /password will expire/
+Received array: ["Your password will expire in 3 days. Please change it soon."]
+
+Looks like you wanted to test for object/array equality with the stricter `toContain` matcher. You probably need to use `toContainEqual` instead.
+    at Object.toContain (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:260:31)
+
+================================
+FAIL: should require password change when expired
+Error: expect(received).toContain(expected) // indexOf
+
+Expected value: StringMatching /password has expired/
+Received array: ["Your password has expired. Please change it immediately."]
+
+Looks like you wanted to test for object/array equality with the stricter `toContain` matcher. You probably need to use `toContainEqual` instead.
+    at Object.toContain (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:277:31)
+
+================================
+FAIL: should update user theme and font family
+Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: "dark"
+Received: "light"
+    at Object.toBe (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:631:28)
+
+================================
+FAIL: should update only provided preferences
+Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+Expected: {"data": {"fontFamily": undefined, "theme": "dark"}, "where": {"branchId": {"not": null}, "id": "user-123"}}
+
+Number of calls: 0
+    at Object.toHaveBeenCalledWith (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:643:34)
+
+================================
+FAIL: should enforce branchId filter
+Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+Expected: {"data": Any<Object>, "where": {"branchId": {"not": null}, "id": "user-123"}}
+
+Number of calls: 0
+    at Object.toHaveBeenCalledWith (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:655:34)
+
+================================
+FAIL: should throw error when target user not found
+Error: expect(received).rejects.toThrow(expected)
+
+Expected substring: "Target user not found"
+Received message:   "Admin access required"
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+     [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+     [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as forcePasswordChange] (services/authService.js:381:15)
+
+================================
+FAIL: should log the action
+Error: Target user not found
+    at ApiError (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\services\authService.js:10:15)
+    at Object.ApiError [as forcePasswordChange] (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\services\authService.js:389:15)
+    at Object.<anonymous> (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:727:7)
+
+================================
+FAIL: should deny non-admin users
+Error: expect(received).rejects.toThrow()
+
+Received promise resolved instead of rejected
+Resolved to value: {"message": "Account unlocked successfully", "userEmail": "test@example.com", "userId": "locked-123"}
+    at Object.expect (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:764:13)
+    at new Promise (<anonymous>)
+
+================================
+FAIL: should throw error when target user not found
+Error: expect(received).rejects.toThrow(expected)
+
+Expected substring: "Target user not found"
+Received message:   "Admin access required"
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+     [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+     [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as unlockAccount] (services/authService.js:426:15)
+
+================================
+FAIL: should log the action
+Error: Admin access required
+    at ApiError (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\services\authService.js:10:15)
+    at Object.ApiError [as unlockAccount] (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\services\authService.js:426:15)
+    at Object.<anonymous> (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:787:7)
+
+================================
+FAIL: getProfile should enforce branchId filter
+Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+Expected: ObjectContaining {"where": ObjectContaining {"branchId": {"not": null}}}
+Received: {"include": {"branch": true}, "where": {"id": "user-123"}}
+
+Number of calls: 1
+    at Object.toHaveBeenCalledWith (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:814:33)
+
+================================
+FAIL: login should enforce branchId filter
+Error: المستخدم غير موجود
+    at ApiError (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\services\authService.js:10:15)
+    at Object.ApiError [as login] (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\services\authService.js:147:15)
+    at Object.<anonymous> (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\tests\services\authService.test.js:858:7)

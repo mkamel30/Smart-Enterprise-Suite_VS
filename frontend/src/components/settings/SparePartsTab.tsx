@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Package, Edit, Download, Upload, History, Check, Square, CheckSquare } from 'lucide-react';
+import { Plus, Trash2, Package, Edit, Download, Upload, History, Check, X, Briefcase } from 'lucide-react';
+import { Checkbox } from '../ui/checkbox';
 import * as XLSX from 'xlsx';
 import { api } from '../../api/client';
 import { useApiMutation } from '../../hooks/useApiMutation';
@@ -18,15 +19,33 @@ export function SparePartsTab() {
     const [importData, setImportData] = useState<any[]>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [modelFilter, setModelFilter] = useState('');
+
+    // ESC key handler for modals
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowAddForm(false);
+                setShowEditForm(false);
+                setShowImportDialog(false);
+                setShowPriceLogs(false);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
 
     const [newPart, setNewPart] = useState({
         name: '', compatibleModels: '', defaultCost: 0, allowsMultiple: false
     });
 
-    const { data: parts, isLoading } = useQuery<any[]>({
+    const { data: partsData, isLoading } = useQuery<any>({
         queryKey: ['spare-parts'],
         queryFn: () => api.getSpareParts()
     });
+
+    const parts = Array.isArray(partsData) ? partsData : (partsData?.data || []);
 
     const createMutation = useApiMutation({
         mutationFn: (data: any) => api.createSparePart({
@@ -82,6 +101,23 @@ export function SparePartsTab() {
         }
     });
 
+    // Extract unique models for classification
+    const allModels = Array.from(new Set(
+        parts.flatMap((p: any) => p.compatibleModels?.split(';').filter(Boolean).map((m: string) => m.trim()) || [])
+    )).sort();
+
+    // Filter parts based on search and model
+    const filteredParts = parts.filter((p: any) => {
+        const matchesSearch = !searchTerm ||
+            p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.partNumber?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesModel = !modelFilter ||
+            p.compatibleModels?.toLowerCase().split(';').map((m: string) => m.trim()).includes(modelFilter.toLowerCase());
+
+        return matchesSearch && matchesModel;
+    });
+
     const importMutation = useApiMutation({
         mutationFn: (parts: any[]) => api.post('/spare-parts/import', {
             parts,
@@ -96,8 +132,8 @@ export function SparePartsTab() {
             setShowImportDialog(false);
             setImportData([]);
             if (fileInputRef.current) fileInputRef.current.value = '';
-            if (data.skipped > 0) {
-                toast(`تم تخطي ${data.skipped} عنصر مكرر`, { icon: 'ℹ️' });
+            if (data?.skipped > 0) {
+                toast(`تم تخطي ${data?.skipped} عنصر مكرر`, { icon: 'ℹ️' });
             }
         }
     });
@@ -216,14 +252,49 @@ export function SparePartsTab() {
                 </div>
             </div>
 
+            {/* Search and Classification Bar */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex-1 relative">
+                    <input
+                        type="text"
+                        placeholder="بحث بالاسم أو الكود..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-muted/30 border border-border rounded-2xl px-12 py-3 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-muted-foreground">
+                        <Package size={18} />
+                    </div>
+                </div>
+                <div className="w-full md:w-64 relative">
+                    <select
+                        value={modelFilter}
+                        onChange={(e) => setModelFilter(e.target.value)}
+                        className="w-full bg-muted/30 border border-border rounded-2xl px-10 py-3 text-sm font-bold appearance-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    >
+                        <option value="">كل الموديلات</option>
+                        {allModels.map((m: any) => (
+                            <option key={m} value={m}>{m.toUpperCase()}</option>
+                        ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-muted-foreground">
+                        <Briefcase size={16} />
+                    </div>
+                </div>
+            </div>
+
             <div className="overflow-x-auto max-h-[600px] custom-scroll">
                 <table className="w-full">
                     <thead className="bg-muted/90 backdrop-blur-md sticky top-0 z-10 border-b border-border">
                         <tr>
                             <th className="p-5 text-center w-12 bg-muted/90">
-                                <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-primary transition-colors">
-                                    {selectedIds.size > 0 && selectedIds.size === parts?.length ? <CheckSquare size={20} /> : <Square size={20} />}
-                                </button>
+                                <div className="flex justify-center">
+                                    <Checkbox
+                                        checked={selectedIds.size > 0 && selectedIds.size === parts?.length}
+                                        onCheckedChange={toggleSelectAll}
+                                        className="h-5 w-5 rounded-md"
+                                    />
+                                </div>
                             </th>
                             <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">الكود</th>
                             <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">اسم القطعة</th>
@@ -234,12 +305,16 @@ export function SparePartsTab() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
-                        {parts?.map((p: any) => (
+                        {filteredParts?.map((p: any) => (
                             <tr key={p.id} className={`hover:bg-muted/30 transition-colors group ${selectedIds.has(p.id) ? 'bg-primary/5' : ''}`}>
                                 <td className="p-5 text-center">
-                                    <button onClick={() => toggleSelect(p.id)} className={`${selectedIds.has(p.id) ? 'text-primary' : 'text-muted-foreground/30 group-hover:text-muted-foreground'} transition-colors`}>
-                                        {selectedIds.has(p.id) ? <CheckSquare size={20} /> : <Square size={20} />}
-                                    </button>
+                                    <div className="flex justify-center">
+                                        <Checkbox
+                                            checked={selectedIds.has(p.id)}
+                                            onCheckedChange={() => toggleSelect(p.id)}
+                                            className="h-5 w-5 rounded-md"
+                                        />
+                                    </div>
                                 </td>
                                 <td className="p-5 font-mono font-black text-primary text-sm">{p.partNumber}</td>
                                 <td className="p-5 font-black text-foreground">{p.name}</td>
@@ -266,7 +341,7 @@ export function SparePartsTab() {
                                 </td>
                             </tr>
                         ))}
-                        {(!parts?.length) && (
+                        {(!filteredParts?.length) && (
                             <tr><td colSpan={7} className="p-20 text-center text-muted-foreground">
                                 <Package size={64} className="mx-auto mb-4 opacity-20" />
                                 <p className="font-black text-xl">لا توجد قطع غيار مسجلة</p>
@@ -300,27 +375,51 @@ export function SparePartsTab() {
             )}
 
             {showImportDialog && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-                    <div className="bg-card rounded-[2.5rem] p-10 w-full max-w-lg border border-border shadow-2xl animate-scale-in">
-                        <h2 className="text-2xl font-black mb-4 flex items-center gap-3">
-                            <Upload className="text-primary" size={28} />
-                            تأكيد استيراد البيانات
-                        </h2>
-                        <p className="text-muted-foreground mb-6">سيتم إضافة <span className="text-foreground font-black underline decoration-primary decoration-4">{importData.length}</span> قطعة غيار جديدة للقانون.</p>
-                        <div className="max-h-60 overflow-y-auto border border-border rounded-2xl p-4 mb-8 bg-muted/30 custom-scroll">
-                            {importData.map((p, i) => (
-                                <div key={i} className="py-3 border-b border-border/50 last:border-0 flex justify-between items-center">
-                                    <div>
-                                        <div className="font-black">{p.name}</div>
-                                        <div className="text-[10px] text-muted-foreground font-bold tracking-widest">{p.compatibleModels}</div>
-                                    </div>
-                                    <div className="text-emerald-500 font-black">{p.defaultCost} ج.م</div>
-                                </div>
-                            ))}
+                <div className="modal-overlay" onClick={() => { setShowImportDialog(false); setImportData([]); }}>
+                    <div className="modal-container modal-sm" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <div className="modal-header-content">
+                                <Upload className="modal-icon text-primary" size={24} />
+                                <h2 className="modal-title">تأكيد استيراد البيانات</h2>
+                            </div>
+                            <button type="button" className="modal-close" onClick={() => { setShowImportDialog(false); setImportData([]); }}>
+                                <X size={20} />
+                            </button>
                         </div>
-                        <div className="flex gap-4">
-                            <button onClick={handleConfirmImport} className="flex-1 bg-emerald-500 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-emerald-500/20 transition-all active:scale-95">تأكيد الاستيراد</button>
-                            <button onClick={() => { setShowImportDialog(false); setImportData([]); }} className="flex-1 bg-muted hover:bg-accent text-foreground py-4 rounded-2xl font-black text-lg transition-all active:scale-95">إلغاء</button>
+
+                        <div className="modal-body">
+                            <p className="text-muted-foreground mb-6">
+                                سيتم إضافة <span className="text-foreground font-black underline decoration-primary decoration-4">{importData.length}</span> قطعة غيار جديدة للقانون.
+                            </p>
+
+                            <div className="border border-border rounded-xl overflow-hidden mb-6">
+                                <div className="max-h-60 overflow-y-auto bg-muted/30 custom-scroll">
+                                    {Array.isArray(importData) && importData.map((p, i) => (
+                                        <div key={i} className="px-4 py-3 border-b border-border/50 last:border-0 flex justify-between items-center bg-white/50">
+                                            <div>
+                                                <div className="font-bold text-sm">{p.name}</div>
+                                                <div className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase">{p.compatibleModels}</div>
+                                            </div>
+                                            <div className="text-emerald-600 font-bold text-sm">{p.defaultCost} ج.م</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                onClick={() => { setShowImportDialog(false); setImportData([]); }}
+                                className="smart-btn-secondary"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                onClick={handleConfirmImport}
+                                className="smart-btn-primary bg-emerald-600 hover:bg-emerald-700"
+                            >
+                                تأكيد الاستيراد
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -333,33 +432,76 @@ function PartFormModal({ title, initialData, onSubmit, onClose }: any) {
     const [formData, setFormData] = useState(initialData);
 
     return (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-            <div className="bg-card rounded-[2.5rem] p-10 w-full max-w-md border border-border shadow-2xl animate-scale-in relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16" />
-                <h2 className="text-2xl font-black mb-8 relative z-10">{title}</h2>
-                <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-5 relative z-10">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-black text-muted-foreground mr-1 uppercase tracking-widest">اسم القطعة</label>
-                        <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-4 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-bold" required />
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-container modal-sm" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <div className="modal-header-content">
+                        <Package className="modal-icon text-primary" size={24} />
+                        <h2 className="modal-title">{title}</h2>
                     </div>
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-black text-muted-foreground mr-1 uppercase tracking-widest">الموديلات المتوافقة</label>
-                        <input placeholder="s90;d210;vx520" value={formData.compatibleModels} onChange={e => setFormData({ ...formData, compatibleModels: e.target.value })} className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-4 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-mono" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-black text-muted-foreground mr-1 uppercase tracking-widest">السعر الرسمي (ج.م)</label>
-                        <input type="number" value={formData.defaultCost} onChange={e => setFormData({ ...formData, defaultCost: parseFloat(e.target.value) })} className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-4 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-black text-emerald-500" />
-                    </div>
-                    <label className="flex items-center gap-3 p-4 bg-muted/30 rounded-2xl border border-border/50 cursor-pointer group hover:bg-muted transition-colors">
-                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.allowsMultiple ? 'bg-primary border-primary' : 'border-border'}`}>
-                            {formData.allowsMultiple && <Check size={14} className="text-white" strokeWidth={4} />}
+                    <button type="button" className="modal-close" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }}>
+                    <div className="modal-body space-y-4">
+                        <div className="modal-form-field">
+                            <label className="modal-form-label required uppercase tracking-widest text-[10px]">اسم القطعة</label>
+                            <input
+                                value={formData.name}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                className="smart-input"
+                                required
+                            />
                         </div>
-                        <input type="checkbox" className="hidden" checked={formData.allowsMultiple} onChange={e => setFormData({ ...formData, allowsMultiple: e.target.checked })} />
-                        <span className="text-sm font-black text-foreground">يسمح بتركيب أكثر من قطعة للماكينة الواحدة</span>
-                    </label>
-                    <div className="flex gap-4 pt-4">
-                        <button type="submit" className="flex-1 bg-primary text-primary-foreground py-4 rounded-2xl font-black text-lg shadow-lg shadow-primary/20 transition-all active:scale-95">حفظ البيانات</button>
-                        <button type="button" onClick={onClose} className="flex-1 bg-muted hover:bg-accent text-foreground py-4 rounded-2xl font-black text-lg transition-all active:scale-95">إلغاء</button>
+
+                        <div className="modal-form-field">
+                            <label className="modal-form-label uppercase tracking-widest text-[10px]">الموديلات المتوافقة</label>
+                            <input
+                                placeholder="s90;d210;vx520"
+                                value={formData.compatibleModels}
+                                onChange={e => setFormData({ ...formData, compatibleModels: e.target.value })}
+                                className="smart-input font-mono"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">افصل بين الموديلات بفاصلة منقوطة (;)</p>
+                        </div>
+
+                        <div className="modal-form-field">
+                            <label className="modal-form-label required uppercase tracking-widest text-[10px]">السعر الرسمي (ج.م)</label>
+                            <input
+                                type="number"
+                                value={formData.defaultCost}
+                                onChange={e => setFormData({ ...formData, defaultCost: parseFloat(e.target.value) })}
+                                className="smart-input font-bold text-emerald-600"
+                                required
+                            />
+                        </div>
+
+                        <div
+                            className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm ${formData.allowsMultiple
+                                ? 'bg-primary/5 border-primary/20 ring-4 ring-primary/5'
+                                : 'bg-slate-50 border-slate-100 hover:border-primary/20 hover:bg-white'
+                                }`}
+                            onClick={() => setFormData({ ...formData, allowsMultiple: !formData.allowsMultiple })}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${formData.allowsMultiple ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                    <Package size={18} />
+                                </div>
+                                <span className="text-xs font-black text-slate-700">تعدد الاستخدام</span>
+                            </div>
+                            <Checkbox
+                                checked={formData.allowsMultiple}
+                                onCheckedChange={(checked) => setFormData({ ...formData, allowsMultiple: !!checked })}
+                                className="h-6 w-6 rounded-lg"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="modal-footer">
+                        <button type="button" onClick={onClose} className="smart-btn-secondary">إلغاء</button>
+                        <button type="submit" className="smart-btn-primary">حفظ البيانات</button>
                     </div>
                 </form>
             </div>
@@ -370,44 +512,65 @@ function PartFormModal({ title, initialData, onSubmit, onClose }: any) {
 function PriceLogsModal({ partId, partName, onClose }: { partId: string; partName: string; onClose: () => void }) {
     const { data: logs, isLoading } = useQuery({
         queryKey: ['price-logs', partId],
-        queryFn: async () => {
-            const res = await fetch(`http://localhost:5000/api/spare-parts/${partId}/price-logs`);
-            return res.json();
-        }
+        queryFn: () => api.get(`/spare-parts/${partId}/price-logs`)
     });
 
+    const displayLogs = Array.isArray(logs) ? logs : [];
+
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                <h2 className="text-xl font-bold mb-4">سجل تغييرات السعر</h2>
-                <p className="text-slate-600 mb-4">{partName}</p>
-                {isLoading ? <p>جاري التحميل...</p> : (
-                    <div className="max-h-60 overflow-y-auto">
-                        {logs?.length === 0 ? (
-                            <p className="text-slate-500 text-center py-4">لا توجد تغييرات في السعر</p>
-                        ) : (
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b">
-                                        <th className="text-right py-2">السعر القديم</th>
-                                        <th className="text-right py-2">السعر الجديد</th>
-                                        <th className="text-right py-2">التاريخ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {logs?.map((log: any) => (
-                                        <tr key={log.id} className="border-b">
-                                            <td className="py-2 text-red-600">{log.oldCost} ج.م</td>
-                                            <td className="py-2 text-green-600 font-bold">{log.newCost} ج.م</td>
-                                            <td className="py-2 text-xs">{new Date(log.changedAt).toLocaleString('ar-EG')}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-container modal-sm" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <div className="modal-header-content">
+                        <History className="modal-icon text-purple-600" size={24} />
+                        <h2 className="modal-title">سجل تغييرات السعر</h2>
                     </div>
-                )}
-                <button onClick={onClose} className="mt-4 w-full bg-slate-900 text-white py-2 rounded-lg">إغلاق</button>
+                    <button type="button" className="modal-close" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="modal-body">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
+                        <span className="text-xs text-slate-500 block mb-1">اسم القطعة</span>
+                        <span className="font-bold">{partName}</span>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="text-center py-8 text-slate-500">جاري التحميل...</div>
+                    ) : (
+                        <div className="border rounded-xl overflow-hidden">
+                            <div className="max-h-60 overflow-y-auto custom-scroll">
+                                {displayLogs.length === 0 ? (
+                                    <div className="p-8 text-center text-slate-500">لا توجد تغييرات في السعر</div>
+                                ) : (
+                                    <table className="w-full text-right text-sm">
+                                        <thead className="bg-slate-50 sticky top-0 border-b">
+                                            <tr>
+                                                <th className="px-4 py-2 border-l">السعر القديم</th>
+                                                <th className="px-4 py-2 border-l">السعر الجديد</th>
+                                                <th className="px-4 py-2">التاريخ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {displayLogs.map((log: any) => (
+                                                <tr key={log.id} className="hover:bg-slate-50">
+                                                    <td className="px-4 py-2 text-red-500 font-bold">{log.oldCost} ج.م</td>
+                                                    <td className="px-4 py-2 text-emerald-600 font-bold">{log.newCost} ج.م</td>
+                                                    <td className="px-4 py-2 text-[10px] text-slate-500">{new Date(log.changedAt).toLocaleString('ar-EG')}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="modal-footer">
+                    <button onClick={onClose} className="smart-btn-secondary w-full">إغلاق</button>
+                </div>
             </div>
         </div>
     );

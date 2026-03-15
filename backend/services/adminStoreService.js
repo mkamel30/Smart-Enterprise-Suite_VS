@@ -65,13 +65,11 @@ const adminStoreService = {
     },
 
     async getAssetHistory(assetId) {
-        console.log(`[DEBUG] getAssetHistory called for assetId: ${assetId}`);
         try {
             const history = await prisma.adminStoreMovement.findMany({
                 where: { assetId },
                 orderBy: { createdAt: 'desc' }
             });
-            console.log(`[DEBUG] Found ${history.length} movement records`);
 
             // Collect all branch IDs to fetch names
             const branchIds = new Set();
@@ -80,7 +78,7 @@ const adminStoreService = {
                 if (m.toBranchId) branchIds.add(m.toBranchId);
             });
 
-            console.log(`[DEBUG] Branch IDs to fetch: ${Array.from(branchIds).join(', ')}`);
+            });
 
             let branchMap = {};
             if (branchIds.size > 0) {
@@ -88,7 +86,6 @@ const adminStoreService = {
                     where: { id: { in: Array.from(branchIds) } },
                     select: { id: true, name: true }
                 });
-                console.log(`[DEBUG] Fetched ${branches.length} branches`);
                 branchMap = Object.fromEntries(branches.map(b => [b.id, b.name]));
             }
 
@@ -101,14 +98,12 @@ const adminStoreService = {
 
             // If no history exists, fetch creation info
             if (augmentedHistory.length === 0) {
-                console.log('[DEBUG] No history found, fetching asset creation info');
                 const asset = await prisma.adminStoreAsset.findUnique({
                     where: { id: assetId },
                     select: { createdBy: true, createdAt: true }
                 });
 
                 if (asset) {
-                    console.log('[DEBUG] Asset found, returning creation info as history');
                     return [{
                         id: 'creation',
                         type: 'IMPORT',
@@ -116,8 +111,6 @@ const adminStoreService = {
                         notes: 'تاريخ إضافة الأصل للنظام',
                         performedBy: asset.createdBy
                     }];
-                } else {
-                    console.log('[DEBUG] Asset not found');
                 }
             }
 

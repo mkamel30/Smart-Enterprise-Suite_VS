@@ -4,25 +4,7 @@ const prisma = new PrismaClient();
 
 async function createAdmin() {
     try {
-        console.log('🔧 Creating admin user...\n');
-
-        // First, ensure IT branch exists
-        let adminBranch = await prisma.branch.findFirst({
-            where: { code: 'IT001' }
-        });
-
-        if (!adminBranch) {
-            adminBranch = await prisma.branch.create({
-                data: {
-                    code: 'IT001',
-                    name: 'إدارة نظم المعلومات (IT)',
-                    type: 'CENTRAL',
-                    isActive: true,
-                    address: 'Main Office - IT Dept'
-                }
-            });
-            console.log('✅ IT branch created');
-        }
+        console.log('🔧 Initializing System Authority (Super Admin)...\n');
 
         // Hash the password
         const hashedPassword = await bcrypt.hash('Admin@12345678', 10);
@@ -33,17 +15,17 @@ async function createAdmin() {
         });
 
         if (existingUser) {
-            // Update existing user
+            // Update existing user - Ensure no branch dependency for Super Admin
             await prisma.user.update({
                 where: { id: existingUser.id },
                 data: {
                     password: hashedPassword,
-                    branchId: adminBranch.id,
+                    branchId: null, // Super Admin is a global entity
                     role: 'SUPER_ADMIN',
                     displayName: 'System Administrator'
                 }
             });
-            console.log('✅ Admin user updated successfully!');
+            console.log('✅ System Administrator updated successfully!');
         } else {
             // Create new user
             await prisma.user.create({
@@ -52,18 +34,20 @@ async function createAdmin() {
                     displayName: 'System Administrator',
                     password: hashedPassword,
                     role: 'SUPER_ADMIN',
-                    branchId: adminBranch.id,
+                    branchId: null, // Global scope
                     canDoMaintenance: true
                 }
             });
-            console.log('✅ Admin user created successfully!');
+            console.log('✅ System Administrator created successfully!');
         }
 
-        console.log('\n📋 Admin Credentials:');
+        console.log('\n📋 Core Admin Credentials:');
         console.log('   Email:    admin@csdept.com');
         console.log('   Password: Admin@12345678');
         console.log('   Role:     SUPER_ADMIN');
-        console.log('   Branch:   IT Department\n');
+        console.log('   Scope:    Global (No Branch Dependency)\n');
+
+    } catch (error) {
 
     } catch (error) {
         console.error('❌ Error:', error.message);

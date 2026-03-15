@@ -9,7 +9,7 @@ const { AppError } = require('../utils/errorHandler');
  * Protects against common web vulnerabilities
  */
 const securityHeaders = helmet({
-  contentSecurityPolicy: {
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
@@ -23,18 +23,18 @@ const securityHeaders = helmet({
       baseUri: ["'self'"],
       formAction: ["'self'"]
     }
-  },
-  crossOriginEmbedderPolicy: true,
-  crossOriginOpenerPolicy: true,
+  } : false, // Disable CSP in development for easier cross-origin/cross-port access
+  crossOriginEmbedderPolicy: process.env.NODE_ENV === 'production',
+  crossOriginOpenerPolicy: process.env.NODE_ENV === 'production',
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   dnsPrefetchControl: true,
   frameguard: { action: 'deny' },
   hidePoweredBy: true,
-  hsts: {
+  hsts: process.env.NODE_ENV === 'production' ? {
     maxAge: 31536000, // 1 year in seconds
     includeSubDomains: true,
     preload: true
-  },
+  } : false,
   ieNoOpen: true,
   noSniff: true,
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },

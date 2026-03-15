@@ -371,7 +371,7 @@ export default function MaintenanceApprovals() {
                     </div>
                 ) : (
                     <div className="divide-y">
-                        {requests.map((request) => {
+                        {Array.isArray(requests) && requests.map((request) => {
                             const parts = getParts(request.requestedParts);
                             const isPending = request.status === 'PENDING';
 
@@ -399,7 +399,7 @@ export default function MaintenanceApprovals() {
                                             <div className="bg-white rounded-lg border p-3 mt-2">
                                                 <div className="text-xs font-bold text-muted-foreground mb-2">القطع المطلوبة:</div>
                                                 <div className="space-y-1">
-                                                    {parts.map((part: any, i: number) => (
+                                                    {Array.isArray(parts) && parts.map((part: any, i: number) => (
                                                         <div key={i} className="flex justify-between text-sm">
                                                             <span>{part.name} × {part.quantity}</span>
                                                             <span className="font-bold">{part.cost * part.quantity} ج.م</span>

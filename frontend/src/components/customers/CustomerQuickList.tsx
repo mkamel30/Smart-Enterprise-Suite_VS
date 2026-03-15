@@ -42,13 +42,13 @@ export default function CustomerQuickList({
                                     </div>
                                 </div>
                                 <div className="flex gap-6">
-                                    <div className="flex flex-col items-center">
+                                    <div className="flex flex-col items-center" title="عدد الماكينات">
                                         <div className="p-2 bg-blue-500/5 text-blue-500 rounded-lg group-hover:bg-blue-500 group-hover:text-white transition-all">
                                             <Monitor size={18} />
                                         </div>
                                         <span className="text-[10px] font-black mt-1">{customer.posMachines?.length || 0}</span>
                                     </div>
-                                    <div className="flex flex-col items-center">
+                                    <div className="flex flex-col items-center" title="عدد الشرائح">
                                         <div className="p-2 bg-purple-500/5 text-purple-500 rounded-lg group-hover:bg-purple-500 group-hover:text-white transition-all">
                                             <CreditCard size={18} />
                                         </div>

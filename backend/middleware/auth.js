@@ -1,5 +1,6 @@
 ﻿const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
+const db = require('../db');
 
 // Validate JWT secret exists and meets security requirements
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -16,7 +17,8 @@ if (JWT_SECRET.length < 32) {
 }
 
 const { AppError, NotFoundError } = require('../utils/errorHandler');
-const db = require('../db');
+const { getAuthorizedBranchIds } = require('../utils/branchUtils');
+const { ROLES, isGlobalRole } = require('../utils/constants');
 
 // ===================== AUTHENTICATE TOKEN =====================
 /**
@@ -26,7 +28,12 @@ const db = require('../db');
 const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    let token = authHeader && authHeader.split(' ')[1];
+
+    // Fallback to cookie if header is missing
+    if (!token && req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
 
     if (!token) {
       throw new AppError('Access token required', 401, 'NO_TOKEN');
@@ -46,13 +53,22 @@ const authenticateToken = async (req, res, next) => {
     };
 
     // --- EXPANSION: Branch Hierarchy ---
-    // If user belongs to a branch, fetch its children for "Parent sees Children" visibility
-    if (req.user.branchId && !['SUPER_ADMIN', 'MANAGEMENT'].includes(req.user.role)) {
-      const children = await db.branch.findMany({
-        where: { parentBranchId: req.user.branchId },
-        select: { id: true }
-      });
-      req.user.authorizedBranchIds = [req.user.branchId, ...children.map(c => c.id)];
+    // Populate authorizedBranchIds (user's branch + all children)
+    if (req.user.branchId) {
+      if (!req.user.authorizedBranchIds) {
+        const branches = await db.branch.findMany({
+          where: {
+            OR: [
+              { id: req.user.branchId },
+              { parentBranchId: req.user.branchId }
+            ]
+          },
+          select: { id: true }
+        });
+        req.user.authorizedBranchIds = branches.map(b => b.id);
+      }
+    } else {
+      req.user.authorizedBranchIds = [];
     }
 
     logger.debug({ userId: req.user.id, role: req.user.role }, 'Token verified');
@@ -109,7 +125,10 @@ const requireAdmin = (req, res, next) => {
     throw new AppError('Authentication required', 401, 'NO_AUTH');
   }
 
-  if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+  // Admin roles include Super Admin and HQ-level management roles
+  const adminRoles = [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN, ROLES.ACCOUNTANT, ROLES.ADMIN_AFFAIRS, 'ADMIN'];
+
+  if (!adminRoles.includes(req.user.role)) {
     throw new AppError('Admin access required', 403, 'FORBIDDEN');
   }
 
@@ -140,7 +159,11 @@ const requireManager = (req, res, next) => {
     throw new AppError('Authentication required', 401, 'NO_AUTH');
   }
 
-  const managerRoles = ['MANAGER', 'CENTER_MANAGER', 'ADMIN', 'SUPER_ADMIN', 'MANAGEMENT', 'BRANCH_MANAGER', 'CS_SUPERVISOR'];
+  const managerRoles = [
+    ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN,
+    ROLES.ACCOUNTANT, ROLES.ADMIN_AFFAIRS, ROLES.BRANCH_MANAGER,
+    ROLES.CS_SUPERVISOR, 'ADMIN', 'MANAGER', 'CENTER_MANAGER'
+  ];
 
   if (!managerRoles.includes(req.user.role)) {
     throw new AppError('Manager access required', 403, 'FORBIDDEN');
@@ -157,7 +180,13 @@ const requireTechnician = (req, res, next) => {
     throw new AppError('Authentication required', 401, 'NO_AUTH');
   }
 
-  const techRoles = ['TECHNICIAN', 'SUPERVISOR', 'MANAGER', 'CENTER_MANAGER', 'ADMIN', 'SUPER_ADMIN', 'BRANCH_TECH', 'CENTER_TECH', 'CS_AGENT', 'CS_SUPERVISOR', 'BRANCH_MANAGER'];
+  // Any role that isn't purely administrative or low-level should have technician-level read access
+  const techRoles = [
+    ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN,
+    ROLES.ACCOUNTANT, ROLES.ADMIN_AFFAIRS, ROLES.BRANCH_MANAGER,
+    ROLES.CS_SUPERVISOR, ROLES.TECHNICIAN, ROLES.BRANCH_TECH,
+    'ADMIN', 'MANAGER', 'CENTER_MANAGER', 'CENTER_TECH', 'CS_AGENT'
+  ];
 
   if (!techRoles.includes(req.user.role)) {
     throw new AppError('Technician access required', 403, 'FORBIDDEN');
@@ -175,15 +204,16 @@ const requireBranchAccess = (requiredBranchId) => {
       throw new AppError('Authentication required', 401, 'NO_AUTH');
     }
 
-    // Super admins can access any branch
-    if (req.user.role === 'SUPER_ADMIN') {
+    // HQ/Global roles can access any branch
+    if (isGlobalRole(req.user.role)) {
       return next();
     }
 
-    // Regular users must match branch
-    if (req.user.branchId !== requiredBranchId) {
+    // Regular users must match branch or have it in their authorized list (hierarchy)
+    const authorizedIds = getAuthorizedBranchIds(req.user);
+    if (!authorizedIds.includes(requiredBranchId)) {
       logger.warn(
-        { userId: req.user.id, branchId: req.user.branchId, requiredBranchId },
+        { userId: req.user.id, branchId: req.user.branchId, requiredBranchId, authorizedIds },
         'Branch access denied'
       );
       throw new AppError('Access denied for this branch', 403, 'FORBIDDEN');
@@ -233,6 +263,21 @@ const generateToken = (user) => {
 };
 
 /**
+ * Generic RBAC middleware
+ * @param {Array<string>} allowedRoles 
+ */
+const authorize = (allowedRoles = []) => {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+    if (allowedRoles.length && !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    next();
+  };
+};
+
+/**
  * Refresh token validation (for refresh token endpoints)
  */
 const verifyRefreshToken = (token) => {
@@ -256,6 +301,7 @@ module.exports = {
   requirePermission,
   generateToken,
   verifyRefreshToken,
+  authorize,
   JWT_SECRET,
   JWT_EXPIRY
 };

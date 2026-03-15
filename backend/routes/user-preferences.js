@@ -1,9 +1,7 @@
 ﻿const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
-
-const prisma = new PrismaClient();
 
 /**
  * GET /api/user/preferences
@@ -13,7 +11,8 @@ router.get('/preferences', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const user = await prisma.user.findUnique({
+    // Find user by ID
+    const user = await db.user.findUnique({
       where: { id: userId },
       select: {
         fontSize: true,
@@ -67,9 +66,14 @@ router.put('/preferences', authenticateToken, async (req, res) => {
     if (theme !== undefined) updateData.theme = theme;
     if (fontFamily !== undefined) updateData.fontFamily = fontFamily;
 
-    const updatedUser = await prisma.user.update({
+    // Update user preferences
+    await db.user.update({
       where: { id: userId },
-      data: updateData,
+      data: updateData
+    });
+
+    const updatedUser = await db.user.findUnique({
+      where: { id: userId },
       select: {
         fontSize: true,
         highlightEffect: true,

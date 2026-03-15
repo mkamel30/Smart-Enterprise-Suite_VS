@@ -109,7 +109,7 @@ export function InventoryAnalytics({ data, filters }: InventoryAnalyticsProps) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/50">
-                            {movements.map((m: any, idx: number) => (
+                            {Array.isArray(movements) && movements.map((m: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-muted/20 transition-colors">
                                     <td className="p-4">
                                         <div className="flex flex-col">

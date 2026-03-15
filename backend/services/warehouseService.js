@@ -139,8 +139,19 @@ async function createMachine(data, user) {
         throw err;
     }
 
+    const machineParams = await db.machineParameter.findMany();
+    const detectedParams = detectMachineParams(data.serialNumber, machineParams);
+    const finalModel = data.model || detectedParams.model || '-';
+    const finalManufacturer = data.manufacturer || detectedParams.manufacturer || '-';
+
     const machine = await db.warehouseMachine.create({
-        data: { ...data, branchId, performedBy: undefined } // Remove performedBy from data
+        data: {
+            ...data,
+            branchId,
+            model: finalModel,
+            manufacturer: finalManufacturer,
+            performedBy: undefined
+        }
     });
 
     await movementService.logMachineMovement(db, {
@@ -201,6 +212,12 @@ async function returnMachineFromClient(payload, user) {
 
         if (!posMachine) throw new Error('الماكينة غير موجودة');
         if (posMachine.customerId !== customer.id) throw new Error('هذه الماكينة لا تنتمي لهذا العميل');
+
+        // Detect model/manufacturer if missing
+        const machineParams = await tx.machineParameter.findMany();
+        const detected = detectMachineParams(posMachine.serialNumber, machineParams);
+        posMachine.model = posMachine.model || detected.model || '-';
+        posMachine.manufacturer = posMachine.manufacturer || detected.manufacturer || '-';
 
         const reportData = {
             customer: customer,
@@ -336,8 +353,7 @@ async function exchangeMachine(payload, user) {
                 model: outgoing.model,
                 manufacturer: outgoing.manufacturer,
                 customerId: customer.id,
-                branchId: customer.branchId,
-                isMain: false
+                branchId: customer.branchId
             }
         });
 
@@ -346,6 +362,16 @@ async function exchangeMachine(payload, user) {
             where: { id: incomingMachineId, branchId: { not: null } }
         });
         if (!incomingPos) throw new Error('الماكينة الواردة غير موجودة');
+
+        // Detect model/manufacturer if missing
+        const machineParams = await tx.machineParameter.findMany();
+        const detectedOut = detectMachineParams(outgoing.serialNumber, machineParams);
+        outgoing.model = outgoing.model || detectedOut.model || '-';
+        outgoing.manufacturer = outgoing.manufacturer || detectedOut.manufacturer || '-';
+
+        const detectedIn = detectMachineParams(incomingPos.serialNumber, machineParams);
+        incomingPos.model = incomingPos.model || detectedIn.model || '-';
+        incomingPos.manufacturer = incomingPos.manufacturer || detectedIn.manufacturer || '-';
 
         const reportData = {
             customer,

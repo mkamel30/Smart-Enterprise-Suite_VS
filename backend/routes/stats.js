@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
@@ -10,11 +10,11 @@ router.get('/stats/dashboard', authenticateToken, async (req, res) => {
         const branchFilter = getBranchFilter(req);
         const now = new Date();
 
-        // 1. Fetch Active Requests for KPIs
+        // 1. Fetch Active Requests for KPIs (includes Pending, Open, and In Progress)
         const activeRequests = await db.maintenanceRequest.findMany({
             where: {
                 ...branchFilter,
-                status: { in: ['Open', 'In Progress'] }
+                status: { in: ['Pending', 'Open', 'In Progress'] }
             }
         });
 
@@ -24,9 +24,9 @@ router.get('/stats/dashboard', authenticateToken, async (req, res) => {
         // 3. Count total customers
         const totalCustomers = await db.customer.count({ where: branchFilter });
 
-        // 4. Get requests by status
+        // 4. Get requests by status (Pending + Open = open, In Progress = inProgress)
         const requestsByStatus = {
-            open: activeRequests.filter(r => r.status === 'Open').length,
+            open: activeRequests.filter(r => r.status === 'Pending' || r.status === 'Open').length,
             inProgress: activeRequests.filter(r => r.status === 'In Progress').length,
         };
 
@@ -45,7 +45,7 @@ router.get('/stats/dashboard', authenticateToken, async (req, res) => {
             activeRequests: activeRequests.length,
             totalMachines,
             totalCustomers,
-            requestsByStatus,
+            requests: requestsByStatus,
             recentRequests
         });
     } catch (error) {

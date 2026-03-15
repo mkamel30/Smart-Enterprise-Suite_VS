@@ -50,7 +50,7 @@ async function seedDatabase() {
                 maintenanceCenterId: maintenanceCenter.id
             }
         });
-        
+
         const branch2 = await prisma.branch.upsert({
             where: { code: 'BR002' },
             update: {},
@@ -124,7 +124,7 @@ async function seedDatabase() {
             const existing = await prisma.sparePart.findFirst({
                 where: { partNumber: part.partNumber }
             });
-            
+
             if (!existing) {
                 await prisma.sparePart.create({
                     data: {
@@ -155,8 +155,8 @@ async function seedDatabase() {
         }
         console.log('   âœ… Inventory items created for BR001');
 
-        // 8. Update admin user with branch
-        console.log('\n8ï¸ڈâƒ£  Updating admin user...');
+        // 8. Ensure Super Admin is a Global Entity
+        console.log('\n8️⃣  Ensuring System Administrator is global...');
         const adminUser = await prisma.user.findFirst({
             where: { email: 'admin@csdept.com' }
         });
@@ -164,15 +164,18 @@ async function seedDatabase() {
         if (adminUser) {
             await prisma.user.update({
                 where: { id: adminUser.id },
-                data: { branchId: adminAffairs.id }
+                data: {
+                    branchId: null, // Super Admin should never be tied to a branch
+                    role: 'SUPER_ADMIN'
+                }
             });
-            console.log('   âœ… Admin user linked to Admin Affairs branch');
+            console.log('   ✅ System Admin verified as Global Entity');
         }
 
         // 9. Create additional users
         console.log('\n9ï¸ڈâƒ£  Creating additional users...');
         const hashedPassword = await bcrypt.hash('user123', 10);
-        
+
         const existingManager = await prisma.user.findFirst({ where: { email: 'manager@csdept.com' } });
         if (!existingManager) {
             await prisma.user.create({

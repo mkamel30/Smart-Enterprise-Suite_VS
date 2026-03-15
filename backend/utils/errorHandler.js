@@ -96,7 +96,7 @@ const errorHandler = (err, req, res, next) => {
   else if (err.code === 'P2003') {
     statusCode = 400;
     code = 'FOREIGN_KEY_ERROR';
-    message = 'لا يمكن الحذف: السجل مستخدم في سجلات أخرى';
+    message = 'خطأ في الربط: المرجع غير موجود أو السجل مستخدم في سجلات أخرى';
   }
   else if (err.code === 'P2014') {
     statusCode = 400;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import { api } from '../api/client';
 import { Monitor, RotateCcw, AlertTriangle, Wrench, FileClock, Plus, Filter, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -25,13 +26,14 @@ import { TransferMachinesModal } from '../components/warehouse/TransferMachinesM
 import { MaintenanceTransferModal } from '../components/warehouse/MaintenanceTransferModal';
 import { MachineWarehouseStats } from '../components/warehouse/MachineWarehouseStats';
 import { MachineImportModal } from '../components/warehouse/MachineImportModal';
+import { TechnicalReportModal } from '../components/warehouse/TechnicalReportModal';
 
 export default function MachineWarehouse() {
     const { user, activeBranchId } = useAuth();
     const queryClient = useQueryClient();
 
     // Auth & Permissions
-    const isAdmin = !user?.branchId;
+    const isAdmin = !user?.branchId || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGEMENT' || user?.role === 'ADMIN_AFFAIRS';
     const isAffairs = user?.role === 'ADMIN_AFFAIRS';
     const isCenterManager = user?.role === 'CENTER_MANAGER';
     const performedBy = user?.displayName || user?.email || 'System';
@@ -55,7 +57,8 @@ export default function MachineWarehouse() {
         sale: false,
         transfer: false,
         unknownModel: false,
-        import: false
+        import: false,
+        history: false
     });
     const [selectedItem, setSelectedItem] = useState<any>(null);
 
@@ -63,11 +66,26 @@ export default function MachineWarehouse() {
     const isLogsTab = activeTab === 'LOGS';
 
     // Queries
-    const { data: machines, isLoading: machinesLoading } = useQuery({
+    const { data: machinesData, isLoading: machinesLoading } = useQuery({
         queryKey: ['warehouse-machines', activeTab, activeBranchId, filterBranchId],
         queryFn: () => api.getWarehouseMachines(activeTab, activeBranchId || filterBranchId),
         enabled: !isLogsTab && !isWorkflowTab
     });
+
+    const machines = Array.isArray(machinesData) ? machinesData : (machinesData?.data || []);
+
+    // Filter States
+    const [modelFilter, setModelFilter] = useState('');
+    const [manufacturerFilter, setManufacturerFilter] = useState('');
+
+    // Derived Filters
+    const uniqueModels = Array.from(new Set((Array.isArray(machines) ? machines : []).map((m: any) => m.model).filter(Boolean)));
+    const uniqueManufacturers = Array.from(new Set((Array.isArray(machines) ? machines : []).map((m: any) => m.manufacturer).filter(Boolean)));
+
+    const columnFilters: ColumnFiltersState = [
+        ...(modelFilter ? [{ id: 'model', value: modelFilter }] : []),
+        ...(manufacturerFilter ? [{ id: 'manufacturer', value: manufacturerFilter }] : [])
+    ];
 
     const { data: logs, isLoading: logsLoading } = useQuery({
         queryKey: ['warehouse-logs', activeBranchId, filterBranchId],
@@ -90,13 +108,6 @@ export default function MachineWarehouse() {
         queryKey: ['machine-parameters'],
         queryFn: () => api.getMachineParameters()
     });
-
-    // Clients are now loaded on-demand in the modals via live search
-    // No need to preload 50 clients
-    // const { data: clients } = useQuery<any[]>({
-    //     queryKey: ['clients-lite'],
-    //     queryFn: () => api.getCustomersLite() as Promise<any[]>
-    // });
 
     const { data: pendingSerials } = useQuery({
         queryKey: ['pending-transfer-serials', user?.branchId],
@@ -155,7 +166,8 @@ export default function MachineWarehouse() {
         onExchange: (m: any) => { setSelectedItem(m); setModals(prev => ({ ...prev, exchange: true })); },
         onReturnToCustomer: (m: any) => { setSelectedItem(m); setModals(prev => ({ ...prev, returnToCustomer: true })); },
         onRepair: (m: any) => { setSelectedItem(m); setModals(prev => ({ ...prev, repair: true })); },
-        onAddParameter: (m: any) => { setSelectedItem(m); setModals(prev => ({ ...prev, unknownModel: true })); }
+        onAddParameter: (m: any) => { setSelectedItem(m); setModals(prev => ({ ...prev, unknownModel: true })); },
+        onViewHistory: (m: any) => { setSelectedItem(m); setModals(prev => ({ ...prev, history: true })); }
     };
 
     // Excel Template Download
@@ -211,8 +223,6 @@ export default function MachineWarehouse() {
                         </Button>
                     )}
 
-
-
                     {!isCenterManager && !isAffairs && (activeTab === 'CLIENT_REPAIR' || activeTab === 'DEFECTIVE') && selectedMachines.length > 0 && (
                         <Button
                             onClick={() => setModals(prev => ({ ...prev, maintenanceTransfer: true }))}
@@ -260,34 +270,17 @@ export default function MachineWarehouse() {
                                 )}
                             </button>
                         ))}
-
-
-                    </div>
-
-                    <div className="flex items-center gap-3 lg:ml-4 mb-2">
-                        {isAdmin && !isLogsTab && !isWorkflowTab && (
-                            <div className="flex items-center gap-3 bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200/50">
-                                <Filter size={16} className="text-slate-400 mr-2" />
-                                <select
-                                    value={filterBranchId}
-                                    onChange={(e) => setFilterBranchId(e.target.value)}
-                                    className="bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 w-full lg:w-auto"
+                        <div className="flex items-center gap-3 lg:ml-4 mb-2">
+                            {isAffairs && (
+                                <Button
+                                    onClick={() => setModals(prev => ({ ...prev, transfer: true }))}
+                                    disabled={selectedMachines.length === 0}
+                                    className="bg-primary hover:bg-primary/90 text-white rounded-xl px-4 py-2 font-bold shadow-sm shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed gap-2 whitespace-nowrap h-10"
                                 >
-                                    <option value="">كل الفروع</option>
-                                    {(branches as any[])?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                                </select>
-                            </div>
-                        )}
-
-                        {isAffairs && (
-                            <Button
-                                onClick={() => setModals(prev => ({ ...prev, transfer: true }))}
-                                disabled={selectedMachines.length === 0}
-                                className="bg-primary hover:bg-primary/90 text-white rounded-xl px-4 py-2 font-bold shadow-sm shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed gap-2 whitespace-nowrap h-10"
-                            >
-                                تحويل {selectedMachines.length > 0 && `(${selectedMachines.length})`}
-                            </Button>
-                        )}
+                                    تحويل {selectedMachines.length > 0 && `(${selectedMachines.length})`}
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -304,6 +297,10 @@ export default function MachineWarehouse() {
                             branches={(branches as any) || []}
                             searchTerm={logSearchTerm}
                             onSearchChange={setLogSearchTerm}
+                            onViewTechnicalReport={(serial) => {
+                                setSelectedItem({ serialNumber: serial });
+                                setModals(prev => ({ ...prev, history: true }));
+                            }}
                         />
                     ) : (
                         <DataTable
@@ -312,6 +309,46 @@ export default function MachineWarehouse() {
                             searchKeys={['serialNumber', 'model', 'manufacturer']}
                             isLoading={machinesLoading}
                             onRowSelectionChange={setSelectedMachines}
+                            columnFilters={columnFilters}
+                            filters={
+                                <>
+                                    {isAdmin && (
+                                        <div className="flex items-center gap-3 bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200/50">
+                                            <Filter size={16} className="text-slate-400 mr-2" />
+                                            <select
+                                                value={filterBranchId}
+                                                onChange={(e) => setFilterBranchId(e.target.value)}
+                                                className="bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 w-full lg:w-auto outline-none"
+                                            >
+                                                <option value="">كل الفروع</option>
+                                                {Array.isArray(branches) && branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-3 bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200/50">
+                                        <span className="text-xs font-bold text-slate-400 mr-2">الموديل:</span>
+                                        <select
+                                            value={modelFilter}
+                                            onChange={(e) => setModelFilter(e.target.value)}
+                                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 w-full lg:w-auto outline-none"
+                                        >
+                                            <option value="">الكل</option>
+                                            {uniqueModels.map((m: any) => <option key={m} value={m}>{m}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center gap-3 bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200/50">
+                                        <span className="text-xs font-bold text-slate-400 mr-2">المصنع:</span>
+                                        <select
+                                            value={manufacturerFilter}
+                                            onChange={(e) => setManufacturerFilter(e.target.value)}
+                                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 w-full lg:w-auto outline-none"
+                                        >
+                                            <option value="">الكل</option>
+                                            {uniqueManufacturers.map((m: any) => <option key={m} value={m}>{m}</option>)}
+                                        </select>
+                                    </div>
+                                </>
+                            }
                         />
                     )}
                 </div>
@@ -383,12 +420,14 @@ export default function MachineWarehouse() {
                 selectedCount={selectedMachines.length}
                 isLoading={transferMutation.isPending}
                 onSubmit={(branchId, notes) => {
-                    const items = machines?.filter((m: any) => selectedMachines.includes(m.id)).map((m: any) => ({
-                        serialNumber: m.serialNumber,
-                        type: 'MACHINE',
-                        manufacturer: m.manufacturer,
-                        model: m.model
-                    })) || [];
+                    const items = Array.isArray(machines)
+                        ? machines.filter((m: any) => selectedMachines.includes(m.id)).map((m: any) => ({
+                            serialNumber: m.serialNumber,
+                            type: 'MACHINE',
+                            manufacturer: m.manufacturer,
+                            model: m.model
+                        }))
+                        : [];
 
                     transferMutation.mutate({
                         branchId,
@@ -405,7 +444,7 @@ export default function MachineWarehouse() {
             {
                 modals.maintenanceTransfer && (
                     <MaintenanceTransferModal
-                        selectedMachines={machines?.filter((m: any) => selectedMachines.includes(m.id)).map((m: any) => m.serialNumber) || []}
+                        selectedMachines={(Array.isArray(machines) ? machines : []).filter((m: any) => selectedMachines.includes(m.id)).map((m: any) => m.serialNumber) || []}
                         onClose={() => {
                             setModals(prev => ({ ...prev, maintenanceTransfer: false }));
                             setSelectedMachines([]);
@@ -423,6 +462,12 @@ export default function MachineWarehouse() {
                     queryClient.invalidateQueries({ queryKey: ['warehouse-counts'] });
                 }}
             />
-        </div >
+
+            <TechnicalReportModal
+                isOpen={modals.history}
+                onClose={() => setModals(prev => ({ ...prev, history: false }))}
+                serialNumber={selectedItem?.serialNumber}
+            />
+        </div>
     );
 }

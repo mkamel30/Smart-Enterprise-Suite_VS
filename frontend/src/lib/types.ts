@@ -61,7 +61,6 @@ export type PosMachine = {
   model?: string;
   manufacturer?: string;
   customerId: string; // The bkcode of the customer
-  isMain?: boolean;
 };
 
 // Represents a SIM card associated with a customer.

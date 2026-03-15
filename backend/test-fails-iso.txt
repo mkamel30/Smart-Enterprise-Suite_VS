@@ -1,0 +1,15 @@
+  ● Test suite failed to run
+
+    Cannot find module '../../utils/auth-helpers' from 'tests/unit/branchIsolation.test.js'
+
+    [0m [90m 14 |[39m [90m// Removed auth-helpers mock to test real implementation[39m
+     [90m 15 |[39m
+    [31m[1m>[22m[39m[90m 16 |[39m [36mconst[39m authHelpers [33m=[39m require([32m'../../utils/auth-helpers'[39m)[33m;[39m
+     [90m    |[39m                     [31m[1m^[22m[39m
+     [90m 17 |[39m
+     [90m 18 |[39m describe([32m'Branch Isolation'[39m[33m,[39m () [33m=>[39m {
+     [90m 19 |[39m   beforeEach(() [33m=>[39m {[0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)
+      at Object.require (tests/unit/branchIsolation.test.js:16:21)
+

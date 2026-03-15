@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { X, UserPlus, Search } from 'lucide-react';
-import { Button } from '../ui/button';
+import React, { useState, useEffect } from 'react';
+import { X, UserPlus, Search, Wrench, ChevronLeft, User, Loader2, CheckCircle, ShieldCheck, Sparkles, Inbox } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { api } from '../../api/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
+import { Dialog, DialogContent } from '../ui/dialog';
+import { cn } from '../../lib/utils';
 
 interface AssignTechnicianModalProps {
     isOpen: boolean;
@@ -23,6 +24,15 @@ export function AssignTechnicianModal({ isOpen, onClose, machineId, serialNumber
         queryKey: ['technicians', user?.branchId],
         queryFn: () => api.getTechnicians()
     });
+
+    // ESC key handler
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [onClose]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,66 +64,135 @@ export function AssignTechnicianModal({ isOpen, onClose, machineId, serialNumber
         }
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" dir="rtl">
-            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden">
-                <div className="flex justify-between items-center p-6 pb-4 shrink-0 border-b border-slate-50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-blue-50 rounded-xl">
-                            <UserPlus className="text-primary" size={20} />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800">تعيين فني صيانة</h2>
-                            <p className="text-slate-500 text-sm font-medium">للماكينة: <span className="font-mono text-primary">{serialNumber}</span></p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                        <X size={20} className="text-slate-400" />
-                    </button>
-                </div>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="p-0 border-0 flex flex-col max-h-[92vh] h-auto overflow-hidden sm:max-w-md rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="space-y-3">
-                        <label className="text-sm font-bold text-slate-700">اختر الفني المسؤول</label>
-                        <div className="relative">
-                            <select
-                                value={selectedTechId}
-                                onChange={(e) => setSelectedTechId(e.target.value)}
-                                className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full p-3 pr-10 outline-none transition-all font-medium"
-                                required
-                            >
-                                <option value="">اختر من القائمة...</option>
-                                {technicians?.map((tech: any) => (
-                                    <option key={tech.id} value={tech.id}>{tech.displayName}</option>
-                                ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                                <Search size={16} />
+                {/* Header Section with Tech-Blue Gradient */}
+                <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-indigo-600 to-blue-700 relative overflow-hidden text-right">
+                    {/* Visual Decor */}
+                    <div className="absolute top-0 left-0 w-full h-full opacity-15 pointer-events-none">
+                        <div className="absolute -top-1/2 -left-1/4 w-[150%] h-[150%] bg-white rounded-full blur-[100px] rotate-12"></div>
+                        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[80%] bg-indigo-400 rounded-full blur-[60px]"></div>
+                    </div>
+
+                    <div className="modal-header-content relative z-10 text-right">
+                        <div className="flex items-center gap-5 justify-end sm:justify-start">
+                            <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl text-white">
+                                <UserPlus size={28} strokeWidth={3} />
+                            </div>
+                            <div className="text-right">
+                                <h2 className="modal-title font-black text-white leading-tight tracking-tight text-2xl">تكليف فني صيانة</h2>
+                                <div className="flex items-center gap-2 mt-1 justify-end">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse"></div>
+                                    <p className="text-blue-50 font-bold text-[10px] uppercase tracking-widest opacity-90">إدارة المهام الفنية</p>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <button type="button" className="modal-close bg-white/10 hover:bg-white/20 text-white transition-all p-2 rounded-xl backdrop-blur-sm" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
 
-                    <div className="flex gap-3 pt-2">
-                        <Button
-                            type="submit"
-                            disabled={isLoading || !selectedTechId}
-                            className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold shadow-lg shadow-primary/20 transition-all"
-                        >
-                            {isLoading ? 'جاري التعيين...' : 'تأكيد التعيين'}
-                        </Button>
-                        <Button
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden bg-slate-50/30">
+                    <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8 custom-scroll text-right">
+
+                        {/* Machine Context Banner */}
+                        <div className="relative group">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-[2.2rem] blur opacity-15 group-hover:opacity-25 transition duration-500"></div>
+                            <div className="relative bg-white border border-slate-100/50 rounded-[2rem] p-6 flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border-2 border-white shadow-inner shrink-0">
+                                        <Wrench size={32} strokeWidth={2.5} />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">الجهاز قيد التكليف</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-lg font-black text-slate-900 font-mono tracking-wider">{serialNumber}</span>
+                                            <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[9px] font-black rounded-lg border border-amber-100 shadow-sm leading-none flex items-center gap-1">
+                                                <Inbox size={10} />
+                                                PENDING
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Sparkles className="text-indigo-200" size={24} />
+                            </div>
+                        </div>
+
+                        {/* Tech Selection Control */}
+                        <div className="space-y-4">
+                            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 leading-none">
+                                <User size={14} className="text-blue-500" />
+                                اختيار الفني المسؤول عن الصيانة
+                            </label>
+                            <div className="relative group/picker">
+                                <div className="absolute top-1/2 -translate-y-1/2 right-6 p-2 bg-slate-100 text-slate-400 rounded-xl group-focus-within/picker:bg-indigo-600 group-focus-within/picker:text-white transition-all duration-300 pointer-events-none z-10 border border-slate-200 shadow-sm">
+                                    <Search size={24} strokeWidth={3} />
+                                </div>
+                                <select
+                                    value={selectedTechId}
+                                    onChange={(e) => setSelectedTechId(e.target.value)}
+                                    className="smart-input h-20 pr-18 pl-8 rounded-[2rem] border-2 bg-white border-slate-200 focus:border-indigo-500 font-black text-sm appearance-none outline-none transition-all cursor-pointer shadow-xl shadow-slate-400/5"
+                                    required
+                                >
+                                    <option value="" disabled>اضغط للبحث واختيار الفني المتاح...</option>
+                                    {technicians?.map((tech: any) => (
+                                        <option key={tech.id} value={tech.id} className="font-bold py-4">{tech.displayName}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Workflow Notification Banner */}
+                        <div className="p-6 bg-blue-50/50 rounded-[2.5rem] border border-blue-100/50 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <ShieldCheck size={20} className="text-blue-500 shrink-0 mt-0.5" />
+                            <p className="text-[11px] font-bold text-blue-800 leading-relaxed text-right">
+                                <span className="block font-black mb-1">تدفق العمليات الفنية:</span>
+                                سيصل إشعار فوري للفني المختار على لوحة التحكم الخاصة به. سيتم نقل الماكينة فوراً إلى قسم <strong className="text-blue-700 underline underline-offset-2">"تحت الصيانة"</strong>. لا يمكن صرف هذه الوحدة لعميل حالياً.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Industrial Footer Actions */}
+                    <div className="modal-footer p-8 bg-white border-t border-slate-100 shrink-0 gap-4">
+                        <button
                             type="button"
                             onClick={onClose}
-                            variant="outline"
-                            className="flex-1 border-slate-200 rounded-xl py-6 font-bold text-slate-600 hover:bg-slate-50"
+                            className="smart-btn-secondary flex-1 h-18 border-2 border-slate-100 text-slate-500 px-8 font-black text-sm"
                         >
-                            إلغاء
-                        </Button>
+                            إلغاء التكليف
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isLoading || !selectedTechId}
+                            className={cn(
+                                "smart-btn-primary flex-[2] h-18 font-black text-lg flex items-center justify-center gap-3 shadow-2xl transition-all active:scale-[0.98] disabled:grayscale disabled:opacity-40",
+                                selectedTechId
+                                    ? "bg-indigo-600 border-b-4 border-indigo-700 hover:bg-indigo-700 shadow-indigo-100 text-white"
+                                    : "bg-slate-200 text-slate-400 border-0 shadow-none"
+                            )}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    جاري المعالجة...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle size={24} strokeWidth={3} />
+                                    تأكيد التعيين
+                                </>
+                            )}
+                        </button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }
+

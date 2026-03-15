@@ -14,7 +14,8 @@ jest.mock('../middleware/auth', () => ({
     },
     requireManager: (req, res, next) => next(),
     requireAdmin: (req, res, next) => next(),
-    requireSuperAdmin: (req, res, next) => next()
+    requireSuperAdmin: (req, res, next) => next(),
+    authorize: (roles) => (req, res, next) => next()
 }));
 
 // Now import app
@@ -43,7 +44,7 @@ describe('Backend Integration API', () => {
         expect(res.body).toHaveProperty('requests');
         expect(res.body).toHaveProperty('inventory');
         expect(res.body).toHaveProperty('alerts');
-        expect(res.body.revenue).toHaveProperty('monthly');
+        expect(res.body.revenue).toHaveProperty('amount');
         expect(res.body.revenue).toHaveProperty('trend');
     });
 

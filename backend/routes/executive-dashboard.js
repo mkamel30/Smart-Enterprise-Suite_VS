@@ -1,10 +1,11 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const { asyncHandler, AppError } = require('../utils/errorHandler');
 const { isGlobalRole } = require('../utils/constants');
+const dashboardService = require('../services/dashboardService');
 
 // ===================== EXECUTIVE DASHBOARD =====================
 // This dashboard is designed for SUPER_ADMIN, MANAGEMENT, and high-level decision makers
@@ -19,39 +20,34 @@ const { isGlobalRole } = require('../utils/constants');
  */
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     // Only allow management roles
-    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER', 'CS_SUPERVISOR'];
+    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER', 'CS_SUPERVISOR', 'ACCOUNTANT'];
     if (!allowedRoles.includes(req.user.role)) {
-        throw new AppError('Access denied: Executive access required', 403, 'FORBIDDEN');
+        throw new AppError(`Access denied: Executive access required. Your role: ${req.user.role}`, 403, 'FORBIDDEN');
     }
 
     const { startDate, endDate, branchId } = req.query;
 
     // Date range calculation
     const today = new Date();
-    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    const dateStart = startDate ? new Date(startDate) : currentMonthStart;
-    const dateEnd = endDate ? new Date(endDate) : currentMonthEnd;
+    // Normalize dates to LOCAL boundaries for the whole day
+    const dateStart = startDate ? new Date(startDate) : new Date(today.getFullYear(), today.getMonth(), 1);
+    const dateEnd = endDate ? new Date(endDate) : new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    // Branch filter for non-admins or when explicitly specified
-    // Support hierarchy: use authorized branches if not admin
-    const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+    // Force dateStart to start of day (00:00:00.000)
+    dateStart.setHours(0, 0, 0, 0);
+    // Force dateEnd to end of day (23:59:59.999)
+    dateEnd.setHours(23, 59, 59, 999);
+
+    const isAdmin = isGlobalRole(req.user.role);
+
+    // Branch filter logic
     let branchFilter = {};
-
-    if (isGlobalRole(req.user.role)) {
-        if (branchId) branchFilter = { branchId };
-    } else {
-        // Restricted user
-        if (branchId) {
-            // If specific branch requested, check authorization
-            branchFilter = authorizedIds.includes(branchId) ? { branchId } : { branchId: 'FORBIDDEN' };
-        } else {
-            // Default to all authorized branches
-            branchFilter = { branchId: authorizedIds.length === 1 ? authorizedIds[0] : { in: authorizedIds } };
-        }
+    if (branchId) {
+        branchFilter = { branchId };
+    } else if (!isAdmin) {
+        const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
+        branchFilter = { branchId: authorizedIds.length === 0 ? 'NONE' : { in: authorizedIds } };
     }
 
     // ===================== PARALLEL DATA FETCH =====================
@@ -61,84 +57,145 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     const prevStart = new Date(dateStart.getTime() - periodDiff);
     const prevEnd = new Date(dateEnd.getTime() - periodDiff);
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const isAdmin = isGlobalRole(req.user.role);
 
     const [
         currentRevenue,
         previousRevenue,
         revenueByType,
-        machineSales,
+        machineSalesSummary,
         pendingPayments,
         requestsTotal,
         requestsClosed,
         closedRequests,
         overdueRequests,
-        inventoryItems
+        inventoryItems,
+        machineSalesBreakdown,
+        freePartsMovements
     ] = await Promise.all([
         // 1. Current Period Revenue
-        db.payment.aggregate(ensureBranchWhere({
+        db.payment.aggregate({
             where: { ...branchFilter, createdAt: { gte: dateStart, lte: dateEnd } },
             _sum: { amount: true }
-        }, req)),
+        }),
 
         // 2. Previous Period Revenue
-        db.payment.aggregate(ensureBranchWhere({
+        db.payment.aggregate({
             where: { ...branchFilter, createdAt: { gte: prevStart, lte: prevEnd } },
             _sum: { amount: true }
-        }, req)),
+        }),
 
-        // 3. Revenue by Type
-        db.payment.groupBy(ensureBranchWhere({
-            by: ['type'],
+        // 3. All Payments for refined breakdown
+        db.payment.findMany({
             where: { ...branchFilter, createdAt: { gte: dateStart, lte: dateEnd } },
-            _sum: { amount: true }
-        }, req)),
+            select: { amount: true, type: true, reason: true }
+        }),
 
-        // 4. Machine Sales (for installment calculations)
-        db.machineSale.findMany(ensureBranchWhere({
+        // 4. Machine Sales (for debt calculations)
+        db.machineSale.findMany({
             where: { ...branchFilter, status: { not: 'CANCELLED' } },
             select: { totalPrice: true, paidAmount: true }
-        }, req)),
+        }),
 
         // 5. Pending Maintenance Debts
         db.branchDebt.findMany({
             where: {
-                ...(branchId ? { debtorBranchId: branchId } : (isAdmin ? { _skipBranchEnforcer: true } : {})),
-                status: 'PENDING_PAYMENT'
+                ...(branchId ? { debtorBranchId: branchId } : (isAdmin ? { debtorBranchId: { not: 'BYPASS' } } : {})),
+                status: 'PENDING'
             },
             select: { remainingAmount: true, createdAt: true }
         }),
 
         // 6. Total Requests (period)
-        db.maintenanceRequest.count(ensureBranchWhere({
+        db.maintenanceRequest.count({
             where: { ...branchFilter, createdAt: { gte: dateStart, lte: dateEnd } }
-        }, req)),
+        }),
 
         // 7. Closed Requests count
-        db.maintenanceRequest.count(ensureBranchWhere({
+        db.maintenanceRequest.count({
             where: { ...branchFilter, status: 'Closed', closingTimestamp: { gte: dateStart, lte: dateEnd } }
-        }, req)),
+        }),
 
         // 8. Closed Requests with timestamps (for avg resolution)
-        db.maintenanceRequest.findMany(ensureBranchWhere({
+        db.maintenanceRequest.findMany({
             where: { ...branchFilter, status: 'Closed', closingTimestamp: { gte: dateStart, lte: dateEnd } },
             select: { createdAt: true, closingTimestamp: true }
-        }, req)),
+        }),
 
         // 9. Overdue Requests (> 7 days)
-        db.maintenanceRequest.count(ensureBranchWhere({
-            where: { ...branchFilter, status: { in: ['Open', 'In Progress'] }, createdAt: { lt: sevenDaysAgo } }
-        }, req)),
+        db.maintenanceRequest.count({
+            where: { ...branchFilter, status: { in: ['Pending', 'Open', 'In Progress'] }, createdAt: { lt: sevenDaysAgo } }
+        }),
 
         // 10. Inventory Items
-        db.inventoryItem.findMany(ensureBranchWhere({
+        db.inventoryItem.findMany({
             where: branchFilter, include: { part: true }
-        }, req))
+        }),
+
+        // 11. Machine Sales Breakdown (Cash vs Installment)
+        db.machineSale.groupBy({
+            by: ['type'],
+            where: {
+                ...branchFilter,
+                saleDate: { gte: dateStart, lte: dateEnd },
+                status: { not: 'CANCELLED' }
+            },
+            _sum: { totalPrice: true },
+            _count: { id: true }
+        }),
+
+        // 12. Free Parts Value (Outgoing movements where isPaid is not true)
+        db.stockMovement.findMany({
+            where: {
+                ...branchFilter,
+                createdAt: { gte: dateStart, lte: dateEnd },
+                isPaid: { not: true }, // Catch false and null
+                type: 'OUT'
+            }
+        })
     ]);
 
     // ===================== 1. FINANCIAL KPIs =====================
 
-    const remainingInstallments = machineSales.reduce((sum, s) => sum + (s.totalPrice - s.paidAmount), 0);
+    // Refined Revenue Breakdown
+    const breakdown = {
+        MAINTENANCE_LABOR: 0,
+        MAINTENANCE_PARTS: 0,
+        MACHINE_SALE: 0,
+        INSTALLMENT: 0,
+        DIRECT_PARTS: 0,
+        OTHER: 0
+    };
+
+    revenueByType.forEach(p => {
+        const t = p.type || '';
+        const r = p.reason || '';
+
+        if (t === 'INSTALLMENT' || r.includes('قسط') || r.includes('أقساط')) {
+            breakdown.INSTALLMENT += p.amount;
+        } else if (t === 'SALE' || r.includes('بيع') || r.includes('ماكينة')) {
+            breakdown.MACHINE_SALE += p.amount;
+        } else if (r.includes('قطع غيار')) {
+            if (t === 'MAINTENANCE' || r.includes('صيانة')) {
+                breakdown.MAINTENANCE_PARTS += p.amount;
+            } else {
+                breakdown.DIRECT_PARTS += p.amount;
+            }
+        } else if (t === 'MAINTENANCE' || r.includes('صيانة')) {
+            breakdown.MAINTENANCE_LABOR += p.amount;
+        } else if (t === 'SPARE_PARTS') {
+            breakdown.DIRECT_PARTS += p.amount;
+        } else {
+            breakdown.OTHER += p.amount;
+        }
+    });
+
+    const revenueBreakdown = Object.entries(breakdown)
+        .filter(([_, amount]) => amount > 0)
+        .map(([type, amount]) => ({ type, amount }));
+
+    const paidPartsRevenue = breakdown.MAINTENANCE_PARTS + breakdown.DIRECT_PARTS;
+
+    const remainingInstallments = machineSalesSummary.reduce((sum, s) => sum + (s.totalPrice - s.paidAmount), 0);
     const pendingMaintenanceDebts = pendingPayments.reduce((sum, p) => sum + p.remainingAmount, 0);
     const pendingDebtsTotal = remainingInstallments + pendingMaintenanceDebts;
 
@@ -147,6 +204,43 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     const overdueDebtsTotal = pendingPayments
         .filter(p => new Date(p.createdAt) < thirtyDaysAgo)
         .reduce((sum, p) => sum + p.remainingAmount, 0);
+
+    // Machine Sales Details
+    const salesSummary = {
+        cash: { count: 0, amount: 0 },
+        installment: { count: 0, amount: 0 }
+    };
+    machineSalesBreakdown.forEach(s => {
+        if (s.type === 'CASH') {
+            salesSummary.cash = { count: s._count.id, amount: s._sum.totalPrice || 0 };
+        } else {
+            salesSummary.installment = { count: s._count.id, amount: s._sum.totalPrice || 0 };
+        }
+    });
+
+    // Free Parts Value Calculation with historical price lookup
+    const partIds = [...new Set(freePartsMovements.map(m => m.partId))];
+    const [priceLogs, spareParts] = await Promise.all([
+        db.priceChangeLog.findMany({
+            where: { partId: { in: partIds } },
+            orderBy: { changedAt: 'desc' }
+        }),
+        db.sparePart.findMany({
+            where: { id: { in: partIds } }
+        })
+    ]);
+
+    const partsMap = Object.fromEntries(spareParts.map(p => [p.id, p]));
+
+    const freePartsValue = freePartsMovements.reduce((sum, m) => {
+        // Find the price that was active at the time of movement
+        const relevantLog = priceLogs
+            .filter(log => log.partId === m.partId && new Date(log.changedAt) <= new Date(m.createdAt))[0];
+
+        const part = partsMap[m.partId];
+        const cost = relevantLog ? relevantLog.newCost : (part?.defaultCost || 0);
+        return sum + (Math.abs(m.quantity) * cost);
+    }, 0);
 
     // ===================== 2. OPERATIONAL KPIs =====================
 
@@ -181,12 +275,12 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
     // ===================== 4. BRANCH PERFORMANCE =====================
 
-    const branches = await db.branch.findMany({
+    const branchesList = await db.branch.findMany({
         where: { type: 'BRANCH' },
         select: { id: true, name: true, code: true }
     });
 
-    const branchPerformance = await Promise.all(branches.map(async (branch) => {
+    const branchSummary = await Promise.all(branchesList.map(async (branch) => {
         // Revenue
         const revenue = await db.payment.aggregate({
             where: {
@@ -239,18 +333,18 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     }));
 
     // Sort by revenue
-    branchPerformance.sort((a, b) => b.revenue - a.revenue);
+    branchSummary.sort((a, b) => b.revenue - a.revenue);
 
     // ===================== 5. MONTHLY TREND (Last 6 months) =====================
 
     const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-    const trendPayments = await db.payment.findMany(ensureBranchWhere({
+    const trendPayments = await db.payment.findMany({
         where: {
             ...branchFilter,
             createdAt: { gte: sixMonthsAgo }
         },
         select: { amount: true, createdAt: true, type: true }
-    }, req));
+    });
 
     const monthlyTrend = {};
     for (let i = 5; i >= 0; i--) {
@@ -277,7 +371,7 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
     // ===================== 6. TOP PERFORMERS (Technicians) =====================
 
-    const techPerformance = await db.maintenanceRequest.groupBy(ensureBranchWhere({
+    const techPerformance = await db.maintenanceRequest.groupBy({
         by: ['closingUserName'],
         where: {
             ...branchFilter,
@@ -287,35 +381,34 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
         },
         _count: { id: true },
         _sum: { totalCost: true }
-    }, req));
+    });
 
     const topPerformers = techPerformance
         .filter(t => t.closingUserName)
         .map(t => ({
             name: t.closingUserName,
-            closedCount: t._count.id,
+            closedRequests: t._count.id,
             revenue: t._sum.totalCost || 0
         }))
-        .sort((a, b) => b.closedCount - a.closedCount)
+        .sort((a, b) => b.closedRequests - a.closedRequests)
         .slice(0, 10);
 
     // ===================== 7. ALERTS & NOTIFICATIONS =====================
 
-    // Pending Approvals - MaintenanceApprovalRequest uses originBranchId
-    // Use _skipBranchEnforcer marker for admin all-branches view
+    // Pending Approvals
     const pendingApprovals = await db.maintenanceApprovalRequest.count({
         where: {
-            ...(branchId ? { originBranchId: branchId } : (isAdmin ? { _skipBranchEnforcer: true } : {})),
+            ...(branchId ? { originBranchId: branchId } : (isAdmin ? { originBranchId: { not: 'BYPASS' } } : {})),
             status: 'PENDING'
         }
     });
 
-    const pendingTransfers = await db.transferOrder.count(ensureBranchWhere({
+    const pendingTransfers = await db.transferOrder.count({
         where: {
             ...branchFilter,
             status: 'PENDING'
         }
-    }, req));
+    });
 
     const criticalAlerts = [];
 
@@ -351,17 +444,15 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
     // ===================== 8. FORECASTING (Simple Moving Average) =====================
 
-    // Get last 12 months of data for better forecast
     const twelveMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 11, 1);
-    const forecastPayments = await db.payment.findMany(ensureBranchWhere({
+    const forecastPayments = await db.payment.findMany({
         where: {
             ...branchFilter,
             createdAt: { gte: twelveMonthsAgo }
         },
         select: { amount: true, createdAt: true }
-    }, req));
+    });
 
-    // Group by month
     const monthlyRevenues = {};
     for (let i = 11; i >= 0; i--) {
         const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -379,26 +470,24 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
     const revenueHistory = Object.values(monthlyRevenues);
 
-    // Simple Moving Average (3-month window)
-    const windowSize = 3;
+    // SMA Calculation
     const calculateSMA = (data, periods) => {
+        if (data.length === 0) return 0;
         if (data.length < periods) return data.reduce((a, b) => a + b, 0) / data.length;
         const recent = data.slice(-periods);
         return recent.reduce((a, b) => a + b, 0) / periods;
     };
 
-    // Calculate trend
     const recentAvg = calculateSMA(revenueHistory, 3);
     const olderAvg = calculateSMA(revenueHistory.slice(0, -3), 3);
     const growthRate = olderAvg > 0 ? (recentAvg - olderAvg) / olderAvg : 0;
 
-    // Forecast next 3 months
     const forecast = [];
     let lastValue = recentAvg;
     for (let i = 1; i <= 3; i++) {
         const forecastMonth = new Date(today.getFullYear(), today.getMonth() + i, 1);
-        const predictedValue = lastValue * (1 + growthRate * 0.5); // Dampened growth
-        const variance = predictedValue * 0.15; // 15% variance for confidence interval
+        const predictedValue = lastValue * (1 + growthRate * 0.5);
+        const variance = predictedValue * 0.15;
 
         forecast.push({
             month: forecastMonth.toLocaleDateString('ar-EG', { month: 'short', year: '2-digit' }),
@@ -412,18 +501,16 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
     // ===================== 9. QUICK STATS =====================
 
-    // Total POS machines assigned to customers (ماكينة)
-    const totalMachines = await db.posMachine.count(ensureBranchWhere({
+    const totalMachines = await db.posMachine.count({
         where: {
             ...branchFilter,
             customerId: { not: null }
         }
-    }, req));
+    });
 
-    // Total customers (عميل)
-    const totalCustomers = await db.customer.count(ensureBranchWhere({
+    const totalCustomers = await db.customer.count({
         where: branchFilter
-    }, req));
+    });
 
     // ===================== RESPONSE =====================
 
@@ -444,12 +531,12 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
             closureRate,
             avgResolutionTime: parseFloat(avgResolutionTime),
             overdueRequests,
-            inventoryHealth
+            inventoryHealth,
+            machineSales: salesSummary,
+            freePartsValue: freePartsValue,
+            paidPartsRevenue: paidPartsRevenue
         },
-        revenueBreakdown: revenueByType.map(r => ({
-            type: r.type || 'OTHER',
-            amount: r._sum.amount || 0
-        })),
+        revenueBreakdown,
         inventoryStatus: {
             inStock,
             lowStock,
@@ -457,19 +544,21 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
             outOfStock,
             total: inventoryItems.length
         },
-        branchPerformance,
+        branchSummary,
         monthlyTrend: trendData,
-        topPerformers,
+        technicianProductivity: topPerformers,
         alerts: criticalAlerts,
         pendingActions: {
             approvals: pendingApprovals,
             transfers: pendingTransfers
         },
-        quickStats: {
-            totalMachines, // POS machines assigned to customers
+        quickCounts: {
+            totalMachines,
             totalCustomers,
             totalRequests: requestsTotal,
-            closedRequests: requestsClosed
+            closedRequests: requestsClosed,
+            pendingApprovals,
+            pendingTransfers
         },
         forecast: {
             predictions: forecast,
@@ -486,7 +575,7 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
  */
 router.get('/branch/:branchId', authenticateToken, asyncHandler(async (req, res) => {
     // Match allowed roles of main executive dashboard
-    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER', 'CS_SUPERVISOR', 'BRANCH_MANAGER', 'ADMIN_AFFAIRS'];
+    const allowedRoles = ['SUPER_ADMIN', 'MANAGEMENT', 'CENTER_MANAGER', 'CS_SUPERVISOR', 'BRANCH_MANAGER', 'ADMIN_AFFAIRS', 'ACCOUNTANT'];
     if (!allowedRoles.includes(req.user.role)) {
         throw new AppError('Access denied', 403, 'FORBIDDEN');
     }

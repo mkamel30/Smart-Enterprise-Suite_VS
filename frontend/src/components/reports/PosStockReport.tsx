@@ -93,7 +93,7 @@ export function PosStockReport({ data }: PosStockReportProps) {
                                     formatter={(value: any) => [value.toLocaleString(), 'المخزون']}
                                 />
                                 <Bar dataKey="stock" radius={[8, 8, 0, 0]}>
-                                    {modelChartData.map((entry: any, index: number) => (
+                                    {Array.isArray(modelChartData) && modelChartData.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Bar>
@@ -149,7 +149,7 @@ export function PosStockReport({ data }: PosStockReportProps) {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((branch: any) => (
+                            {Array.isArray(rows) && rows.map((branch: any) => (
                                 <tr key={branch.branchId} className="border-b border-border hover:bg-muted/50 transition-colors">
                                     <td className="py-3 px-4 font-bold">{branch.branchName}</td>
                                     <td className="py-3 px-4 text-center">

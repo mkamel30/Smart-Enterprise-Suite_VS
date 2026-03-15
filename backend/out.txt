@@ -1,0 +1,552 @@
+
+> smart-enterprise-suite-backend@1.0.0 test
+> jest --detectOpenHandles --forceExit tests/services/authService.test.js
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] User has NO password hash, checking legacy 123456
+
+      at Object.log [as login] (services/authService.js:174:17)
+
+  console.log
+    [DEBUG] Legacy password match, hashing and saving...
+
+      at Object.log [as login] (services/authService.js:177:21)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] Login failed: User not found for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:146:17)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login failed: Invalid password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:189:17)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login failed: Invalid password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:189:17)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+  console.log
+    [DEBUG] Login attempt for identifier: test@example.com
+
+      at Object.log [as login] (services/authService.js:135:13)
+
+  console.log
+    [DEBUG] User found: test@example.com, isActive: undefined
+
+      at Object.log [as login] (services/authService.js:149:13)
+
+  console.log
+    [DEBUG] Verifying password for user: test@example.com
+
+      at Object.log [as login] (services/authService.js:169:13)
+
+FAIL tests/services/authService.test.js
+  AuthService
+    login
+      √ should successfully login with valid credentials (24 ms)
+      √ should successfully login with legacy password (123456) (6 ms)
+      √ should throw error when user not found (20 ms)
+      √ should throw error when account is locked (3 ms)
+      √ should throw error with invalid password and record failed attempt (3 ms)
+      √ should lock account after max failed attempts (4 ms)
+      √ should return password expiration warnings (2 ms)
+      √ should require password change when expired (2 ms)
+      √ should throw error when JWT_SECRET not configured (3 ms)
+      √ should update login tracking on successful login (6 ms)
+      √ should log login action (3 ms)
+    changePassword
+      × should successfully change password with valid current password (2 ms)
+      √ should throw error when user not found (2 ms)
+      × should throw error when current password is incorrect (15 ms)
+      × should validate new password strength (5 ms)
+      × should prevent password reuse (8 ms)
+      × should handle legacy password (123456) correctly (2 ms)
+      × should save password to history after change (1 ms)
+      × should update user with new password and reset mustChangePassword flag (1 ms)
+      × should log password change action (1 ms)
+    Token generation
+      √ should include correct user data in JWT payload (3 ms)
+      √ should use requested branchId when user has no branch (3 ms)
+    getProfile
+      √ should return user profile with password status (2 ms)
+      √ should throw error when user not found (1 ms)
+      √ should indicate expired password in status (1 ms)
+      × should enforce branchId filter in query (4 ms)
+    updatePreferences
+      × should update user theme and font family (1 ms)
+      × should update only provided preferences (1 ms)
+      × should enforce branchId filter (1 ms)
+    forcePasswordChange
+      √ should allow admin to force password change (6 ms)
+      √ should allow SUPER_ADMIN to force password change (3 ms)
+      √ should deny non-admin users (2 ms)
+      √ should throw error when target user not found (1 ms)
+      √ should log the action (1 ms)
+    unlockAccount
+      √ should allow admin to unlock account (1 ms)
+      √ should deny non-admin users (1 ms)
+      √ should throw error when target user not found (2 ms)
+      √ should log the action (1 ms)
+    Branch isolation
+      × getProfile should enforce branchId filter (2 ms)
+      × changePassword should enforce branchId filter (1 ms)
+      × login should enforce branchId filter (3 ms)
+
+  ● AuthService › changePassword › should successfully change password with valid current password
+
+    User not found
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+     [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+     [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:347:22)
+
+  ● AuthService › changePassword › should throw error when current password is incorrect
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "Current password is incorrect"
+    Received message:   "User not found"
+
+        [0m [90m  8 |[39m
+         [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+        [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+         [90m    |[39m               [31m[1m^[22m[39m
+         [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+         [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+         [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:371:7)
+      at Object.toThrow (node_modules/expect/build/index.js:2155:20)
+      at Object.toThrow (tests/services/authService.test.js:372:18)
+
+  ● AuthService › changePassword › should validate new password strength
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected pattern: /Password does not meet security requirements/
+    Received message: "User not found"
+
+        [0m [90m  8 |[39m
+         [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+        [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+         [90m    |[39m               [31m[1m^[22m[39m
+         [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+         [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+         [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:386:7)
+      at Object.toThrow (node_modules/expect/build/index.js:2155:20)
+      at Object.toThrow (tests/services/authService.test.js:387:18)
+
+  ● AuthService › changePassword › should prevent password reuse
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "Cannot reuse a previous password"
+    Received message:   "User not found"
+
+        [0m [90m  8 |[39m
+         [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+        [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+         [90m    |[39m               [31m[1m^[22m[39m
+         [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+         [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+         [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:402:7)
+      at Object.toThrow (node_modules/expect/build/index.js:2155:20)
+      at Object.toThrow (tests/services/authService.test.js:403:18)
+
+  ● AuthService › changePassword › should handle legacy password (123456) correctly
+
+    User not found
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+     [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+     [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:419:22)
+
+  ● AuthService › changePassword › should save password to history after change
+
+    User not found
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+     [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+     [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:438:7)
+
+  ● AuthService › changePassword › should update user with new password and reset mustChangePassword flag
+
+    User not found
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+     [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+     [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:460:7)
+
+  ● AuthService › changePassword › should log password change action
+
+    User not found
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+     [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+     [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:486:7)
+
+  ● AuthService › getProfile › should enforce branchId filter in query
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+        "include": Object {
+          "branch": true,
+        },
+        "where": Object {
+    -     "branchId": Object {
+    -       "not": null,
+    -     },
+          "id": "user-123",
+        },
+      },
+
+    Number of calls: 1
+
+    [0m [90m 607 |[39m       [36mawait[39m authService[33m.[39mgetProfile(user[33m.[39mid)[33m;[39m
+     [90m 608 |[39m
+    [31m[1m>[22m[39m[90m 609 |[39m       expect(db[33m.[39muser[33m.[39mfindFirst)[33m.[39mtoHaveBeenCalledWith({
+     [90m     |[39m                                 [31m[1m^[22m[39m
+     [90m 610 |[39m         where[33m:[39m { id[33m:[39m user[33m.[39mid[33m,[39m branchId[33m:[39m { not[33m:[39m [36mnull[39m } }[33m,[39m
+     [90m 611 |[39m         include[33m:[39m { branch[33m:[39m [36mtrue[39m }
+     [90m 612 |[39m       })[33m;[39m[0m
+
+      at Object.toHaveBeenCalledWith (tests/services/authService.test.js:609:33)
+
+  ● AuthService › updatePreferences › should update user theme and font family
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "dark"
+    Received: undefined
+
+    [0m [90m 626 |[39m       })[33m;[39m
+     [90m 627 |[39m
+    [31m[1m>[22m[39m[90m 628 |[39m       expect(result[33m.[39mtheme)[33m.[39mtoBe([32m'dark'[39m)[33m;[39m
+     [90m     |[39m                            [31m[1m^[22m[39m
+     [90m 629 |[39m       expect(result[33m.[39mfontFamily)[33m.[39mtoBe([32m'serif'[39m)[33m;[39m
+     [90m 630 |[39m     })[33m;[39m
+     [90m 631 |[39m[0m
+
+      at Object.toBe (tests/services/authService.test.js:628:28)
+
+  ● AuthService › updatePreferences › should update only provided preferences
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"data": {"fontFamily": undefined, "theme": "dark"}, "where": {"branchId": {"not": null}, "id": "user-123"}}
+
+    Number of calls: 0
+
+    [0m [90m 638 |[39m       [36mconst[39m result [33m=[39m [36mawait[39m authService[33m.[39mupdatePreferences(user[33m.[39mid[33m,[39m { theme[33m:[39m [32m'dark'[39m })[33m;[39m
+     [90m 639 |[39m
+    [31m[1m>[22m[39m[90m 640 |[39m       expect(db[33m.[39muser[33m.[39mupdateMany)[33m.[39mtoHaveBeenCalledWith({
+     [90m     |[39m                                  [31m[1m^[22m[39m
+     [90m 641 |[39m         where[33m:[39m { id[33m:[39m user[33m.[39mid[33m,[39m branchId[33m:[39m { not[33m:[39m [36mnull[39m } }[33m,[39m
+     [90m 642 |[39m         data[33m:[39m { theme[33m:[39m [32m'dark'[39m[33m,[39m fontFamily[33m:[39m undefined }
+     [90m 643 |[39m       })[33m;[39m[0m
+
+      at Object.toHaveBeenCalledWith (tests/services/authService.test.js:640:34)
+
+  ● AuthService › updatePreferences › should enforce branchId filter
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"data": Any<Object>, "where": {"branchId": {"not": null}, "id": "user-123"}}
+
+    Number of calls: 0
+
+    [0m [90m 650 |[39m       [36mawait[39m authService[33m.[39mupdatePreferences([32m'user-123'[39m[33m,[39m { theme[33m:[39m [32m'dark'[39m })[33m;[39m
+     [90m 651 |[39m
+    [31m[1m>[22m[39m[90m 652 |[39m       expect(db[33m.[39muser[33m.[39mupdateMany)[33m.[39mtoHaveBeenCalledWith({
+     [90m     |[39m                                  [31m[1m^[22m[39m
+     [90m 653 |[39m         where[33m:[39m { id[33m:[39m [32m'user-123'[39m[33m,[39m branchId[33m:[39m { not[33m:[39m [36mnull[39m } }[33m,[39m
+     [90m 654 |[39m         data[33m:[39m expect[33m.[39many([33mObject[39m)
+     [90m 655 |[39m       })[33m;[39m[0m
+
+      at Object.toHaveBeenCalledWith (tests/services/authService.test.js:652:34)
+
+  ● AuthService › Branch isolation › getProfile should enforce branchId filter
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"branchId": {"not": null}}}
+    Received: {"include": {"branch": true}, "where": {"id": "user-123"}}
+
+    Number of calls: 1
+
+    [0m [90m 809 |[39m       [36mawait[39m authService[33m.[39mgetProfile(user[33m.[39mid)[33m;[39m
+     [90m 810 |[39m
+    [31m[1m>[22m[39m[90m 811 |[39m       expect(db[33m.[39muser[33m.[39mfindFirst)[33m.[39mtoHaveBeenCalledWith(
+     [90m     |[39m                                 [31m[1m^[22m[39m
+     [90m 812 |[39m         expect[33m.[39mobjectContaining({
+     [90m 813 |[39m           where[33m:[39m expect[33m.[39mobjectContaining({
+     [90m 814 |[39m             branchId[33m:[39m { not[33m:[39m [36mnull[39m }[0m
+
+      at Object.toHaveBeenCalledWith (tests/services/authService.test.js:811:33)
+
+  ● AuthService › Branch isolation › changePassword should enforce branchId filter
+
+    User not found
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m [36mfunction[39m [33mApiError[39m(message[33m,[39m status [33m=[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 10 |[39m     [36mconst[39m e [33m=[39m [36mnew[39m [33mError[39m(message)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 11 |[39m     e[33m.[39mstatus [33m=[39m status[33m;[39m
+     [90m 12 |[39m     [36mreturn[39m e[33m;[39m
+     [90m 13 |[39m }[0m
+
+      at ApiError (services/authService.js:10:15)
+      at Object.ApiError [as changePassword] (services/authService.js:70:22)
+      at Object.<anonymous> (tests/services/authService.test.js:834:7)
+
+  ● AuthService › Branch isolation › login should enforce branchId filter
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"branchId": {"not": null}}}
+    Received: {"include": {"branch": true}, "where": {"OR": [{"email": "test@example.com"}, {"uid": "test@example.com"}]}}
+
+    Number of calls: 1
+
+    [0m [90m 855 |[39m       [36mawait[39m authService[33m.[39mlogin(factories[33m.[39mloginCredentials())[33m;[39m
+     [90m 856 |[39m
+    [31m[1m>[22m[39m[90m 857 |[39m       expect(db[33m.[39muser[33m.[39mfindFirst)[33m.[39mtoHaveBeenCalledWith(
+     [90m     |[39m                                 [31m[1m^[22m[39m
+     [90m 858 |[39m         expect[33m.[39mobjectContaining({
+     [90m 859 |[39m           where[33m:[39m expect[33m.[39mobjectContaining({
+     [90m 860 |[39m             branchId[33m:[39m { not[33m:[39m [36mnull[39m }[0m
+
+      at Object.toHaveBeenCalledWith (tests/services/authService.test.js:857:33)
+
+Test Suites: 1 failed, 1 total
+Tests:       15 failed, 26 passed, 41 total
+Snapshots:   0 total
+Time:        0.777 s, estimated 1 s
+Ran all test suites matching tests/services/authService.test.js.

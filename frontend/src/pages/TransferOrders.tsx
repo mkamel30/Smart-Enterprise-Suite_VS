@@ -3,10 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useSearchParams } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
-import { FileText, Plus, Download } from 'lucide-react';
+import { FileText, Plus, Download, ClipboardList, Send, Inbox } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { exportTransferOrders } from '../utils/exportUtils';
+import { cn } from '../lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Import modular components
 import { TransferOrdersStats } from '../components/transfers/TransferOrdersStats';
@@ -62,12 +64,10 @@ export default function TransferOrders() {
             if (order) {
                 setViewingOrder(order);
                 setActiveTab('list');
-                // Highlight if enabled in preferences
                 if (preferences?.highlightEffect) {
                     setHighlightedOrderId(orderId);
                     setTimeout(() => setHighlightedOrderId(null), 3000);
                 }
-                // Remove the query parameter
                 searchParams.delete('orderId');
                 setSearchParams(searchParams);
             }
@@ -91,7 +91,7 @@ export default function TransferOrders() {
     const importMutation = useMutation({
         mutationFn: (formData: FormData) => api.importTransferOrder(formData),
         onSuccess: (data) => {
-            toast.success(`تم إنشاء الإذن بنجاح - ${data.imported} صنف`);
+            toast.success(`تم إنشاء الإذن بنجاح - ${data?.imported} صنف`);
             queryClient.invalidateQueries({ queryKey: ['transfer-orders'] });
             queryClient.invalidateQueries({ queryKey: ['transfer-orders-stats'] });
             setActiveTab('list');
@@ -102,7 +102,7 @@ export default function TransferOrders() {
     });
 
     const receiveMutation = useMutation({
-        mutationFn: (data: { id: string, items?: string[] }) => api.receiveTransferOrder(data.id, { receivedItems: data.items }),
+        mutationFn: (data: { id: string, items?: string[] }) => api.receiveTransferOrder(data?.id, { receivedItems: data?.items }),
         onSuccess: () => {
             toast.success('تم تأكيد الاستلام بنجاح');
             queryClient.invalidateQueries({ queryKey: ['transfer-orders'] });
@@ -115,7 +115,7 @@ export default function TransferOrders() {
     });
 
     const rejectMutation = useMutation({
-        mutationFn: (data: { id: string, reason: string }) => api.rejectTransferOrder(data.id, { rejectionReason: data.reason }),
+        mutationFn: (data: { id: string, reason: string }) => api.rejectTransferOrder(data?.id, { rejectionReason: data?.reason }),
         onSuccess: () => {
             toast.success('تم رفض الإذن بنجاح');
             queryClient.invalidateQueries({ queryKey: ['transfer-orders'] });
@@ -141,13 +141,14 @@ export default function TransferOrders() {
     });
 
     const filteredOrders = orders?.filter((order: any) => {
-        // First apply direction filter
-        if (filterDirection === 'sent' && order.fromBranchId !== user?.branchId) return false;
-        if (filterDirection === 'received' && order.toBranchId !== user?.branchId) return false;
-
+        const isGlobal = user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGEMENT' || user?.role === 'ADMIN_AFFAIRS';
+        if (filterBranch && order.fromBranchId !== filterBranch && order.toBranchId !== filterBranch) return false;
+        const effectiveBranchId = filterBranch || user?.branchId;
+        if (filterDirection === 'sent' && order.fromBranchId !== effectiveBranchId) return false;
+        if (filterDirection === 'received' && order.toBranchId !== effectiveBranchId) return false;
+        if (!isGlobal && !filterBranch && order.fromBranchId !== user?.branchId && order.toBranchId !== user?.branchId) return false;
         if (!searchTerm) return true;
         const searchLower = searchTerm.toLowerCase();
-
         return (
             order.orderNumber.toLowerCase().includes(searchLower) ||
             order.fromBranch?.name?.toLowerCase().includes(searchLower) ||
@@ -157,68 +158,82 @@ export default function TransferOrders() {
     });
 
     return (
-        <div className="px-4 sm:px-8 pt-4 pb-8 animate-fade-in" dir="rtl">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                <h1 className="text-3xl font-black text-foreground flex items-center gap-3">
-                    <div className="p-2 bg-blue-500/10 rounded-2xl">
-                        <FileText className="text-primary" size={28} />
-                    </div>
-                    أذونات الصرف
-                </h1>
-
-                <TransferOrdersStats stats={stats} />
-                <button
-                    onClick={exportTransferOrders}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+        <div className="px-8 pt-4 pb-8 space-y-8 max-w-[1600px] mx-auto bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen" dir="rtl">
+            {/* Header section */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
                 >
-                    <Download size={18} />
-                    تصدير Excel
-                </button>
+                    <h1 className="text-3xl lg:text-4xl font-black text-[#0A2472] tracking-tight">
+                        أذونات الصرف والتحويل
+                    </h1>
+                    <p className="text-slate-500 mt-2 font-medium">متابعة ورقابة حركة المخزون بين الفروع</p>
+                </motion.div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                    <button
+                        onClick={exportTransferOrders}
+                        className="flex items-center gap-2 px-6 py-3.5 bg-emerald-600/10 text-emerald-700 rounded-2xl font-black hover:bg-emerald-600 hover:text-white transition-all border border-emerald-200/50 shadow-sm"
+                    >
+                        <Download size={18} />
+                        تصدير البيانات
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab(activeTab === 'list' ? 'create' : 'list')}
+                        className={cn(
+                            "flex items-center gap-2 px-6 py-3.5 rounded-2xl font-black transition-all shadow-lg active:scale-95",
+                            activeTab === 'list'
+                                ? "bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700"
+                                : "bg-slate-800 text-white shadow-slate-200 hover:bg-slate-900"
+                        )}
+                    >
+                        {activeTab === 'list' ? (
+                            <>
+                                <Plus size={20} />
+                                إنشاء إذن جديد
+                            </>
+                        ) : (
+                            <>
+                                <ClipboardList size={20} />
+                                عرض الأذونات
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex gap-3 mb-8 bg-muted/50 p-1.5 rounded-[1.25rem] w-fit">
-                <button
-                    onClick={() => setActiveTab('list')}
-                    className={`px-6 py-2.5 rounded-2xl font-black text-sm transition-all ${activeTab === 'list'
-                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        }`}
-                >
-                    قائمة الأذونات
-                </button>
-                <button
-                    onClick={() => setActiveTab('create')}
-                    className={`px-6 py-2.5 rounded-2xl font-black text-sm flex items-center gap-2 transition-all ${activeTab === 'create'
-                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        }`}
-                >
-                    <Plus size={18} />
-                    إنشاء إذن جديد
-                </button>
-            </div>
+            {/* Stats Overview */}
+            <TransferOrdersStats stats={stats} />
 
-            {/* Content Area */}
-            <div className="space-y-6">
+            <AnimatePresence mode="wait">
                 {activeTab === 'list' ? (
-                    <div className="bg-card rounded-[2rem] border border-border overflow-hidden shadow-2xl">
-                        {/* Direction Toggle */}
-                        <div className="flex border-b bg-slate-50/50 p-2 gap-2">
+                    <motion.div
+                        key="list"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="bg-white/40 backdrop-blur-xl border border-slate-200 rounded-[32px] p-8 shadow-sm overflow-hidden"
+                    >
+                        {/* Direction Toggle Pills */}
+                        <div className="flex gap-2 mb-8 bg-slate-100/50 p-1.5 rounded-2xl w-fit">
                             {[
-                                { id: 'all', label: 'كل الأذونات' },
-                                { id: 'sent', label: 'الأذونات الصادرة (من الفرع)' },
-                                { id: 'received', label: 'الأذونات الواردة (إلى الفرع)' }
+                                { id: 'all', label: 'الكل', icon: <ClipboardList size={16} /> },
+                                { id: 'sent', label: 'صادر', icon: <Send size={16} /> },
+                                { id: 'received', label: 'وارد', icon: <Inbox size={16} /> }
                             ].map((dir) => (
                                 <button
                                     key={dir.id}
                                     onClick={() => setFilterDirection(dir.id as any)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterDirection === dir.id
-                                        ? 'bg-white text-primary shadow-sm ring-1 ring-border'
-                                        : 'text-muted-foreground hover:bg-white/50'
-                                        }`}
+                                    className={cn(
+                                        "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all",
+                                        filterDirection === dir.id
+                                            ? "bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200"
+                                            : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                                    )}
                                 >
+                                    {dir.icon}
                                     {dir.label}
                                 </button>
                             ))}
@@ -235,8 +250,10 @@ export default function TransferOrders() {
                             onBranchChange={setFilterBranch}
                             branches={branches}
                             userBranchId={user?.branchId}
+                            userRole={user?.role}
                         />
-                        <div className="overflow-x-auto">
+
+                        <div className="mt-8">
                             <TransferOrdersTable
                                 isLoading={isLoading}
                                 orders={filteredOrders}
@@ -244,17 +261,24 @@ export default function TransferOrders() {
                                 userBranchId={user?.branchId}
                             />
                         </div>
-                    </div>
+                    </motion.div>
                 ) : (
-                    <CreateTransferOrderForm
-                        branches={branches}
-                        user={user}
-                        onCreate={createMutation.mutate}
-                        onImport={importMutation.mutate}
-                        isPending={createMutation.isPending || importMutation.isPending}
-                    />
+                    <motion.div
+                        key="create"
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                    >
+                        <CreateTransferOrderForm
+                            branches={branches}
+                            user={user}
+                            onCreate={createMutation.mutate}
+                            onImport={importMutation.mutate}
+                            isPending={createMutation.isPending || importMutation.isPending}
+                        />
+                    </motion.div>
                 )}
-            </div>
+            </AnimatePresence>
 
             {/* Detail Modal */}
             <ViewTransferOrderModal

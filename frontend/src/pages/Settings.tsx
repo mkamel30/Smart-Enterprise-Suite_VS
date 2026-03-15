@@ -63,7 +63,6 @@ export default function Settings() {
                             onClick={() => setActiveTab('permissions')}
                             icon={<Shield size={16} />}
                             label="الصلاحيات"
-                            color="purple"
                         />
                     </>
                 )}
@@ -100,8 +99,7 @@ function TabButton({ active, onClick, label, icon, color }: any) {
     const baseClasses = "flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-sm transition-all active:scale-[0.98]";
     const colors: any = {
         default: active ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-muted hover:bg-accent text-muted-foreground',
-        purple: active ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'bg-purple-500/10 text-purple-600 hover:bg-purple-500/20',
-        red: active ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-red-500/10 text-red-600 hover:bg-red-500/20',
+        red: active ? 'bg-destructive text-destructive-foreground shadow-lg shadow-destructive/20' : 'bg-destructive/10 text-destructive hover:bg-destructive/20',
     };
 
     return (

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/client';
-import { Search, RefreshCw } from 'lucide-react';
+import { Search, ArrowLeftRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -104,7 +104,7 @@ export function SimExchangeModal({ isOpen, onClose, customer, currentSim, onSucc
             <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] h-auto overflow-hidden sm:max-w-lg" dir="rtl">
                 <DialogHeader className="bg-orange-50 p-6 pb-4 border-b shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-xl">
-                        <RefreshCw className="text-orange-600" />
+                        <ArrowLeftRight className="text-orange-600" />
                         استبدال شريحة
                     </DialogTitle>
                 </DialogHeader>
@@ -261,7 +261,7 @@ export function SimExchangeModal({ isOpen, onClose, customer, currentSim, onSucc
                         disabled={isSubmitting || !selectedNewSim || !!receiptError}
                         className="flex-[2] h-12 bg-orange-600 hover:bg-orange-700 text-white gap-2 font-bold shadow-sm"
                     >
-                        <RefreshCw size={18} />
+                        <ArrowLeftRight size={18} />
                         {isSubmitting ? 'جاري الاستبدال...' : 'تأكيد الاستبدال'}
                     </Button>
                 </div>

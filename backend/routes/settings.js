@@ -1,12 +1,13 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 
-// GET branches lookup
+// GET branches lookup - Filter for branches only (type: 'BRANCH')
 router.get('/branches-lookup', authenticateToken, async (req, res) => {
     try {
         const branches = await db.branch.findMany({
+            where: { type: 'BRANCH' },
             select: { id: true, name: true, type: true },
             orderBy: { name: 'asc' }
         });
@@ -128,84 +129,84 @@ router.post('/force-update-models', async (req, res) => {
             return res.status(400).json({ error: 'لا توجد بارامترات ماكينات محددة' });
         }
 
+        const { detectMachineParams } = require('../utils/machine-validation');
+
         let warehouseUpdated = 0;
         let customerUpdated = 0;
+        let adminStoreUpdated = 0;
 
-        // Update WarehouseMachines
+        // 1. Update WarehouseMachines
         const warehouseMachines = await db.warehouseMachine.findMany({
             where: {
                 OR: [
-                    { model: null },
-                    { model: '' },
-                    { manufacturer: null },
-                    { manufacturer: '' }
-                ]
+                    { model: null }, { model: '' },
+                    { manufacturer: null }, { manufacturer: '' }
+                ],
+                _skipBranchEnforcer: true
             }
         });
 
         for (const machine of warehouseMachines) {
-            const sn = machine.serialNumber.toUpperCase();
-            let matched = null;
-
-            // Match prefix from longest to shortest
-            for (let len = Math.min(5, sn.length); len >= 2; len--) {
-                const prefix = sn.substring(0, len);
-                matched = machineParams.find(p => p.prefix === prefix);
-                if (matched) break;
-            }
-
-            if (matched) {
-                await db.warehouseMachine.updateMany({
-                    where: { id: machine.id, branchId: machine.branchId },
-                    data: {
-                        model: matched.model,
-                        manufacturer: matched.manufacturer
-                    }
+            const detected = detectMachineParams(machine.serialNumber, machineParams);
+            if (detected.model) {
+                await db.warehouseMachine.update({
+                    where: { id: machine.id, _skipBranchEnforcer: true },
+                    data: { model: detected.model, manufacturer: detected.manufacturer }
                 });
                 warehouseUpdated++;
             }
         }
 
-        // Update PosMachines (Customer machines)
+        // 2. Update PosMachines (Customer machines)
         const posMachines = await db.posMachine.findMany({
             where: {
                 OR: [
-                    { model: null },
-                    { model: '' },
-                    { manufacturer: null },
-                    { manufacturer: '' }
-                ]
+                    { model: null }, { model: '' },
+                    { manufacturer: null }, { manufacturer: '' }
+                ],
+                _skipBranchEnforcer: true
             }
         });
 
         for (const machine of posMachines) {
-            const sn = machine.serialNumber.toUpperCase();
-            let matched = null;
-
-            for (let len = Math.min(5, sn.length); len >= 2; len--) {
-                const prefix = sn.substring(0, len);
-                matched = machineParams.find(p => p.prefix === prefix);
-                if (matched) break;
-            }
-
-            if (matched) {
-                await db.posMachine.updateMany({
-                    where: { id: machine.id, branchId: machine.branchId },
-                    data: {
-                        model: matched.model,
-                        manufacturer: matched.manufacturer
-                    }
+            const detected = detectMachineParams(machine.serialNumber, machineParams);
+            if (detected.model) {
+                await db.posMachine.update({
+                    where: { id: machine.id, _skipBranchEnforcer: true },
+                    data: { model: detected.model, manufacturer: detected.manufacturer }
                 });
                 customerUpdated++;
             }
         }
 
+        // 3. Update AdminStoreAssets (Administrative Affairs Warehouse)
+        const adminAssets = await db.adminStoreAsset.findMany({
+            where: {
+                OR: [
+                    { model: null }, { model: '' },
+                    { manufacturer: null }, { manufacturer: '' }
+                ]
+            }
+        });
+
+        for (const asset of adminAssets) {
+            const detected = detectMachineParams(asset.serialNumber, machineParams);
+            if (detected.model) {
+                await db.adminStoreAsset.update({
+                    where: { id: asset.id },
+                    data: { model: detected.model, manufacturer: detected.manufacturer }
+                });
+                adminStoreUpdated++;
+            }
+        }
+
         res.json({
             success: true,
-            message: `تم تحديث ${warehouseUpdated} ماكينة مخزن + ${customerUpdated} ماكينة عملاء`,
+            message: `تم تحديث: ${warehouseUpdated} مخازن فروع، ${customerUpdated} عملاء، ${adminStoreUpdated} شئون إدارية`,
             warehouseUpdated,
             customerUpdated,
-            total: warehouseUpdated + customerUpdated
+            adminStoreUpdated,
+            total: warehouseUpdated + customerUpdated + adminStoreUpdated
         });
     } catch (error) {
         console.error('Force update models failed:', error);

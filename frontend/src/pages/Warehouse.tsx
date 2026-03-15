@@ -157,8 +157,10 @@ export default function Warehouse() {
             'الكمية': mov.quantity,
             'حالة الدفع': ['OUT', 'STOCK_OUT'].includes(mov.type) ? (mov.isPaid ? `بمقابل ${mov.receiptNumber ? `(${mov.receiptNumber})` : ''}` : 'بدون مقابل') : '-',
             'السبب': mov.reason,
+            'اسم العميل': mov.customerName || '',
             'كود العميل': mov.customerBkCode || '',
             'سيريال الماكينة': mov.machineSerial || '',
+            'موديل الماكينة': mov.machineModel || '',
             'القائم بالحركة': mov.performedBy || '',
             'التاريخ': new Date(mov.createdAt).toLocaleString('ar-EG')
         }));
@@ -485,10 +487,17 @@ export default function Warehouse() {
                                                 <div className="text-sm font-medium text-slate-700">{mov.reason || '-'}</div>
                                                 {(mov.customerBkCode || mov.machineSerial) && (
                                                     <div className="flex flex-col mt-1 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-                                                        <div className="flex items-center gap-1.5 text-[11px] text-primary font-black">
-                                                            <span>كود العميل: {mov.customerBkCode}</span>
-                                                            <span className="text-slate-300">|</span>
-                                                            <span>ماكينة: {mov.machineSerial}</span>
+                                                        <div className="flex flex-col gap-1 text-[11px] text-primary font-black">
+                                                            <span>العميل: {mov.customerName ? `${mov.customerName} (${mov.customerBkCode})` : mov.customerBkCode}</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span>الماكينة: {mov.machineSerial}</span>
+                                                                {mov.machineModel && (
+                                                                    <>
+                                                                        <span className="text-slate-300">|</span>
+                                                                        <span className="text-slate-500">الموديل: {mov.machineModel}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )}
@@ -587,14 +596,13 @@ function InventoryRow({ item, onUpdate }: { item: any; onUpdate: () => void }) {
 
     const handleSave = async () => {
         try {
-            await api.updateInventory(item.id, quantity);
-            if (true) {
-                setIsEditing(false);
-                onUpdate();
-            }
-        } catch (error) {
+            await api.put(`/warehouse/${item.id}`, { quantity });
+            setIsEditing(false);
+            onUpdate();
+            toast.success('تم التحديث بنجاح');
+        } catch (error: any) {
             console.error('Failed to update:', error);
-            const errorMessage = (error as Error).message || 'فشل التحديث';
+            const errorMessage = error?.message || 'فشل التحديث';
             toast.error(errorMessage);
         }
     };

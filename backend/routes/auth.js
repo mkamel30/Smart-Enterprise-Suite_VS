@@ -95,12 +95,58 @@ router.post('/login', asyncHandler(async (req, res) => {
         // Log success
         logger.info({ userId: result.user.id, branchId: result.user.branchId, mfaVerified: result.user.mfaEnabled }, 'Login successful');
 
+        // Set HttpOnly cookies
+        if (result.token) {
+            res.cookie('token', result.token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 60 * 60 * 1000 // 1 hour for access token
+            });
+        }
+
+        if (result.refreshToken) {
+            res.cookie('refreshToken', result.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days for refresh token
+            });
+        }
+
         res.json(result);
     } catch (error) {
         // Log failure
         logger.warn({ identifier, ip: req.ip, error: error.message }, 'Login failed');
         throw error;
     }
+}));
+
+// Refresh Token
+router.post('/refresh', asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies?.refreshToken;
+    const result = await authService.refreshAccessToken(refreshToken);
+
+    // Set new access token cookie
+    res.cookie('token', result.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 1000 // 1 hour
+    });
+
+    res.json(result);
+}));
+
+// Logout
+router.post('/logout', asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies?.refreshToken;
+    if (refreshToken) {
+        await db.refreshToken.deleteMany({ where: { token: refreshToken } });
+    }
+    res.clearCookie('token');
+    res.clearCookie('refreshToken');
+    res.json({ success: true, message: 'Logged out successfully' });
 }));
 
 // Admin: Force Password Change for User
@@ -142,8 +188,8 @@ router.get('/admin/account-status/:userId',
     asyncHandler(async (req, res) => {
         const { userId } = req.params;
 
-        const user = await db.user.findFirst({
-            where: { id: userId, branchId: { not: null } },
+        const user = await db.user.findUnique({
+            where: { id: userId },
             include: { accountLockout: true }
         });
 

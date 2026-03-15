@@ -1,0 +1,253 @@
+{
+  "summary": {
+    "totalFiles": 34,
+    "totalModals": 42,
+    "newSystem": 9,
+    "oldSystem": 25,
+    "mixed": 0,
+    "migrationProgress": 26
+  },
+  "oldSystemFiles": [
+    {
+      "file": "frontend\\src\\components\\Layout.tsx",
+      "count": 2,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\BranchSwitcher.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\DatabaseAdmin.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\PerformanceReportModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\ClientTypesTab.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\MachineParametersTab.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimFormModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\sim\\SimTransferModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\transfers\\ViewTransferOrderModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\alert-dialog.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\dialog.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\ui\\sheet.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\AddMachineModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\AssignTechnicianModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineExchangeModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineImportModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineRepairModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineReturnToCustomerModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MachineSaleModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\MaintenanceTransferModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\RepairModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\warehouse\\TransferMachinesModal.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\Payments.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\TrackMachines.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\Warehouse.tsx",
+      "count": 1,
+      "usesNewSystem": false,
+      "usesOldSystem": true,
+      "mixed": false
+    }
+  ],
+  "newSystemFiles": [
+    {
+      "file": "frontend\\src\\components\\executive\\BranchDetailModal.tsx",
+      "count": 1,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\components\\settings\\SparePartsTab.tsx",
+      "count": 3,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\Approvals.tsx",
+      "count": 1,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\BranchesSettings.tsx",
+      "count": 1,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\MaintenanceBoard.tsx",
+      "count": 1,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\Receipts.tsx",
+      "count": 2,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\ReceiveOrders.tsx",
+      "count": 2,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\TechnicianDashboard.tsx",
+      "count": 2,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    },
+    {
+      "file": "frontend\\src\\pages\\Users.tsx",
+      "count": 3,
+      "usesNewSystem": true,
+      "usesOldSystem": false,
+      "mixed": false
+    }
+  ],
+  "mixedFiles": []
+}

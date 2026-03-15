@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../db');
 const multer = require('multer');
 const { authenticateToken } = require('../middleware/auth');
+const { success, error, paginated } = require('../utils/apiResponse');
+const { ROLES } = require('../utils/constants');
 const { asyncHandler, AppError } = require('../utils/errorHandler');
 const { z } = require('zod');
 const { validateRequest, validateQuery } = require('../middleware/validation');
@@ -10,7 +12,6 @@ const { getBranchFilter, canAccessBranch } = require('../middleware/permissions'
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const { logAction } = require('../utils/logger');
 const { generateTemplate, parseExcelFile } = require('../utils/excel');
-const { createPaginationResponse } = require('../utils/pagination');
 const { exportEntitiesToExcel, transformCustomersForExport, setExcelHeaders, generateExportFilename } = require('../utils/excelExport');
 
 // Multer configuration for Excel file uploads
@@ -29,11 +30,18 @@ const upload = multer({
 
 // Validation Schemas
 const customerSchema = z.object({
-  client_name: z.string().min(2, 'Name is required'),
-  bkcode: z.string().min(1, 'Code is required'),
-  phone: z.string().optional(),
-  mobile: z.string().optional(),
+  client_name: z.string().min(2, 'Name is required').optional(),
+  bkcode: z.string().min(1, 'Code is required').optional(),
+  telephone_1: z.string().optional(),
+  telephone_2: z.string().optional(),
   address: z.string().optional(),
+  contact_person: z.string().optional(),
+  national_id: z.string().optional(),
+  supply_office: z.string().optional(),
+  dept: z.string().optional(),
+  notes: z.string().optional(),
+  bk_type: z.string().optional(),
+  clienttype: z.string().optional(),
   branchId: z.string().optional()
 });
 
@@ -118,17 +126,26 @@ router.post('/import', authenticateToken, upload.single('file'), asyncHandler(as
       };
 
       const existing = await db.customer.findFirst({
-        where: { bkcode: String(bkcode), branchId }
+        where: { bkcode: String(bkcode) }
       });
 
       if (existing) {
+        if (existing.branchId && existing.branchId !== branchId) {
+          // This bkcode already belongs to another branch, cannot be imported here
+          results.skipped++;
+          results.errors.push({ row: bkcode, error: 'كود العميل مستخدم بالفعل في فرع آخر ولا يمكن تكراره' });
+          continue;
+        }
+
+        // Same branch, just update
         await db.customer.updateMany({
-          where: { id: existing.id, branchId },
+          where: { id: existing.id },
           data: customerData
         });
         updated++;
         results.imported++;
       } else {
+        // Doesn't exist anywhere, create new
         await db.customer.create({
           data: {
             bkcode: String(bkcode),
@@ -155,8 +172,7 @@ router.post('/import', authenticateToken, upload.single('file'), asyncHandler(as
     branchId
   });
 
-  res.json({
-    success: true,
+  return success(res, {
     message: `تم استيراد ${results.imported} عميل بنجاح`,
     created,
     updated,
@@ -168,11 +184,11 @@ router.post('/import', authenticateToken, upload.single('file'), asyncHandler(as
 router.get('/export', authenticateToken, asyncHandler(async (req, res) => {
   const where = getBranchFilter(req);
 
-  const customers = await db.customer.findMany(ensureBranchWhere({
+  const customers = await db.customer.findMany({
     where,
     include: { branch: { select: { name: true } } },
     orderBy: { client_name: 'asc' }
-  }, req));
+  });
 
   const data = transformCustomersForExport(customers);
   const buffer = await exportEntitiesToExcel(data, 'customers', 'customers_export');
@@ -194,7 +210,7 @@ router.get('/lite', authenticateToken, asyncHandler(async (req, res) => {
     ];
   }
 
-  const customers = await db.customer.findMany(ensureBranchWhere({
+  const customers = await db.customer.findMany({
     where,
     select: {
       id: true,
@@ -205,9 +221,9 @@ router.get('/lite', authenticateToken, asyncHandler(async (req, res) => {
     },
     orderBy: { client_name: 'asc' },
     take: search ? 50 : 100
-  }, req));
+  });
 
-  res.json(customers.map(c => ({
+  return success(res, customers.map(c => ({
     ...c,
     posMachines: c.machines || []
   })));
@@ -220,15 +236,15 @@ router.get('/', authenticateToken, validateQuery(listQuerySchema), asyncHandler(
 
   if (search) {
     where.OR = [
-      { client_name: { contains: search } },
-      { bkcode: { contains: search } },
-      { phone: { contains: search } },
-      { mobile: { contains: search } }
+      { client_name: { contains: search, mode: 'insensitive' } },
+      { bkcode: { contains: search, mode: 'insensitive' } },
+      { telephone_1: { contains: search, mode: 'insensitive' } },
+      { telephone_2: { contains: search, mode: 'insensitive' } }
     ];
   }
 
   const [customers, total] = await Promise.all([
-    db.customer.findMany(ensureBranchWhere({
+    db.customer.findMany({
       where,
       include: {
         branch: { select: { name: true } },
@@ -238,32 +254,32 @@ router.get('/', authenticateToken, validateQuery(listQuerySchema), asyncHandler(
       orderBy: { client_name: 'asc' },
       take: limit,
       skip: offset
-    }, req)),
-    db.customer.count(ensureBranchWhere({ where }, req))
+    }),
+    db.customer.count({ where })
   ]);
 
-  res.json(createPaginationResponse(customers.map(c => ({ ...c, posMachines: c.machines || [] })), total, limit || total, offset || 0));
+  return paginated(res, customers.map(c => ({ ...c, posMachines: c.machines || [] })), total, limit || total, offset || 0);
 }));
 
 // GET /:id - Customer details
 router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
-  const customer = await db.customer.findFirst(ensureBranchWhere({
+  const customer = await db.customer.findFirst({
     where: { id: req.params.id },
     include: {
       branch: { select: { name: true } },
       simCards: true,
       machines: true
     }
-  }, req));
+  });
 
   if (!customer) throw new AppError('Customer not found', 404);
 
-  res.json({ ...customer, posMachines: customer.machines || [] });
+  return success(res, { ...customer, posMachines: customer.machines || [] });
 }));
 
 // POST / - Create customer
 router.post('/', authenticateToken, validateRequest(customerSchema), asyncHandler(async (req, res) => {
-  const { client_name, bkcode, phone, mobile, address } = req.body;
+  const { client_name, bkcode, telephone_1, telephone_2, address } = req.body;
   const branchId = req.user.branchId || req.body.branchId;
 
   if (!branchId) throw new AppError('Branch ID is required', 400);
@@ -272,15 +288,21 @@ router.post('/', authenticateToken, validateRequest(customerSchema), asyncHandle
     throw new AppError('Permission denied for this branch', 403);
   }
 
-  const existing = await db.customer.findFirst({ where: { bkcode, branchId } });
-  if (existing) throw new AppError('Customer code already exists in this branch', 409);
+  const existing = await db.customer.findFirst({ where: { bkcode } });
+  if (existing) {
+       if (existing.branchId === branchId) {
+           throw new AppError('كود العميل موجود بالفعل في هذا الفرع', 409);
+       } else {
+           throw new AppError('كود العميل مستخدم بالفعل في فرع آخر ولا يمكن تكراره', 409);
+       }
+  }
 
   const customer = await db.customer.create({
     data: {
       client_name,
       bkcode,
-      phone: phone || null,
-      mobile: mobile || null,
+      telephone_1: req.body.telephone_1 || req.body.phone || null,
+      telephone_2: req.body.telephone_2 || req.body.mobile || null,
       address: address || null,
       branchId
     }
@@ -296,19 +318,49 @@ router.post('/', authenticateToken, validateRequest(customerSchema), asyncHandle
     branchId
   });
 
-  res.status(201).json(customer);
+  return success(res, customer, 201);
 }));
 
-// PUT /:id - Update customer
+// PUT /:id - Update customer (with detailed logging)
 router.put('/:id', authenticateToken, validateRequest(customerSchema.partial()), asyncHandler(async (req, res) => {
-  const existing = await db.customer.findFirst(ensureBranchWhere({
+  const existing = await db.customer.findFirst({
     where: { id: req.params.id }
-  }, req));
+  });
 
-  if (!existing) throw new AppError('Customer not found', 404);
+  if (!existing) throw new AppError('العميل غير موجود', 404);
 
   const updateData = { ...req.body };
   delete updateData.branchId; // Prevent moving customers between branches via normal update
+
+  // Calculate detailed changes for logging
+  const changes = {};
+  const fieldTranslations = {
+    'client_name': 'اسم العميل',
+    'telephone_1': 'رقم التواصل 1',
+    'telephone_2': 'رقم التواصل 2',
+    'contact_person': 'الشخص المسؤول',
+    'clienttype': 'تصنيف العميل',
+    'bk_type': 'نوع النشاط',
+    'address': 'العنوان',
+    'national_id': 'الرقم القومي',
+    'supply_office': 'مكتب التموين',
+    'dept': 'القسم التابع له',
+    'notes': 'الملاحظات'
+  };
+
+  Object.keys(updateData).forEach(key => {
+    if (updateData[key] !== existing[key]) {
+      changes[key] = {
+        field: fieldTranslations[key] || key,
+        oldValue: existing[key] || '-',
+        newValue: updateData[key] || '-'
+      };
+    }
+  });
+
+  if (Object.keys(changes).length === 0) {
+    return success(res, existing, 200, 'لا توجد تغييرات محددة');
+  }
 
   await db.customer.updateMany({
     where: { id: req.params.id, branchId: existing.branchId },
@@ -323,24 +375,28 @@ router.put('/:id', authenticateToken, validateRequest(customerSchema.partial()),
     entityType: 'CUSTOMER',
     entityId: customer.id,
     action: 'UPDATE',
-    details: { changes: Object.keys(updateData) },
+    details: {
+      name: customer.client_name,
+      bkcode: customer.bkcode,
+      changes
+    },
     userId: req.user.id,
     performedBy: req.user.displayName,
     branchId: customer.branchId
   });
 
-  res.json(customer);
+  return success(res, customer, 200, 'تم تحديث بيانات العميل بنجاح');
 }));
 
 // DELETE /:id - Delete customer
 router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
-  if (!['SUPER_ADMIN', 'MANAGEMENT', 'BRANCH_MANAGER', 'CS_SUPERVISOR'].includes(req.user.role)) {
+  if (![ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR].includes(req.user.role)) {
     throw new AppError('Access denied', 403);
   }
 
-  const existing = await db.customer.findFirst(ensureBranchWhere({
+  const existing = await db.customer.findFirst({
     where: { id: req.params.id }
-  }, req));
+  });
 
   if (!existing) throw new AppError('Customer not found', 404);
 
@@ -367,7 +423,7 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
     branchId: existing.branchId
   });
 
-  res.json({ success: true });
+  return success(res, { success: true });
 }));
 
 module.exports = router;

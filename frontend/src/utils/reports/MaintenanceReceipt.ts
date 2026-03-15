@@ -26,9 +26,27 @@ export function generateMaintenanceReceipt(props: MaintenanceReceiptProps): stri
         @page { size: A5 landscape; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, Tahoma, sans-serif; font-size: 11pt; line-height: 1.5; background: #fff; padding: 20px; }
-        .sheet { margin: 0 auto; width: 100%; max-width: 210mm; min-height: 148mm; border: 2px solid #333; padding: 15px; position: relative; }
+        .sheet { 
+            margin: 0 auto; 
+            width: 100%; 
+            max-width: 210mm; 
+            border: 2px solid #333; 
+            padding: 15px; 
+            position: relative;
+            background: white;
+        }
         
-        @media print { .sheet { border: none; padding: 0; } }
+        @media print { 
+            .sheet { 
+                border: none; 
+                padding: 10px;
+                min-height: auto;
+            }
+            @page { 
+                margin: 0;
+                size: var(--page-size, A5 landscape);
+            }
+        }
 
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
         .logo img { width: 80px; }
@@ -70,8 +88,16 @@ export function generateMaintenanceReceipt(props: MaintenanceReceiptProps): stri
                     <span class="value">${customerName}</span>
                 </div>
                 <div class="field">
+                    <span class="label">كود العميل:</span>
+                    <span class="value" style="font-family: monospace; font-size: 1.1em; font-weight: bold;">${request?.customerBkcode || request?.customer?.bkcode || '-'}</span>
+                </div>
+                <div class="field">
                     <span class="label">موديل الماكينة:</span>
                     <span class="value">${model || '-'}</span>
+                </div>
+                <div class="field">
+                    <span class="label">الشركة المصنعة:</span>
+                    <span class="value">${props.request?.machineManufacturer || '-'}</span>
                 </div>
                 <div class="field">
                     <span class="label">السيريال:</span>

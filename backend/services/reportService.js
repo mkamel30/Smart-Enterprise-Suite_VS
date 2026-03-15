@@ -168,11 +168,11 @@ const reportService = {
                 where: { branchId: branch.id }
             }, req));
 
-            // Active requests
+            // Active requests (includes Pending, Open, and In Progress)
             const activeRequests = await db.maintenanceRequest.count(ensureBranchWhere({
                 where: {
                     branchId: branch.id,
-                    status: { in: ['Open', 'In Progress'] },
+                    status: { in: ['Pending', 'Open', 'In Progress'] },
                     createdAt: { gte: dateStart, lte: dateEnd }
                 }
             }, req));
@@ -341,7 +341,7 @@ const reportService = {
                 };
             }
 
-            const isPaid = m.requestId && requestMap[m.requestId]?.totalCost > 0;
+            const isPaid = m.isPaid === true;
 
             if (isPaid) {
                 monthlyData[monthKey].allocation.paid.value += value;
@@ -864,6 +864,100 @@ const reportService = {
                 agentId: filters.agentId || null,
                 sortBy
             }, { dateStart, dateEnd, days, months: Math.ceil(days / 30) })
+        };
+    },
+    // ==================== REPORT 6: TECHNICIAN CONSUMPTION ====================
+    async getTechnicianConsumptionReport(filters, req) {
+        const startTime = Date.now();
+        const { dateStart, dateEnd, days, months } = parseDateRange(filters.from, filters.to);
+        const branchFilter = getBranchFilter(req, filters.branchId);
+        const page = parseInt(filters.page) || 1;
+        const pageSize = Math.min(parseInt(filters.pageSize) || 50, 500);
+
+        // Get logs from UsedPartLog which contains the definitive parts list per request/technician
+        const logs = await db.usedPartLog.findMany(ensureBranchWhere({
+            where: {
+                closedAt: { gte: dateStart, lte: dateEnd },
+                ...(branchFilter.branchId ? { branchId: branchFilter.branchId } : {})
+            },
+            include: {
+                branch: { select: { name: true } }
+            }
+        }, req));
+
+        // Aggregate by technician
+        const techConsumption = {};
+
+        logs.forEach(log => {
+            const techName = log.technician || 'Unknown';
+            let partsList = [];
+            try {
+                partsList = typeof log.parts === 'string' ? JSON.parse(log.parts) : (log.parts || []);
+            } catch (e) {
+                console.error(`Error parsing parts for UsedPartLog ${log.id}:`, e);
+            }
+
+            if (!techConsumption[techName]) {
+                techConsumption[techName] = {
+                    technicianName: techName,
+                    parts: {},
+                    totalQuantity: 0,
+                    totalValue: 0,
+                    requestCount: new Set(),
+                    branchName: log.branch?.name || 'غير محدد'
+                };
+            }
+
+            const tech = techConsumption[techName];
+
+            partsList.forEach(p => {
+                const partId = p.partId || p.id;
+                const partName = p.name || p.partName || 'قطعة غير معروفة';
+                const quantity = p.quantity || 0;
+                const value = p.totalCost || (parseFloat(p.cost || 0) * quantity);
+                const isPaid = p.isPaid === true;
+
+                if (!tech.parts[partId]) {
+                    tech.parts[partId] = {
+                        partName,
+                        quantity: 0,
+                        value: 0,
+                        isPaid: isPaid
+                    };
+                }
+
+                tech.parts[partId].quantity += quantity;
+                tech.parts[partId].value += value;
+                tech.totalQuantity += quantity;
+                tech.totalValue += value;
+            });
+
+            if (log.requestId) tech.requestCount.add(log.requestId);
+        });
+
+        const rows = Object.values(techConsumption).map(t => ({
+            ...t,
+            requestCount: t.requestCount.size,
+            parts: Object.values(t.parts).sort((a, b) => b.quantity - a.quantity)
+        })).sort((a, b) => b.totalValue - a.totalValue);
+
+        const paginatedRows = rows.slice((page - 1) * pageSize, page * pageSize);
+
+        return {
+            rows: paginatedRows,
+            summary: {
+                totalTechnicians: rows.length,
+                totalPartsConsumed: rows.reduce((sum, r) => sum + r.totalQuantity, 0),
+                totalConsumptionValue: rows.reduce((sum, r) => sum + r.totalValue, 0),
+                avgConsumptionPerTech: rows.length > 0
+                    ? Math.round(rows.reduce((sum, r) => sum + r.totalValue, 0) / rows.length)
+                    : 0,
+                currency: 'EGP'
+            },
+            pagination: createPagination(rows.length, page, pageSize),
+            metadata: createMetadata(startTime, {
+                branchId: branchFilter.branchId || null
+            }, { dateStart, dateEnd, days, months })
         };
     }
 };

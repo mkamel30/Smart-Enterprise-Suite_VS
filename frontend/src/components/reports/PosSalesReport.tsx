@@ -166,7 +166,7 @@ export function PosSalesReport({ data, granularity }: PosSalesReportProps) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {branchBreakdown.map((branch: any) => (
+                                {Array.isArray(branchBreakdown) && branchBreakdown.map((branch: any) => (
                                     <tr key={branch.branchId} className="border-b border-border hover:bg-muted/50 transition-colors">
                                         <td className="py-3 px-4 font-bold">{branch.branchName}</td>
                                         <td className="py-3 px-4 text-center">

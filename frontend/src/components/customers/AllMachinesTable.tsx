@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Monitor, Search, Download, Upload, Truck, ArrowLeftRight, Wrench } from 'lucide-react';
 import { api } from '../../api/client';
+import { downloadFile } from '../../api/baseClient';
 import ImportModal from '../ImportModal';
 
 interface AllMachinesTableProps {
@@ -30,15 +31,7 @@ export default function AllMachinesTable({ customers, onCreateRequest, onExchang
 
     const handleDownloadTemplate = async () => {
         try {
-            const blob = await api.getMachineTemplate();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'customer_machines_import.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            await downloadFile('/machines/template', 'customer_machines_import.xlsx');
         } catch (error) {
             toast.error('فشل تنزيل القالب');
         }
@@ -46,15 +39,7 @@ export default function AllMachinesTable({ customers, onCreateRequest, onExchang
 
     const handleExport = async () => {
         try {
-            const blob = await api.exportMachines();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `machines-export-${new Date().toISOString().split('T')[0]}.xlsx`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            await downloadFile('/machines/export', `machines-export-${new Date().toISOString().split('T')[0]}.xlsx`);
         } catch (error) {
             toast.error('فشل التصدير');
         }

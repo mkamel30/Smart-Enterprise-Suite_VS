@@ -4,6 +4,7 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { ensureBranchWhere } = require('../prisma/branchHelpers');
 const { isGlobalRole } = require('../utils/constants');
+const { parsePaginationParams, createPaginationResponse } = require('../utils/pagination');
 // NOTE: This file flagged by automated branch-filter scan. Consider using `ensureBranchWhere(args, req))` for Prisma calls where appropriate.
 // NOTE: automated inserted imports for branch-filtering and safe raw SQL
 
@@ -28,13 +29,20 @@ router.get('/', authenticateToken, async (req, res) => {
 
         if (unreadOnly === 'true') where.isRead = false;
 
-        const notifications = await db.notification.findMany(ensureBranchWhere({
-            where,
-            orderBy: { createdAt: 'desc' },
-            take: 50
-        }, req));
+        const { limit, offset } = parsePaginationParams(req.query);
+        const [notifications, total] = await Promise.all([
+            db.notification.findMany(ensureBranchWhere({
+                where: where,
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                skip: offset
+            }, req)),
+            db.notification.count(ensureBranchWhere({
+                where: where
+            }, req))
+        ]);
 
-        res.json(notifications);
+        res.json(createPaginationResponse(notifications, total, limit, offset));
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
         res.status(500).json({ error: 'فشل في جلب الإشعارات' });
@@ -60,17 +68,12 @@ router.get('/count', authenticateToken, async (req, res) => {
             if (userId) where.userId = userId;
         }
 
-        const count = await db.notification.count({
+        const count = await db.notification.count(ensureBranchWhere({
             where: {
                 ...where,
-                // Ensure branch filter always present to satisfy enforcer
-                OR: where.OR || [
-                    { branchId: req.user.branchId },
-                    { branchId: { not: req.user.branchId } },
-                    { branchId: null }
-                ]
+                isRead: false
             }
-        });
+        }, req));
         res.json({ count });
     } catch (error) {
         console.error('Failed to count notifications:', error);
@@ -82,7 +85,12 @@ router.get('/count', authenticateToken, async (req, res) => {
 router.put('/:id/read', authenticateToken, async (req, res) => {
     try {
         // Fetch first to enforce ownership/branch manually
-        const notif = await db.notification.findUnique({ where: { id: req.params.id } });
+        const notif = await db.notification.findFirst({
+            where: {
+                id: req.params.id,
+                _skipBranchEnforcer: true
+            }
+        });
         if (!notif) return res.status(404).json({ error: 'الإشعار غير موجود' });
 
         // Authorization: allow if same branch or targeted user or authorized via hierarchy
@@ -99,7 +107,7 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
             data: { isRead: true }
         });
         const notification = await db.notification.findFirst({
-            where: { id: req.params.id }
+            where: { id: req.params.id, _skipBranchEnforcer: true }
         });
         res.json(notification);
     } catch (error) {
@@ -133,8 +141,8 @@ router.put('/read-all', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         // Fetch first to check ownership/authorization
-        const notification = await db.notification.findUnique({
-            where: { id: req.params.id }
+        const notification = await db.notification.findFirst({
+            where: { id: req.params.id, branchId: req.user.branchId || { not: null } }
         });
 
         if (!notification) {
@@ -166,6 +174,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 async function createNotification({ branchId, userId, type, title, message, data, link }) {
     const notification = await db.notification.create({
         data: {
+            id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             branchId,
             userId,
             type,
@@ -192,8 +201,8 @@ async function createNotification({ branchId, userId, type, title, message, data
     // Send push notification if user has it enabled
     if (userId) {
         try {
-            const user = await db.user.findUnique({
-                where: { id: userId },
+            const user = await db.user.findFirst({
+                where: { id: userId, branchId: branchId || { not: null } },
                 select: { mobilePush: true }
             });
 

@@ -1,0 +1,6 @@
+
+================================
+FAIL: createMachine creates machine when not exists
+TypeError: Cannot read properties of undefined (reading 'findMany')
+    at Object.findMany [as createMachine] (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\services\warehouseService.js:142:53)
+    at Object.<anonymous> (C:\Users\mkame\OneDrive\Documents\GitHub\Smart-Enterprise-Suite_VS_20260210\backend\__tests__\warehouseService.test.js:21:21)

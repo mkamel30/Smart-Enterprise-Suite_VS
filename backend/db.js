@@ -1,5 +1,4 @@
 ﻿const { PrismaClient } = require('@prisma/client');
-const { attachBranchEnforcer } = require('./prisma/branchEnforcer');
 const logger = require('./utils/logger');
 const config = require('./config');
 
@@ -18,35 +17,33 @@ if (isDebug) {
   logConfig.push({ emit: 'event', level: 'query' });
 }
 
+const { securityExtension } = require('./prisma/extensions');
+
 // Initialize Prisma
-const db = new PrismaClient({
+const prisma = new PrismaClient({
   log: logConfig,
 });
 
 // Attach structured logging
-db.$on('query', (e) => {
+prisma.$on('query', (e) => {
   if (isDebug) {
     logger.db('QUERY', 'Prisma', e.duration, { query: e.query, params: e.params });
   }
 });
 
-db.$on('info', (e) => {
+prisma.$on('info', (e) => {
   logger.info({ context: 'Prisma' }, e.message);
 });
 
-db.$on('warn', (e) => {
+prisma.$on('warn', (e) => {
   logger.warn({ context: 'Prisma' }, e.message);
 });
 
-db.$on('error', (e) => {
+prisma.$on('error', (e) => {
   logger.error({ context: 'Prisma', err: e }, e.message);
 });
 
-// Attach branch-enforcement middleware
-try {
-  attachBranchEnforcer(db);
-} catch (err) {
-  logger.error({ err, context: 'PrismaMiddleware' }, 'Failed to attach branch enforcer middleware');
-}
+// Attach security extension (Automatic Branch Filtering)
+const db = prisma.$extends(securityExtension);
 
 module.exports = db;

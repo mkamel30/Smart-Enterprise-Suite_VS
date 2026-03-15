@@ -167,19 +167,24 @@ describe('RequestService', () => {
       const result = await requestService.createRequest(requestData, user);
 
       expect(result).toEqual(createdRequest);
-      expect(db.maintenanceRequest.create).toHaveBeenCalledWith({
-        data: {
+      expect(db.maintenanceRequest.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
           customerId: customer.id,
           posMachineId: machine.id,
           customerName: customer.client_name,
+          customerBkcode: customer.bkcode,
           machineModel: requestData.machineModel,
           machineManufacturer: requestData.machineManufacturer,
           serialNumber: requestData.serialNumber,
           complaint: requestData.complaint,
           status: 'Pending',
           branchId: user.branchId
+        }),
+        include: {
+          customer: true,
+          posMachine: true
         }
-      });
+      }));
     });
 
     test('should create request without machine', async () => {
@@ -242,8 +247,10 @@ describe('RequestService', () => {
       expect(db.warehouseMachine.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           serialNumber: machine.serialNumber,
-          status: 'EXTERNAL_REPAIR',
+          status: 'UNDER_MAINTENANCE',
           customerId: customer.id,
+          customerName: customer.client_name,
+          customerBkcode: customer.bkcode,
           requestId: createdRequest.id,
           branchId: user.branchId
         })
@@ -272,8 +279,10 @@ describe('RequestService', () => {
       expect(db.warehouseMachine.updateMany).toHaveBeenCalledWith({
         where: { id: existingWarehouse.id, branchId: user.branchId },
         data: expect.objectContaining({
-          status: 'EXTERNAL_REPAIR',
+          status: 'UNDER_MAINTENANCE',
           customerId: customer.id,
+          customerName: customer.client_name,
+          customerBkcode: customer.bkcode,
           requestId: createdRequest.id
         })
       });
@@ -318,11 +327,11 @@ describe('RequestService', () => {
 
       await requestService.createRequest(requestData, user);
 
-      expect(db.maintenanceRequest.create).toHaveBeenCalledWith({
+      expect(db.maintenanceRequest.create).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({
           branchId: 'user-branch'
         })
-      });
+      }));
     });
   });
 
@@ -651,9 +660,10 @@ describe('RequestService', () => {
       expect(db.warehouseMachine.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           serialNumber: data.serialNumber,
-          status: 'EXTERNAL_REPAIR',
+          status: 'UNDER_MAINTENANCE',
           customerId: data.customerId,
           customerName: data.customerName,
+          customerBkcode: data.customerBkcode,
           requestId: data.requestId,
           branchId: data.branchId,
           model: machine.model,
@@ -690,7 +700,7 @@ describe('RequestService', () => {
       expect(db.warehouseMachine.updateMany).toHaveBeenCalledWith({
         where: { id: existingWarehouse.id, branchId: data.branchId },
         data: expect.objectContaining({
-          status: 'EXTERNAL_REPAIR',
+          status: 'UNDER_MAINTENANCE',
           model: machine.model,
           manufacturer: machine.manufacturer
         })
