@@ -146,7 +146,6 @@ export default function MachineWarehouse() {
                 });
             } else if (res) {
                 // Sale succeeded but without full data for report
-                // console.log('Sale completed but report data incomplete:', res);
             }
         }
     });

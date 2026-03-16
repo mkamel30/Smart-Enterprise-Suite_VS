@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 
@@ -8,6 +8,9 @@
 
 # production
 /build
+/build-backend/
+/dist-installer/
+/dist-standalone/
 
 # misc
 .DS_Store

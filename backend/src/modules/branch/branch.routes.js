@@ -8,6 +8,12 @@ const { ensureBranchWhere } = require('../../../prisma/branchHelpers');
 
 const { parsePaginationParams, createPaginationResponse } = require('../../../utils/pagination');
 const { ROLES, isGlobalRole } = require('../../../utils/constants');
+const security = require('../../../utils/security');
+
+// GET current system HWID (for Admin to copy)
+router.get('/system-info/hwid', authenticateToken, (req, res) => {
+    res.json({ hwid: security.getHWID() });
+});
 
 // Get all branches - PAGINATED
 router.get('/', authenticateToken, async (req, res) => {
@@ -119,7 +125,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create branch
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        let { code, name, address, type, maintenanceCenterId, parentBranchId, isActive } = req.body;
+        let { code, name, address, type, maintenanceCenterId, parentBranchId, isActive, authorizedHWID } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: 'الاسم مطلوب' });
@@ -171,7 +177,8 @@ router.post('/', authenticateToken, async (req, res) => {
                 type: type || 'BRANCH',
                 isActive: isActive !== undefined ? isActive : true,
                 maintenanceCenterId: maintenanceCenterId || null,
-                parentBranchId: parentBranchId || null
+                parentBranchId: parentBranchId || null,
+                authorizedHWID: authorizedHWID || null
             }
         });
 
@@ -185,7 +192,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // Update branch
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
-        const { code, name, address, type, maintenanceCenterId, parentBranchId, isActive } = req.body;
+        const { code, name, address, type, maintenanceCenterId, parentBranchId, isActive, authorizedHWID } = req.body;
 
         // Check if branch exists
         const existing = await db.branch.findUnique({
@@ -224,7 +231,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 type: type || existing.type,
                 isActive: isActive !== undefined ? isActive : existing.isActive,
                 maintenanceCenterId: maintenanceCenterId !== undefined ? (maintenanceCenterId || null) : existing.maintenanceCenterId,
-                parentBranchId: parentBranchId !== undefined ? (parentBranchId || null) : existing.parentBranchId
+                parentBranchId: parentBranchId !== undefined ? (parentBranchId || null) : existing.parentBranchId,
+                authorizedHWID: authorizedHWID !== undefined ? (authorizedHWID || null) : existing.authorizedHWID
             }
         });
 

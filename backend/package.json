@@ -3,6 +3,20 @@
     "version": "1.0.0",
     "description": "Smart Enterprise Suite - Express API Backend with Real-time Updates",
     "main": "server.js",
+    "bin": "server.js",
+    "pkg": {
+        "assets": [
+            "prisma/**/*",
+            "src/modules/**/*.js",
+            "utils/**/*.js",
+            "middleware/**/*.js",
+            "validation/**/*.js"
+        ],
+        "scripts": [
+            "src/modules/**/*.js",
+            "utils/**/*.js"
+        ]
+    },
     "scripts": {
         "start": "node server.js",
         "dev": "nodemon server.js",
@@ -24,23 +38,28 @@
         "jsonwebtoken": "^9.0.3",
         "multer": "^2.0.2",
         "node-cron": "^4.2.1",
+        "node-machine-id": "^1.1.12",
         "openai": "^6.15.0",
         "pino": "^8.17.2",
         "pino-http": "^8.6.1",
         "pino-pretty": "^13.1.3",
         "qrcode": "^1.5.4",
         "rate-limit-redis": "^4.3.1",
-        "speakeasy": "^2.0.0",
         "redis": "^5.10.0",
         "socket.io": "^4.8.3",
+        "speakeasy": "^2.0.0",
         "swagger-jsdoc": "^6.2.8",
         "swagger-ui-express": "^5.0.0",
         "web-push": "^3.6.7",
         "zod": "^3.22.4"
     },
     "devDependencies": {
+        "fs-extra": "^11.3.4",
+        "glob": "^13.0.6",
+        "javascript-obfuscator": "^5.3.0",
         "jest": "^30.2.0",
         "nodemon": "^3.0.2",
+        "pkg": "^5.8.1",
         "prisma": "^5.22.0",
         "supertest": "^7.2.2"
     }

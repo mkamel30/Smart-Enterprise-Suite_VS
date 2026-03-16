@@ -7,6 +7,7 @@
 
 const db = require('../../../db');
 const { ensureBranchWhere } = require('../../../prisma/branchHelpers');
+const logger = require('../../../utils/logger');
 
 // In-memory cache (for single-instance deployments)
 let metricsCache = {
@@ -47,7 +48,7 @@ function getCachedBranchMetrics(branchId) {
  * Pre-calculate all dashboard metrics
  */
 async function calculateAllMetrics() {
-    console.log('[MetricsCache] Starting metrics calculation...');
+    logger.debug('[MetricsCache] Starting metrics calculation...');
     const startTime = Date.now();
 
     try {
@@ -58,6 +59,7 @@ async function calculateAllMetrics() {
         const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
         // ===================== FINANCIAL METRICS =====================
+        logger.debug('[MetricsCache] Calculating Financial metrics...');
 
         const [currentRevenue, previousRevenue, pendingDebts, overdueDebts] = await Promise.all([
             db.payment.aggregate({
@@ -92,6 +94,7 @@ async function calculateAllMetrics() {
         ]);
 
         // ===================== OPERATIONAL METRICS =====================
+        logger.debug('[MetricsCache] Calculating Operational metrics...');
 
         const [totalRequests, closedRequests, overdueRequests] = await Promise.all([
             db.maintenanceRequest.count({
@@ -117,6 +120,7 @@ async function calculateAllMetrics() {
         ]);
 
         // ===================== INVENTORY HEALTH =====================
+        logger.debug('[MetricsCache] Calculating Inventory metrics...');
 
         const inventoryItems = await db.inventoryItem.findMany({
             where: { branchId: { not: null } },
@@ -133,6 +137,7 @@ async function calculateAllMetrics() {
         });
 
         // ===================== BRANCH SUMMARY =====================
+        logger.debug('[MetricsCache] Calculating Branch summary...');
 
         const branches = await db.branch.findMany({
             where: { type: 'BRANCH' },
@@ -167,9 +172,9 @@ async function calculateAllMetrics() {
                 id: branch.id,
                 name: branch.name,
                 code: branch.code,
-                revenue: revenue._sum.amount || 0,
-                activeRequests: activeReqs,
-                closedRequests: closedReqs,
+                revenue: revenue?._sum?.amount || 0,
+                activeRequests: activeReqs || 0,
+                closedRequests: closedReqs || 0,
                 closureRate: (activeReqs + closedReqs) > 0
                     ? Math.round((closedReqs / (activeReqs + closedReqs)) * 100)
                     : 0
@@ -179,6 +184,7 @@ async function calculateAllMetrics() {
         branchSummary.sort((a, b) => b.revenue - a.revenue);
 
         // ===================== TECHNICIAN PRODUCTIVITY =====================
+        logger.debug('[MetricsCache] Calculating Technician productivity...');
         const technicians = await db.user.findMany({
             where: {
                 role: { in: ['CENTER_TECH', 'BRANCH_MANAGER'] },
@@ -208,8 +214,8 @@ async function calculateAllMetrics() {
             return {
                 id: tech.id,
                 name: tech.displayName,
-                closedRequests: closedCount,
-                revenue: totalRevenue._sum.amount || 0
+                closedRequests: closedCount || 0,
+                revenue: totalRevenue?._sum?.amount || 0
             };
         }));
 
@@ -220,10 +226,10 @@ async function calculateAllMetrics() {
         const [totalMachines, totalCustomers, pendingApprovals, pendingTransfers] = await Promise.all([
             db.warehouseMachine.count({ where: { branchId: { not: null } } }),
             db.customer.count({ where: { branchId: { not: null } } }),
-            db.maintenanceApprovalRequest.count({
+            db.maintenanceApproval.count({
                 where: {
                     status: 'PENDING',
-                    centerBranchId: { not: '' }
+                    branchId: { not: null }
                 }
             }),
             db.transferOrder.count({
@@ -236,8 +242,8 @@ async function calculateAllMetrics() {
 
         // ===================== COMPILE RESULTS =====================
 
-        const currentTotal = currentRevenue._sum.amount || 0;
-        const previousTotal = previousRevenue._sum.amount || 0;
+        const currentTotal = currentRevenue?._sum?.amount || 0;
+        const previousTotal = previousRevenue?._sum?.amount || 0;
         const revenueChange = previousTotal > 0
             ? ((currentTotal - previousTotal) / previousTotal * 100).toFixed(1)
             : 0;
@@ -251,8 +257,8 @@ async function calculateAllMetrics() {
                 totalRevenue: currentTotal,
                 previousRevenue: previousTotal,
                 revenueChange: parseFloat(revenueChange),
-                pendingDebts: pendingDebts._sum.amount || 0,
-                overdueDebts: overdueDebts._sum.amount || 0,
+                pendingDebts: pendingDebts?._sum?.amount || 0,
+                overdueDebts: overdueDebts?._sum?.amount || 0,
                 closureRate,
                 overdueRequests,
                 inventoryHealth
@@ -285,12 +291,16 @@ async function calculateAllMetrics() {
         };
 
         const duration = Date.now() - startTime;
-        console.log(`[MetricsCache] Metrics calculated in ${duration}ms`);
+        logger.debug({ duration }, `[MetricsCache] Metrics calculated in ${duration}ms`);
 
         return metrics;
 
     } catch (error) {
-        console.error('[MetricsCache] Error calculating metrics:', error);
+        logger.error({ 
+            message: error.message, 
+            stack: error.stack,
+            code: error.code 
+        }, '[MetricsCache] Error calculating metrics');
         throw error;
     }
 }
@@ -299,7 +309,7 @@ async function calculateAllMetrics() {
  * Pre-calculate metrics for a specific branch
  */
 async function calculateBranchMetrics(branchId) {
-    console.log(`[MetricsCache] Calculating metrics for branch ${branchId}...`);
+    logger.debug({ branchId }, `[MetricsCache] Calculating metrics for branch ${branchId}...`);
 
     try {
         const today = new Date();
@@ -353,7 +363,7 @@ async function calculateBranchMetrics(branchId) {
         return metrics;
 
     } catch (error) {
-        console.error(`[MetricsCache] Error calculating branch ${branchId} metrics:`, error);
+        logger.error({ error, branchId }, `[MetricsCache] Error calculating branch ${branchId} metrics`);
         throw error;
     }
 }
@@ -363,11 +373,11 @@ async function calculateBranchMetrics(branchId) {
  */
 async function initializeCache() {
     try {
-        console.log('[MetricsCache] Initializing metrics cache...');
+        logger.info('[MetricsCache] Initializing metrics cache...');
         await calculateAllMetrics();
-        console.log('[MetricsCache] Cache initialized successfully');
+        logger.info('[MetricsCache] Cache initialized successfully');
     } catch (error) {
-        console.error('[MetricsCache] Failed to initialize cache:', error);
+        logger.error({ error }, '[MetricsCache] Failed to initialize cache');
     }
 }
 
@@ -380,7 +390,7 @@ function clearCache() {
         data: null,
         branchData: {}
     };
-    console.log('[MetricsCache] Cache cleared');
+    logger.info('[MetricsCache] Cache cleared');
 }
 
 /**

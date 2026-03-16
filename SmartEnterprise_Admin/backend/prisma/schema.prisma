@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  name         String?
+  role         String   @default("SUPER_ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Branch {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  address        String?
+  apiKey         String   @unique
+  status         String   @default("OFFLINE")
+  lastSeen       DateTime?
+  version        String?
+  authorizedHWID String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  backups        BranchBackup[]
+}
+
+model GlobalParameter {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("STRING")
+  group     String?
+  updatedAt DateTime @updatedAt
+}
+
+model BranchBackup {
+  id        String   @id @default(cuid())
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  filename  String
+  size      Int
+  url       String
+  createdAt DateTime @default(now())
+}
+
+model Release {
+  id          String   @id @default(cuid())
+  version     String   @unique
+  description String?
+  url         String
+  severity    Int      @default(5)
+  isCurrent   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model CentralLog {
+  id        String   @id @default(cuid())
+  level     String   @default("INFO")
+  message   String
+  source    String?
+  context   String?
+  createdAt DateTime @default(now())
+}

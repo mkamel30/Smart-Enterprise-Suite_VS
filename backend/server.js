@@ -1,8 +1,15 @@
 require('dotenv').config();
 require('express-async-errors');
 
+// --- SECURITY & HWID BINDING ---
+const security = require('./utils/security');
+(async () => {
+  await security.validateMachineBinding();
+})();
+
 
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const pinoHttp = require('pino-http');
@@ -203,6 +210,36 @@ app.use('/api', apiModules);
 
 // Root health check
 app.use('/health', require('./src/modules/system/health.routes'));
+
+// ===================== FRONTEND SERVING (PRODUCTION) =====================
+
+/**
+ * In production mode, the backend serves the frontend static files
+ * to provide a single-executable/standalone experience.
+ */
+if (process.env.NODE_ENV === 'production') {
+  // When packaged with 'pkg', the executable is in a different location relative to the frontend files
+  const isPackaged = process.pkg !== undefined;
+  const distPath = isPackaged 
+    ? path.join(path.dirname(process.execPath), 'frontend-dist')
+    : path.join(__dirname, '../frontend/dist');
+  
+  logger.info({ distPath, isPackaged }, '[SERVER] Serving frontend static files');
+  
+  // Serve static assets from the frontend build directory
+  app.use(express.static(distPath));
+
+  // Handle SPA (Single Page Application) routing - serve index.html for non-API routes
+  app.get('*', (req, res, next) => {
+    // If it's an API route that somehow wasn't caught, pass to 404 handler
+    if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+      return next();
+    }
+    
+    // Serve the main application file
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 // ===================== ERROR HANDLING =====================
 

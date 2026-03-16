@@ -19,8 +19,10 @@ export default function BranchesSettings() {
         managerEmail: '',
         type: 'BRANCH',
         maintenanceCenterId: '',
-        parentBranchId: ''
+        parentBranchId: '',
+        authorizedHWID: ''
     });
+    const [systemHwid, setSystemHwid] = useState<string>('');
 
     // ESC key handler for modal
     useEffect(() => {
@@ -32,6 +34,12 @@ export default function BranchesSettings() {
         window.addEventListener('keydown', handleEsc);
         return () => window.removeEventListener('keydown', handleEsc);
     }, []);
+
+    useEffect(() => {
+        if (isModalOpen) {
+            api.getSystemHwid().then(res => setSystemHwid(res.hwid)).catch(() => {});
+        }
+    }, [isModalOpen]);
 
     const { data: branchesData, isLoading } = useQuery<any>({
         queryKey: ['branches'],
@@ -99,7 +107,8 @@ export default function BranchesSettings() {
             phone: '',
             managerEmail: '',
             maintenanceCenterId: '',
-            parentBranchId: ''
+            parentBranchId: '',
+            authorizedHWID: ''
         });
         setEditingBranch(null);
     };
@@ -128,7 +137,8 @@ export default function BranchesSettings() {
             phone: branch.phone || '',
             managerEmail: branch.manager?.email || '',
             maintenanceCenterId: branch.maintenanceCenterId || '',
-            parentBranchId: branch.parentBranchId || ''
+            parentBranchId: branch.parentBranchId || '',
+            authorizedHWID: branch.authorizedHWID || ''
         });
         setIsModalOpen(true);
     };
@@ -450,25 +460,51 @@ export default function BranchesSettings() {
                                     </div>
                                 )}
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-700">الفرع الأب (للهيكلية الإدارية)</label>
-                                    <div className="relative group">
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
-                                            <Shield size={18} />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 pt-4 border-t border-slate-100">
+                                    <div className="flex items-center gap-2 text-[#0A2472]">
+                                        <Shield size={18} className="font-bold" />
+                                        <h3 className="font-bold">حماية الجهاز (HWID Binding)</h3>
+                                    </div>
+                                    
+                                    <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-3">
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="text-slate-500 font-bold">معرف الجهاز الحالي (Current PC ID):</span>
+                                            {systemHwid && (
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormData({ ...formData, authorizedHWID: systemHwid });
+                                                        toast.success('تم نسخ المعرف للجهاز');
+                                                    }}
+                                                    className="text-primary font-black hover:underline"
+                                                >
+                                                    استخدام هذا الجهاز
+                                                </button>
+                                            )}
                                         </div>
-                                        <select
-                                            value={formData.parentBranchId}
-                                            onChange={e => setFormData({ ...formData, parentBranchId: e.target.value })}
-                                            className="w-full pr-10 pl-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none transition-all appearance-none font-medium cursor-pointer"
-                                        >
-                                            <option value="">-- اختر فرع أب (اختياري) --</option>
-                                            {branches.filter((b: any) => b.id !== editingBranch?.id).map((branch: any) => (
-                                                <option key={branch.id} value={branch.id}>{branch.name} ({branch.type})</option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                        <div className="font-mono text-[10px] bg-white p-2 rounded-lg border border-blue-100 text-slate-600 break-all select-all">
+                                            {systemHwid || 'جاري جلب المعرف...'}
                                         </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700">المعرف المصرح له (Authorized HWID)</label>
+                                        <div className="relative group">
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
+                                                <Hash size={18} />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={formData.authorizedHWID}
+                                                onChange={e => setFormData({ ...formData, authorizedHWID: e.target.value })}
+                                                className="w-full pr-10 pl-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none transition-all font-mono text-xs"
+                                                placeholder="أدخل المعرف الخاص بالجهاز المسموح به"
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 font-medium px-1">في حال ترك الحقل فارغاً، سيعمل البرنامج على أي جهاز (غير موصى به).</p>
                                     </div>
                                 </div>
                             </div>

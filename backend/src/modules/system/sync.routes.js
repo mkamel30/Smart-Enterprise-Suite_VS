@@ -4,7 +4,7 @@ const db = require('../../../db');
 const { authenticateToken, requireSuperAdmin } = require('../../../middleware/auth');
 const { success, error } = require('../../../utils/apiResponse');
 const asyncHandler = require('../../../utils/asyncHandler');
-const { calculateAllMetrics } = require('../../shared/metricsCache.service');
+const { calculateAllMetrics } = require('../shared/metricsCache.service');
 const { createBackup } = require('../../../utils/backup');
 const { z } = require('zod');
 

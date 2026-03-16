@@ -18,4 +18,5 @@ export const branchApi = {
     getCenterBranches: (centerId: string): Promise<any[]> => request(`/branches/center/${centerId}/branches`),
     getBranchesLookup: (): Promise<any[]> => request('/branches-lookup'),
     getAuthorizedBranches: (): Promise<any[]> => request('/branches/authorized'),
+    getSystemHwid: (): Promise<{ hwid: string }> => request('/branches/system-info/hwid'),
 };

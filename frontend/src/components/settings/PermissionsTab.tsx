@@ -8,9 +8,6 @@ import { ROLES, getRoleDisplayName } from '../../lib/permissions';
 const ROLE_COLORS: Record<string, string> = {
     [ROLES.SUPER_ADMIN]: 'bg-rose-500/10 text-rose-600 border-rose-200 shadow-sm shadow-rose-500/5',
     [ROLES.MANAGEMENT]: 'bg-amber-500/10 text-amber-600 border-amber-200 shadow-sm shadow-amber-500/5',
-    [ROLES.ADMIN_AFFAIRS]: 'bg-orange-500/10 text-orange-600 border-orange-200 shadow-sm shadow-orange-500/5',
-    [ROLES.CENTER_MANAGER]: 'bg-blue-500/10 text-blue-600 border-blue-200 shadow-sm shadow-blue-500/5',
-    [ROLES.CENTER_TECH]: 'bg-cyan-500/10 text-cyan-600 border-cyan-200 shadow-sm shadow-cyan-500/5',
     [ROLES.BRANCH_MANAGER]: 'bg-indigo-500/10 text-indigo-600 border-indigo-200 shadow-sm shadow-indigo-500/5',
     [ROLES.CS_SUPERVISOR]: 'bg-emerald-500/10 text-emerald-600 border-emerald-200 shadow-sm shadow-emerald-500/5',
     [ROLES.CS_AGENT]: 'bg-teal-500/10 text-teal-600 border-teal-200 shadow-sm shadow-teal-500/5',
@@ -91,12 +88,12 @@ export function PermissionsTab() {
     const displayRoles = [
         ROLES.SUPER_ADMIN,
         ROLES.MANAGEMENT,
-        ROLES.ADMIN_AFFAIRS,
-        ROLES.CENTER_MANAGER,
-        ROLES.CENTER_TECH,
+        ROLES.BRANCH_ADMIN,
+        ROLES.ACCOUNTANT,
         ROLES.BRANCH_MANAGER,
         ROLES.CS_SUPERVISOR,
         ROLES.CS_AGENT,
+        ROLES.BRANCH_TECH
     ];
 
     // Toggle a permission

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Structured Logger Module
  * 
  * Provides a configured pino logger instance for structured logging across the application.
@@ -25,7 +25,7 @@ const loggerOptions = {
 
     // Base properties included in every log
     base: {
-        name: 'cs-dept-console',
+        name: 'smart-enterprise-suite_BR',
         pid: process.pid,
         hostname: require('os').hostname(),
         env: config.nodeEnv

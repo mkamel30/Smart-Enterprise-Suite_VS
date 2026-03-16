@@ -48,7 +48,7 @@ const db = prisma.$extends(securityExtension);
 
 // Enable SQLite WAL mode for better concurrency
 if (config.database?.url?.startsWith('file:')) {
-  prisma.$executeRaw`PRAGMA journal_mode=WAL;`
+  prisma.$queryRaw`PRAGMA journal_mode=WAL;`
     .then(() => logger.info({ context: 'Prisma' }, 'SQLite WAL mode enabled'))
     .catch(err => logger.error({ context: 'Prisma', err }, 'Failed to enable SQLite WAL mode'));
 }

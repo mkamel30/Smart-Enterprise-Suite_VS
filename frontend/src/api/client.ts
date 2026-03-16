@@ -98,6 +98,7 @@ class ApiClient {
     getCustomerSimHistory = customerApi.getCustomerSimHistory;
     getCustomerTemplate = customerApi.getCustomerTemplate;
     importCustomers = customerApi.importCustomers;
+    exportCustomers = customerApi.exportCustomers;
 
     // Inventory
     getInventory = inventoryApi.getInventory;

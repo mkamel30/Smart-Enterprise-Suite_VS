@@ -26,7 +26,7 @@ export default function NotificationBell() {
             // Preload audio
             audioRef.current.load();
         } catch (e) {
-            console.warn('Notification audio failed to initialize');
+            // Audio initialization failed silently
         }
     }, []);
 
@@ -68,7 +68,7 @@ export default function NotificationBell() {
 
             // Play sound if enabled
             if (preferences?.notificationSound && audioRef.current) {
-                audioRef.current.play().catch(err => console.log('Sound play failed:', err));
+                audioRef.current.play().catch(() => { /* Ignore sound play failures */ });
             }
 
             // Show toast notification
