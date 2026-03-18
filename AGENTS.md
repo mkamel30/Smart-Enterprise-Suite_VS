@@ -3,11 +3,13 @@
 Welcome to the Smart Enterprise Suite. This document provides critical pathing and rules for AI Coding Agents.
 
 ## 🏗️ Project Structure
-- **Backend (`/backend`)**: Node.js + Express REST API. Uses Prisma ORM with SQLite (or PostgreSQL in prod).
+- **Backend (`/backend`)**: Node.js + Express REST API. Uses Prisma ORM with SQLite (WAL mode).
   - Main Entry: `backend/server.js`
-  - Routes: `backend/routes/*.js`
-  - Services: `backend/services/*.js`
+  - Routes: `backend/src/modules/*/*.routes.js`
+  - Services: `backend/src/modules/*/*.service.js`
+  - Module loader: `backend/src/modules/index.js`
   - Database: `backend/prisma/schema.prisma`
+  - Security extension: `backend/prisma/extensions.js`
 - **Frontend (`/frontend`)**: React + Vite + Tailwind CSS.
   - Main App: `frontend/src/App.tsx`
   - Routes/Pages: `frontend/src/pages/*.tsx`

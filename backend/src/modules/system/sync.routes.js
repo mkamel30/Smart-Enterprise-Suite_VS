@@ -7,6 +7,7 @@ const { success, error } = require('../../../utils/apiResponse');
 const asyncHandler = require('../../../utils/asyncHandler');
 const { calculateAllMetrics } = require('../shared/metricsCache.service');
 const { createBackup } = require('../../../utils/backup');
+const adminSyncService = require('../../../services/adminSync.service');
 const { z } = require('zod');
 
 /**
@@ -14,6 +15,11 @@ const { z } = require('zod');
  * These endpoints allow the central management portal to interact with the branch.
  * For now, protected by Super Admin role, but could be enhanced with API Keys.
  */
+
+// GET /api/system/sync/status - Get portal sync connection status
+router.get('/status', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
+    return success(res, adminSyncService.getStatus());
+}));
 
 // GET /api/system/sync/heartbeat - Quick check if branch is alive
 router.get('/heartbeat', portalAuth, asyncHandler(async (req, res) => {
@@ -34,9 +40,9 @@ router.get('/metrics', portalAuth, asyncHandler(async (req, res) => {
 
 // POST /api/system/sync/parameters - Push global params from Master to Branch (Backup mechanism)
 router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
-    const { machineParameters, globalParameters } = req.body;
+    const { machineParameters, globalParameters, spareParts, users } = req.body;
 
-    if (!machineParameters && !globalParameters) {
+    if (!machineParameters && !globalParameters && !spareParts && !users) {
         return error(res, 'No data to sync', 400);
     }
 
@@ -48,6 +54,63 @@ router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
                     where: { prefix: param.prefix },
                     update: { model: param.model, manufacturer: param.manufacturer },
                     create: { prefix: param.prefix, model: param.model, manufacturer: param.manufacturer }
+                });
+            }
+        }
+
+        if (spareParts && Array.isArray(spareParts)) {
+            // Update or create spare parts
+            for (const part of spareParts) {
+                await tx.sparePart.upsert({
+                    where: { id: part.id || part.partNumber },
+                    update: {
+                        partNumber: part.partNumber,
+                        name: part.name,
+                        description: part.description,
+                        compatibleModels: part.compatibleModels,
+                        defaultCost: part.defaultCost,
+                        isConsumable: part.isConsumable,
+                        allowsMultiple: part.allowsMultiple
+                    },
+                    create: {
+                        id: part.id,
+                        partNumber: part.partNumber,
+                        name: part.name,
+                        description: part.description,
+                        compatibleModels: part.compatibleModels,
+                        defaultCost: part.defaultCost,
+                        isConsumable: part.isConsumable,
+                        allowsMultiple: part.allowsMultiple
+                    }
+                });
+            }
+        }
+
+        if (users && Array.isArray(users)) {
+            // Update or create users (admin or branch users)
+            for (const user of users) {
+                await tx.user.upsert({
+                    where: { username: user.username },
+                    update: {
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName,
+                        role: user.role,
+                        password: user.password,
+                        isActive: user.isActive,
+                        branchId: user.branchId
+                    },
+                    create: {
+                        id: user.id || undefined,
+                        uid: user.uid,
+                        username: user.username,
+                        email: user.email,
+                        displayName: user.displayName,
+                        role: user.role,
+                        password: user.password,
+                        isActive: user.isActive,
+                        branchId: user.branchId
+                    }
                 });
             }
         }
@@ -80,6 +143,37 @@ router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
 router.post('/trigger-backup', portalAuth, asyncHandler(async (req, res) => {
     const backup = await createBackup('remote_sync');
     return success(res, backup);
+}));
+
+// POST /api/system/sync/request-sync - HTTP fallback: branch requests data from portal
+router.post('/request-sync', portalAuth, asyncHandler(async (req, res) => {
+    const { entities } = req.body || {};
+    const axios = require('axios');
+
+    const portalUrl = process.env.PORTAL_URL;
+    const apiKey = process.env.PORTAL_API_KEY;
+
+    if (!portalUrl || !apiKey) {
+        return error(res, 'PORTAL_URL not configured', 500);
+    }
+
+    try {
+        const response = await axios.post(
+            `${portalUrl}/api/system/sync/request-sync`,
+            { entities: entities || ['branches', 'users', 'machineParameters', 'spareParts', 'globalParameters'] },
+            {
+                headers: {
+                    'x-portal-sync-key': apiKey,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 30000
+            }
+        );
+        return success(res, response.data);
+    } catch (err) {
+        console.error('[Sync] HTTP fallback request failed:', err.message);
+        return error(res, 'Failed to request sync from portal', 502);
+    }
 }));
 
 module.exports = router;

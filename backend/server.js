@@ -75,7 +75,7 @@ app.use(cors({
   },
   credentials: config.cors.credentials,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'x-portal-sync-key'],
   maxAge: 86400
 }));
 
@@ -334,3 +334,4 @@ process.on('SIGINT', () => {
 });
 
 module.exports = { app, server };
+ 

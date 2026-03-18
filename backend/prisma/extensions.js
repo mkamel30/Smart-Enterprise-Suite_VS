@@ -16,14 +16,10 @@ const protectedModels = new Set([
     'Payment',
     'BranchDebt',
     'TransferOrder',
-    'MaintenanceApproval',
-    'MaintenanceApprovalRequest',
-    'ServiceAssignment',
     'UsedPartLog',
     'MachineMovementLog',
     'SimMovementLog',
     'SystemLog',
-    'RepairVoucher',
     'Notification',
 ]);
 
@@ -34,8 +30,6 @@ const protectedModels = new Set([
 const modelBranchFields = {
     'BranchDebt': ['debtorBranchId', 'creditorBranchId'],
     'TransferOrder': ['fromBranchId', 'toBranchId'],
-    'MaintenanceApprovalRequest': ['originBranchId', 'centerBranchId'],
-    'ServiceAssignment': ['originBranchId', 'centerBranchId'],
     'MaintenanceRequest': ['branchId', 'servicedByBranchId'],
 };
 

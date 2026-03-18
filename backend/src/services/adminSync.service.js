@@ -1,175 +1,337 @@
 const { io } = require('socket.io-client');
-const axios = require('axios');
 const db = require('../../db');
-const logger = require('../../utils/logger');
 
-let socket = null;
+class AdminSyncService {
+    constructor() {
+        this.socket = null;
+        this.portalUrl = process.env.PORTAL_URL;
+        this.apiKey = process.env.PORTAL_API_KEY;
+        this.branchCode = process.env.BRANCH_CODE;
+        this.offlineQueue = [];
+        this.maxRetries = 3;
+        this.isConnected = false;
+        this.lastSync = null;
+        this.lastError = null;
+    }
 
-const adminSyncService = {
+    getStatus() {
+        return {
+            portalConfigured: !!this.portalUrl,
+            portalUrl: this.portalUrl,
+            isConnected: this.isConnected,
+            lastSync: this.lastSync,
+            lastError: this.lastError,
+            offlineQueueSize: this.offlineQueue.length
+        };
+    }
+
     init() {
-        const portalUrl = process.env.PORTAL_URL;
-        const portalApiKey = process.env.PORTAL_API_KEY; // Branch API Key
-        
-        if (!portalUrl || !portalApiKey) {
-            logger.debug('[AdminSync] No PORTAL_URL or KEY configured, skipping WebSocket sync.');
+        if (!this.portalUrl) {
+            console.warn('AdminSync: PORTAL_URL not set, sync disabled');
             return;
         }
 
-        logger.info({ portalUrl }, '[AdminSync] Connecting to Central Admin Portal via WebSocket...');
+        console.log(`AdminSync: Connecting to ${this.portalUrl}...`);
 
-        // Connect to the Admin socket
-        socket = io(portalUrl, {
-            auth: { apiKey: portalApiKey },
-            reconnection: true,
+        this.socket = io(this.portalUrl, {
+            auth: { apiKey: this.apiKey },
+            query: { branchCode: this.branchCode },
+            reconnectionAttempts: 10,
             reconnectionDelay: 5000,
+            timeout: 20000,
+            transports: ['websocket', 'polling'],
+            secure: true
         });
 
-        socket.on('connect', () => {
-            logger.info('[AdminSync] Connected to Central Admin Portal');
+        this.socket.on('connect', async () => {
+            this.isConnected = true;
+            this.lastError = null;
+            console.log('AdminSync: Connected to Central Portal');
+            this.socket.emit('branch_identify', { branchCode: this.branchCode });
+
+            console.log('AdminSync: Requesting initial sync...');
+            this.socket.emit('branch_request_sync', {
+                branchCode: this.branchCode,
+                entities: ['branches', 'users', 'machineParameters', 'spareParts', 'globalParameters']
+            });
+
+            this.lastSync = new Date();
+            await this.flushOfflineQueue();
         });
 
-        socket.on('disconnect', () => {
-            logger.warn('[AdminSync] Disconnected from Central Admin Portal. Retrying...');
+        this.socket.on('disconnect', () => {
+            this.isConnected = false;
+            console.warn('AdminSync: Disconnected from Central Portal');
         });
 
-        socket.on('connect_error', (err) => {
-            logger.error(`[AdminSync] Connection error: ${err.message}`);
+        this.socket.on('connect_error', (err) => {
+            this.isConnected = false;
+            this.lastError = err.message;
+            console.error('AdminSync Connection Error:', err.message);
         });
 
-        // Listen for real-time updates from Central Admin
-        socket.on('admin_update', async (data) => {
-            const { queueId, entityType, action, payload } = data;
-            logger.info(`[AdminSync] Received update. Entity: ${entityType}, Action: ${action}`);
+        this.socket.on('portal_sync_response', async (response) => {
+            if (!response.success) {
+                console.error('AdminSync: Sync response error:', response.error);
+                this.lastError = response.error;
+                return;
+            }
+
+            this.lastSync = new Date();
+            this.lastError = null;
+            const { data } = response;
+            if (data.branches) await this.syncBranches(data.branches);
+            if (data.users) await this.syncUsers(data.users);
+            if (data.machineParameters) await this.syncMachineParameters(data.machineParameters);
+            if (data.spareParts) await this.syncSpareParts(data.spareParts);
+            if (data.globalParameters) await this.syncGlobalParameters(data.globalParameters);
+
+            console.log('AdminSync: Initial sync from portal complete');
+        });
+
+        this.socket.on('admin_update', async (update) => {
+            const { queueId, entityType, action, payload } = update;
+            console.log(`AdminSync: Received ${entityType} [${action}]`);
 
             try {
-                await this.processUpdate(entityType, action, payload);
-                
-                // Create a local notification for branch users
-                let title = 'تحديث مركزي';
-                let message = `تم تحديث ${entityType} من قبل الإدارة المركزية`;
-                if (entityType === 'GLOBAL_PARAMETER') message = 'تم تحديث بارامترات النظام';
-                else if (entityType === 'SPARE_PART') message = `تم تحديث بيانات قطعة الغيار: ${payload.name || ''}`;
-                else if (entityType === 'MACHINE_PARAMETER') message = `تم إضافة/تحديث موديل ماكينة: ${payload.model || ''}`;
-
-                await db.notification.create({
-                    data: {
-                        type: 'INFO',
-                        title,
-                        message,
-                        link: '/settings'
-                    }
-                });
-
-                // Acknowledge the update back to Admin so it drops from the Queue
-                socket.emit('ack_update', { queueId });
-                logger.debug(`[AdminSync] Acknowledged update ${queueId}`);
-
+                await this.processEntityUpdate(entityType, action, payload);
+                if (queueId) {
+                    this.socket.emit('ack_update', { queueId });
+                }
             } catch (err) {
-                logger.error(`[AdminSync] Error processing update ${queueId}: ${err.message}`);
+                console.error(`AdminSync: Failed to process ${entityType} update:`, err.message);
             }
         });
-    },
 
-    async processUpdate(entityType, action, payload) {
-        if (entityType === 'GLOBAL_PARAMETER') {
-            if (action === 'BROADCAST') {
-                for (const param of payload) {
-                    await db.globalParameter.upsert({
-                        where: { key: param.key },
-                        update: { value: String(param.value), type: param.type, group: param.group },
-                        create: { key: param.key, value: String(param.value), type: param.type, group: param.group }
-                    });
-                }
-            } else if (action === 'UPSERT' || action === 'UPDATE') {
-                await db.globalParameter.upsert({
-                    where: { key: payload.key },
-                    update: { value: String(payload.value), type: payload.type, group: payload.group },
-                    create: { key: payload.key, value: String(payload.value), type: payload.type, group: payload.group }
-                });
-            } else if (action === 'DELETE') {
-                await db.globalParameter.deleteMany({ where: { id: payload.id } });
+        this.socket.on('SYSTEM_DIRECTIVE', async (data) => {
+            console.log('AdminSync: System Directive:', data.action);
+            if (data.action === 'REQUEST_FULL_SYNC') {
+                await this.pushAllDataToAdmin();
             }
-        } 
-        else if (entityType === 'SPARE_PART') {
-            if (action === 'BROADCAST') {
-                for (const part of payload) {
-                    await db.sparePart.upsert({
-                        where: { partNumber: part.partNumber || '' },
-                        update: { name: part.name, defaultCost: part.defaultCost, compatibleModels: part.compatibleModels },
-                        create: { partNumber: part.partNumber, name: part.name, defaultCost: part.defaultCost, compatibleModels: part.compatibleModels }
-                    });
-                }
-            } else if (action === 'UPSERT' || action === 'UPDATE') {
-                await db.sparePart.upsert({
-                    where: { partNumber: payload.partNumber },
-                    update: { name: payload.name, defaultCost: payload.defaultCost, compatibleModels: payload.compatibleModels },
-                    create: { partNumber: payload.partNumber, name: payload.name, defaultCost: payload.defaultCost, compatibleModels: payload.compatibleModels }
-                });
-            }
-        }
-        else if (entityType === 'MACHINE_PARAMETER') {
-             if (action === 'BROADCAST') {
-                for (const param of payload) {
-                    await db.machineParameter.upsert({
-                        where: { prefix: param.prefix },
-                        update: { model: param.model, manufacturer: param.manufacturer },
-                        create: { prefix: param.prefix, model: param.model, manufacturer: param.manufacturer }
-                    });
-                }
-            } else if (action === 'UPSERT' || action === 'UPDATE') {
-                await db.machineParameter.upsert({
-                    where: { prefix: payload.prefix },
-                    update: { model: payload.model, manufacturer: payload.manufacturer },
-                    create: { prefix: payload.prefix, model: payload.model, manufacturer: payload.manufacturer }
-                });
-            }
-        }
-        else if (entityType === 'SYSTEM_DIRECTIVE' && action === 'REQUEST_FULL_SYNC') {
-            logger.info('[AdminSync] Central Admin requested a Full Data Sync. Initiating...');
-            await this.pushAllDataToAdmin();
-        }
-    },
+        });
+    }
 
-    async pushAllDataToAdmin() {
-        try {
-            const portalUrl = process.env.PORTAL_URL;
-            const portalApiKey = process.env.PORTAL_API_KEY;
-
-            // Gather all branch data
-            const payments = await db.payment.findMany();
-            const maintenanceRequests = await db.maintenanceRequest.findMany();
-            const users = await db.user.findMany();
-            const customers = await db.customer.findMany();
-            const posMachines = await db.posMachine.findMany();
-
-            const payload = {
-                payments,
-                maintenanceRequests,
-                users,
-                customers,
-                posMachines
-            };
-
-            await axios.post(`${portalUrl}/api/sync/push`, payload, {
-                headers: { 'x-branch-api-key': portalApiKey },
-                timeout: 30000 // 30s timeout for large payloads
-            });
-            
-            logger.info('[AdminSync] Full Data Sync completed successfully');
-        } catch (error) {
-            logger.error(`[AdminSync] Failed to push all data to Admin: ${error.message}`);
-        }
-    },
-
-    /**
-     * Upward Sync: Send a newly created or updated branch user to the Central Admin
-     */
-    syncUserToAdmin(userObj) {
-        if (socket && socket.connected) {
-            socket.emit('branch_user_update', { user: userObj });
-            logger.debug(`[AdminSync] Emitted branch_user_update for ${userObj.username}`);
+    async processEntityUpdate(entityType, action, payload) {
+        switch (entityType) {
+            case 'GLOBAL_PARAMETER':
+                await this.syncGlobalParameters(Array.isArray(payload) ? payload : [payload], action);
+                break;
+            case 'MACHINE_PARAMETER':
+                await this.syncMachineParameters(Array.isArray(payload) ? payload : [payload], action);
+                break;
+            case 'SPARE_PART':
+                await this.syncSpareParts(Array.isArray(payload) ? payload : [payload], action);
+                break;
+            case 'USER':
+                await this.syncUsers(Array.isArray(payload) ? payload : [payload], action);
+                break;
+            case 'BRANCH':
+                await this.syncBranches(Array.isArray(payload) ? payload : [payload], action);
+                break;
+            default:
+                console.warn(`AdminSync: Unknown entity type: ${entityType}`);
         }
     }
-};
 
-module.exports = adminSyncService;
+    async syncGlobalParameters(params, action) {
+        for (const p of params) {
+            if (action === 'DELETE') {
+                await db.globalParameter.deleteMany({ where: { id: p.id } }).catch(() => {});
+                console.log(`AdminSync: Deleted globalParameter ${p.id}`);
+            } else {
+                await db.globalParameter.upsert({
+                    where: { key: p.key },
+                    update: { value: String(p.value), type: p.type, group: p.group },
+                    create: { key: p.key, value: String(p.value), type: p.type || 'STRING', group: p.group || null }
+                });
+                console.log(`AdminSync: Synced globalParameter ${p.key}`);
+            }
+        }
+    }
+
+    async syncMachineParameters(params, action) {
+        for (const p of params) {
+            if (action === 'DELETE') {
+                await db.machineParameter.deleteMany({ where: { id: p.id } }).catch(() => {});
+            } else {
+                await db.machineParameter.upsert({
+                    where: { prefix: p.prefix },
+                    update: { model: p.model, manufacturer: p.manufacturer },
+                    create: { prefix: p.prefix, model: p.model, manufacturer: p.manufacturer }
+                });
+                console.log(`AdminSync: Synced machineParameter ${p.prefix}`);
+            }
+        }
+    }
+
+    async syncSpareParts(parts, action) {
+        for (const part of parts) {
+            if (action === 'DELETE') {
+                await db.sparePart.deleteMany({ where: { id: part.id } }).catch(() => {});
+            } else {
+                await db.sparePart.upsert({
+                    where: { id: part.id || part.partNumber },
+                    update: {
+                        partNumber: part.partNumber,
+                        name: part.name,
+                        description: part.description,
+                        compatibleModels: part.compatibleModels,
+                        defaultCost: part.defaultCost,
+                        isConsumable: part.isConsumable,
+                        allowsMultiple: part.allowsMultiple
+                    },
+                    create: {
+                        id: part.id,
+                        partNumber: part.partNumber,
+                        name: part.name,
+                        description: part.description,
+                        compatibleModels: part.compatibleModels,
+                        defaultCost: part.defaultCost,
+                        isConsumable: part.isConsumable,
+                        allowsMultiple: part.allowsMultiple
+                    }
+                });
+                console.log(`AdminSync: Synced sparePart ${part.name}`);
+            }
+        }
+    }
+
+    async syncUsers(users, action) {
+        for (const user of users) {
+            if (action === 'DELETE') {
+                await db.user.deleteMany({ where: { id: user.id } }).catch(() => {});
+            } else {
+                let localBranchId = user.branchId;
+                if (localBranchId) {
+                    const exists = await db.branch.findUnique({ where: { id: localBranchId } });
+                    if (!exists) {
+                        console.warn(`AdminSync: Branch ${localBranchId} not found for user ${user.username}`);
+                        localBranchId = null;
+                    }
+                }
+
+                const userWhere = user.id ? { id: user.id } : { username: user.username };
+                await db.user.upsert({
+                    where: userWhere,
+                    update: {
+                        uid: user.uid,
+                        username: user.username,
+                        email: user.email,
+                        displayName: user.displayName,
+                        role: user.role,
+                        password: user.password,
+                        isActive: user.isActive,
+                        branchId: localBranchId
+                    },
+                    create: {
+                        id: user.id || undefined,
+                        uid: user.uid,
+                        username: user.username,
+                        email: user.email,
+                        displayName: user.displayName,
+                        role: user.role,
+                        password: user.password,
+                        isActive: user.isActive,
+                        branchId: localBranchId
+                    }
+                });
+                console.log(`AdminSync: Synced user ${user.username}`);
+            }
+        }
+    }
+
+    async syncBranches(branches, action) {
+        for (const branch of branches) {
+            if (action === 'DELETE') {
+                await db.branch.deleteMany({ where: { id: branch.id } }).catch(() => {});
+            } else {
+                await db.branch.upsert({
+                    where: { id: branch.id },
+                    update: {
+                        code: branch.code,
+                        name: branch.name,
+                        location: branch.location,
+                        type: branch.type,
+                        status: branch.status,
+                        parentBranchId: branch.parentBranchId
+                    },
+                    create: {
+                        id: branch.id,
+                        code: branch.code,
+                        name: branch.name,
+                        location: branch.location,
+                        type: branch.type,
+                        status: branch.status,
+                        parentBranchId: branch.parentBranchId
+                    }
+                });
+                console.log(`AdminSync: Synced branch ${branch.code}`);
+            }
+        }
+    }
+
+    async queueForRetry(event, payload) {
+        this.offlineQueue.push({ event, payload, retries: 0 });
+        console.log(`AdminSync: Queued ${event} for retry (queue size: ${this.offlineQueue.length})`);
+    }
+
+    async flushOfflineQueue() {
+        if (this.offlineQueue.length === 0 || !this.socket?.connected) return;
+
+        console.log(`AdminSync: Flushing offline queue (${this.offlineQueue.length} items)...`);
+        const queue = [...this.offlineQueue];
+        this.offlineQueue = [];
+
+        for (const item of queue) {
+            try {
+                this.socket.emit(item.event, item.payload);
+                console.log(`AdminSync: Replayed ${item.event}`);
+            } catch (err) {
+                console.error(`AdminSync: Failed to replay ${item.event}:`, err.message);
+                if (item.retries < this.maxRetries) {
+                    item.retries++;
+                    this.offlineQueue.push(item);
+                }
+            }
+        }
+    }
+
+    async syncUserToAdmin(user) {
+        if (!this.socket?.connected) {
+            this.queueForRetry('branch_user_update', { user, branchCode: this.branchCode });
+            return;
+        }
+        this.socket.emit('branch_user_update', { user, branchCode: this.branchCode });
+    }
+
+    async pushAllDataToAdmin() {
+        if (!this.socket?.connected) {
+            console.warn('AdminSync: Cannot push — not connected');
+            return;
+        }
+
+        console.log('AdminSync: Gathering data for full push...');
+        try {
+            const [users, machineParams, spareParts] = await Promise.all([
+                db.user.findMany({ include: { branch: true } }),
+                db.machineParameter.findMany(),
+                db.sparePart.findMany()
+            ]);
+
+            const payload = {
+                branchCode: this.branchCode,
+                users,
+                machineParams,
+                spareParts,
+                timestamp: new Date()
+            };
+
+            this.socket.emit('branch_push_all', payload);
+            console.log(`AdminSync: Full push sent (${users.length} users, ${machineParams.length} params, ${spareParts.length} parts)`);
+        } catch (error) {
+            console.error('AdminSync: Full push failed:', error.message);
+        }
+    }
+}
+
+module.exports = new AdminSyncService();

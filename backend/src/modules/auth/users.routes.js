@@ -18,7 +18,7 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 const { importUsers } = require('../shared/importExport.service');
 const { exportEntitiesToExcel, transformUsersForExport, setExcelHeaders, generateExportFilename } = require('../../../utils/excel');
-const adminSyncService = require('../../../services/adminSync.service');
+const adminSyncService = require('../../services/adminSync.service');
 
 // GET all users (admin only) - PAGINATED
 router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) => {

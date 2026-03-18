@@ -22,6 +22,7 @@ import { maintenanceApi } from './maintenanceApi';
 import { reportApi } from './reportApi';
 
 import { adminStoreApi } from './adminStoreApi';
+import { systemApi } from './systemApi';
 
 // The ApiClient remains for state management and aggregate access
 // to maintain backward compatibility with existing code.
@@ -316,6 +317,12 @@ class ApiClient {
     getPosSalesMonthly = reportApi.getPosSalesMonthly;
     getPosSalesDaily = reportApi.getPosSalesDaily;
     getMonthlyClosing = reportApi.getMonthlyClosing;
+
+    // System
+    getSystemUpdateCheck = systemApi.checkForUpdates;
+    applySystemUpdate = systemApi.applyUpdate;
+    getSyncStatus = systemApi.getSyncStatus;
+    triggerSync = systemApi.triggerSync;
 }
 
 export const api = new ApiClient();

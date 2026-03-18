@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Activity, Database, Wifi, AlertCircle } from 'lucide-react';
+import { Activity, Database, Wifi, AlertCircle, Globe } from 'lucide-react';
+import { usePortalSync } from '../hooks/usePortalSync';
 
 interface ServerStatus {
     backend: 'online' | 'offline' | 'checking';
@@ -16,6 +17,7 @@ export default function StatusBar() {
     });
     const [isExpanded, setIsExpanded] = useState(false);
     const [previousStatus, setPreviousStatus] = useState<ServerStatus | null>(null);
+    const { isConnected, lastSync, portalConfigured, triggerSync } = usePortalSync(15000);
 
     const checkHealth = async () => {
         try {
@@ -124,6 +126,23 @@ export default function StatusBar() {
                                 {getStatusText(status.database)}
                             </span>
                         </div>
+
+                        {/* Portal Sync Status */}
+                        {portalConfigured && (
+                            <div className="flex items-center gap-2">
+                                <Globe size={12} className={isConnected ? 'text-blue-500' : 'text-gray-400'} />
+                                <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-gray-400'}`} />
+                                <span className="font-bold opacity-60">الإداري:</span>
+                                <span className={`font-black ${isConnected ? 'text-blue-500' : 'text-gray-400'}`}>
+                                    {isConnected ? 'متصل' : 'غير متصل'}
+                                </span>
+                                {lastSync && (
+                                    <span className="text-[10px] opacity-50">
+                                        ({new Date(lastSync).toLocaleTimeString('ar-EG')})
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Connection Status */}
@@ -153,7 +172,7 @@ export default function StatusBar() {
                         <div className="flex items-center justify-center gap-6">
                             <span className="flex items-center gap-1">🔄 فحص تلقائي <b className="text-primary">30s</b></span>
                             <button
-                                onClick={checkHealth}
+                                onClick={() => { checkHealth(); triggerSync(); }}
                                 className="text-primary hover:text-primary/80 underline font-black uppercase"
                             >
                                 تحديث الآن

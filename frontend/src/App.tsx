@@ -9,6 +9,7 @@ import { SettingsProvider } from './context/SettingsContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import { Toaster } from 'react-hot-toast';
+import UpdateBanner from './components/UpdateBanner';
 
 // Pages
 import Login from './pages/Login';
@@ -111,6 +112,7 @@ function App() {
         <SettingsProvider>
           <SocketProvider>
             <Toaster position="top-left" reverseOrder={false} />
+            <UpdateBanner />
             <AppContent />
           </SocketProvider>
         </SettingsProvider>
