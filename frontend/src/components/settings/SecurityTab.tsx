@@ -202,7 +202,7 @@ export function SecurityTab() {
             {/* MFA Section */}
             <div className="bg-card rounded-[2.5rem] border border-border shadow-2xl p-10 h-fit">
                 <h2 className="text-2xl font-black mb-8 flex items-center gap-3 text-foreground">
-                    <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500">
+                    <div className="p-3 rounded-2xl bg-primary/10 text-primary">
                         <Shield size={28} />
                     </div>
                     المصادقة الثنائية (MFA)
@@ -247,7 +247,7 @@ export function SecurityTab() {
                         <button
                             onClick={handleEnableMfa}
                             disabled={isLoadingMfa}
-                            className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black hover:bg-indigo-700 transition-all flex items-center gap-2 mx-auto disabled:opacity-50"
+                            className="bg-primary text-primary-foreground px-8 py-3 rounded-2xl font-black hover:bg-primary/90 transition-all flex items-center gap-2 mx-auto disabled:opacity-50"
                         >
                             {isLoadingMfa ? <RefreshCw className="animate-spin" size={18} /> : <QrCode size={18} />}
                             بدء إعداد المصادقة
@@ -258,13 +258,13 @@ export function SecurityTab() {
                 {mfaSetupData && (
                     <div className="space-y-8 animate-scale-in">
                         <div className="text-center space-y-4">
-                            <p className="text-sm font-bold text-indigo-600">افتح تطبيق Google Authenticator وقم بمسح الكود التالي:</p>
-                            <div className="p-4 bg-white rounded-[2rem] border-4 border-indigo-500/10 inline-block shadow-inner">
+                            <p className="text-sm font-bold text-primary">افتح تطبيق Google Authenticator وقم بمسح الكود التالي:</p>
+                            <div className="p-4 bg-white rounded-[2rem] border-4 border-primary/10 inline-block shadow-inner">
                                 <img src={mfaSetupData.qrCode} alt="MFA QR Code" className="w-48 h-48" />
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest">أو أدخل الكود يدوياً:</p>
-                                <code className="bg-muted px-4 py-1 rounded-lg text-sm font-black text-indigo-600 tabular-nums">{mfaSetupData.manualEntryKey}</code>
+                                <code className="bg-muted px-4 py-1 rounded-lg text-sm font-black text-primary tabular-nums">{mfaSetupData.manualEntryKey}</code>
                             </div>
                         </div>
 
@@ -277,7 +277,7 @@ export function SecurityTab() {
                                     placeholder="000000"
                                     value={mfaToken}
                                     onChange={(e) => setMfaToken(e.target.value)}
-                                    className="w-full bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-4 text-center text-3xl font-black tracking-[0.5em] focus:ring-4 focus:ring-indigo-500/10 outline-none placeholder:text-indigo-200"
+                                    className="w-full bg-primary/10 border border-primary/10 rounded-2xl px-4 py-4 text-center text-3xl font-black tracking-[0.5em] focus:ring-4 focus:ring-primary/10 outline-none placeholder:text-primary/20"
                                 />
                             </div>
                             <div className="flex gap-4">
@@ -291,7 +291,7 @@ export function SecurityTab() {
                                 <button
                                     onClick={handleVerifyMfa}
                                     disabled={mfaToken.length < 6 || isLoadingMfa}
-                                    className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                                    className="flex-[2] bg-primary text-primary-foreground py-4 rounded-2xl font-black hover:bg-primary/90 shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
                                     {isLoadingMfa ? <RefreshCw className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
                                     تأكيد وتفعيل

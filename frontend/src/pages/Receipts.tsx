@@ -739,7 +739,7 @@ export default function Receipts() {
             {/* Recalculate Modal with Premium Styling */}
             <Dialog open={editModalOpen} onOpenChange={(open) => !open && setEditModalOpen(false)}>
                 <DialogContent className="p-0 border-0 flex flex-col max-h-[96vh] h-auto overflow-hidden sm:max-w-xl rounded-[3rem] shadow-3xl bg-white text-right" dir="rtl">
-                    <div className="modal-header bg-gradient-to-br from-blue-700 to-indigo-800 p-8 text-white relative overflow-hidden">
+                    <div className="modal-header bg-smart-gradient p-8 text-white relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
                             <div className="absolute bottom-[-50%] left-[-20%] w-[100%] h-[200%] bg-white rounded-full blur-[100px]" />
                         </div>

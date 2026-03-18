@@ -122,16 +122,16 @@ export default function NotificationBell() {
             >
                 <Bell size={20} className={unreadCount > 0 ? "animate-tada" : ""} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-rose-500 text-white text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-black shadow-lg shadow-rose-500/30">
+                    <span className="absolute -top-0.5 -right-0.5 bg-rose-500 text-white text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shadow-lg shadow-rose-500/30">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 left-auto mt-3 w-80 bg-card rounded-2xl shadow-2xl border border-border z-[999] animate-slide-up overflow-hidden">
+                <div className="absolute right-0 left-auto mt-3 w-80 bg-card rounded-xl shadow-2xl border border-border z-[999] animate-slide-up overflow-hidden">
                     <div className="p-4 border-b border-border/50 flex justify-between items-center bg-muted/30">
-                        <h3 className="font-black text-sm">الإشعارات</h3>
+                        <h3 className="font-bold text-sm">الإشعارات</h3>
                         {unreadCount > 0 && (
                             <button
                                 onClick={() => markAllReadMutation.mutate()}
@@ -167,7 +167,7 @@ export default function NotificationBell() {
                                             </div>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-black text-sm text-foreground truncate">{notification.title}</div>
+                                            <div className="font-bold text-sm text-foreground truncate">{notification.title}</div>
                                             <div className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{notification.message}</div>
                                             <div className="text-[10px] text-muted-foreground/50 mt-2 font-mono flex items-center gap-2">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-primary/30" />
@@ -187,7 +187,7 @@ export default function NotificationBell() {
                                     navigate('/notifications');
                                     setIsOpen(false);
                                 }}
-                                className="w-full text-center text-xs font-black text-primary hover:bg-primary/5 py-2.5 rounded-xl transition-all border border-primary/10 hover:border-primary/20"
+                                className="w-full text-center text-xs font-bold text-primary hover:bg-primary/5 py-2.5 rounded-xl transition-all border border-primary/10 hover:border-primary/20"
                             >
                                 عرض كل الإشعارات
                             </button>

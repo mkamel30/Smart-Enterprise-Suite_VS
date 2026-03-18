@@ -16,7 +16,7 @@ interface TabsProps {
 
 export function SimTabs({ activeTab, setActiveTab, counts }: TabsProps) {
     const tabs = [
-        { id: 'ALL', label: 'كل الشرائح', icon: <Smartphone size={18} />, color: 'text-indigo-600', border: 'bg-indigo-600', badge: 'bg-indigo-100 text-indigo-700' },
+        { id: 'ALL', label: 'كل الشرائح', icon: <Smartphone size={18} />, color: 'text-primary', border: 'bg-primary', badge: 'bg-primary/5 text-primary' },
         { id: 'ACTIVE', label: 'شرائح سليمة', icon: <CheckCircle size={18} />, color: 'text-emerald-600', border: 'bg-emerald-600', badge: 'bg-emerald-100 text-emerald-700' },
         { id: 'IN_TRANSIT', label: 'في الطريق', icon: <Send size={18} />, color: 'text-blue-600', border: 'bg-blue-600', badge: 'bg-blue-100 text-blue-700' },
         { id: 'DEFECTIVE', label: 'شرائح تالفة', icon: <AlertTriangle size={18} />, color: 'text-red-600', border: 'bg-red-600', badge: 'bg-red-100 text-red-700' },

@@ -98,10 +98,10 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
             <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] h-auto overflow-hidden sm:max-w-xl rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
 
                 {/* Header Section with Indigo Gradient */}
-                <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-indigo-600 to-violet-700 relative overflow-hidden">
+                <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-primary to-primary/90 relative overflow-hidden">
                     {/* Abstract Decor */}
                     <div className="absolute top-0 left-0 w-full h-full opacity-15 pointer-events-none">
-                        <div className="absolute -top-1/2 -left-1/4 w-[120%] h-[150%] bg-indigo-300 rounded-full blur-[100px] rotate-12"></div>
+                        <div className="absolute -top-1/2 -left-1/4 w-[120%] h-[150%] bg-primary/30 rounded-full blur-[100px] rotate-12"></div>
                     </div>
 
                     <div className="modal-header-content relative z-10">
@@ -112,8 +112,8 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                             <div>
                                 <h2 className="modal-title text-2xl font-black text-white leading-tight tracking-tight">استبدال عهدة</h2>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-300 animate-pulse"></div>
-                                    <p className="text-indigo-100 font-bold text-[10px] uppercase tracking-widest opacity-90">تبديل ماكينة المخزن بماكينة عميل</p>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-primary/30 animate-pulse"></div>
+                                    <p className="text-primary/10 font-bold text-[10px] uppercase tracking-widest opacity-90">تبديل ماكينة المخزن بماكينة عميل</p>
                                 </div>
                             </div>
                         </div>
@@ -128,18 +128,18 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
 
                         {/* Inventory Context (Outgoing Machine) */}
                         <div className="relative group">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-[2.2rem] blur opacity-15 group-hover:opacity-25 transition duration-500"></div>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-primary rounded-[2.2rem] blur opacity-15 group-hover:opacity-25 transition duration-500"></div>
                             <div className="relative bg-white border border-slate-100/50 rounded-[2rem] p-6 flex flex-col gap-4 shadow-sm">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center border border-indigo-100 shadow-inner">
+                                        <div className="w-12 h-12 bg-primary/10 text-primary/70 rounded-xl flex items-center justify-center border border-primary/10 shadow-inner">
                                             <Monitor size={22} strokeWidth={2.5} />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">الماكينة المصروفة (جديدة)</span>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg font-black text-slate-900 font-mono tracking-wider">{selectedMachine?.serialNumber}</span>
-                                                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-lg border border-indigo-200">{selectedMachine?.model}</span>
+                                                <span className="px-2 py-0.5 bg-primary/5 text-primary text-[10px] font-black rounded-lg border border-primary/20">{selectedMachine?.model}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -153,11 +153,11 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                         {/* Customer Search Interface */}
                         <div className="space-y-4 relative group/search">
                             <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 leading-none">
-                                <User size={14} className="text-indigo-500" />
+                                <User size={14} className="text-primary/70" />
                                 البحث عن العميل صاحب الاستبدال
                             </label>
                             <div className="relative">
-                                <div className="absolute top-1/2 -translate-y-1/2 right-6 p-2 bg-indigo-50 text-indigo-600 rounded-xl group-focus-within/search:bg-indigo-600 group-focus-within/search:text-white transition-all duration-300 pointer-events-none z-10">
+                                <div className="absolute top-1/2 -translate-y-1/2 right-6 p-2 bg-primary/10 text-primary rounded-xl group-focus-within/search:bg-primary group-focus-within/search:text-white transition-all duration-300 pointer-events-none z-10">
                                     <Search size={22} strokeWidth={2.5} />
                                 </div>
                                 <input
@@ -169,7 +169,7 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                                         setShowClientList(true);
                                     }}
                                     onFocus={() => setShowClientList(true)}
-                                    className="smart-input h-20 pr-18 pl-8 text-sm font-black bg-white border-2 border-slate-100 focus:border-indigo-500 shadow-sm transition-all"
+                                    className="smart-input h-20 pr-18 pl-8 text-sm font-black bg-white border-2 border-slate-100 focus:border-primary shadow-sm transition-all"
                                 />
                             </div>
 
@@ -178,7 +178,7 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                                 <div className="absolute z-[110] w-full bg-white border-2 border-slate-100 rounded-[2rem] shadow-2xl mt-3 max-h-64 overflow-y-auto custom-scroll animate-in fade-in slide-in-from-top-4 duration-500">
                                     {isSearching ? (
                                         <div className="p-8 text-center text-slate-500 flex flex-col items-center justify-center gap-4">
-                                            <Loader2 size={32} className="animate-spin text-indigo-500" />
+                                            <Loader2 size={32} className="animate-spin text-primary/70" />
                                             <span className="font-black text-xs uppercase tracking-widest text-slate-400">جاري مسح قاعدة البيانات...</span>
                                         </div>
                                     ) : filteredClients.length === 0 ? (
@@ -195,10 +195,10 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                                                     key={c.bkcode}
                                                     type="button"
                                                     onClick={() => handleSelectClient(c)}
-                                                    className="w-full group flex items-center justify-between p-5 bg-white hover:bg-indigo-50/50 rounded-2xl transition-all border-2 border-transparent hover:border-indigo-100 text-right active:scale-[0.98]"
+                                                    className="w-full group flex items-center justify-between p-5 bg-white hover:bg-primary/10 rounded-2xl transition-all border-2 border-transparent hover:border-primary/10 text-right active:scale-[0.98]"
                                                 >
                                                     <div className="flex flex-col gap-1">
-                                                        <span className="font-black text-slate-900 text-base group-hover:text-indigo-700 transition-colors uppercase">{c.client_name}</span>
+                                                        <span className="font-black text-slate-900 text-base group-hover:text-primary transition-colors uppercase">{c.client_name}</span>
                                                         <div className="flex items-center gap-2">
                                                             <Building2 size={12} className="text-slate-300" />
                                                             <span className="text-[10px] font-bold text-slate-400 tracking-tight truncate max-w-[220px]">{c.client_address || 'العنوان غير مسجل'}</span>
@@ -206,10 +206,10 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <div className="flex flex-col items-end">
-                                                            <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">{c.bkcode}</span>
+                                                            <span className="text-[10px] font-black text-primary/70 bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/10">{c.bkcode}</span>
                                                             <span className="text-[8px] font-black text-slate-300 mt-1 uppercase tracking-widest">Client Code</span>
                                                         </div>
-                                                        <Hash size={18} className="text-slate-200 group-hover:text-indigo-300 transition-colors" />
+                                                        <Hash size={18} className="text-slate-200 group-hover:text-primary/40 transition-colors" />
                                                     </div>
                                                 </button>
                                             ))}
@@ -227,18 +227,18 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                                 {/* Machine Selection from Client Stock */}
                                 <div className="space-y-4">
                                     <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 leading-none">
-                                        <Smartphone size={14} className="text-indigo-500" />
+                                        <Smartphone size={14} className="text-primary/70" />
                                         الماكينة المستلمة من العميل
                                     </label>
                                     <div className="relative group/m-select">
-                                        <div className="absolute top-1/2 -translate-y-1/2 right-6 p-2 bg-slate-50 text-slate-400 group-focus-within/m-select:bg-indigo-500 group-focus-within/m-select:text-white transition-all duration-300 z-10 rounded-xl pointer-events-none">
+                                        <div className="absolute top-1/2 -translate-y-1/2 right-6 p-2 bg-slate-50 text-slate-400 group-focus-within/m-select:bg-primary group-focus-within/m-select:text-white transition-all duration-300 z-10 rounded-xl pointer-events-none">
                                             <Monitor size={22} strokeWidth={2.5} />
                                         </div>
                                         <select
                                             value={exchangeData.incomingMachineId}
                                             onChange={(e) => setExchangeData(prev => ({ ...prev, incomingMachineId: e.target.value }))}
                                             className={cn(
-                                                "smart-select h-20 pr-18 pl-12 text-lg font-black bg-white border-2 border-slate-100 focus:border-indigo-500 shadow-inner transition-all appearance-none cursor-pointer",
+                                                "smart-select h-20 pr-18 pl-12 text-lg font-black bg-white border-2 border-slate-100 focus:border-primary shadow-inner transition-all appearance-none cursor-pointer",
                                                 !exchangeData.incomingMachineId ? "text-slate-400" : "text-slate-900"
                                             )}
                                             required
@@ -253,7 +253,7 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
 
                                         {isLoadingMachines && (
                                             <div className="absolute left-6 top-1/2 -translate-y-1/2">
-                                                <Loader2 size={18} className="animate-spin text-indigo-400" />
+                                                <Loader2 size={18} className="animate-spin text-primary/50" />
                                             </div>
                                         )}
                                     </div>
@@ -284,14 +284,14 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                                                         className={cn(
                                                             "h-16 px-6 rounded-2xl border-2 flex items-center justify-between font-black text-sm transition-all group/btn",
                                                             exchangeData.incomingStatus === status
-                                                                ? "bg-indigo-50 border-indigo-500 text-indigo-700 shadow-indigo-100/50"
+                                                                ? "bg-primary/10 border-primary text-primary shadow-primary/20/50"
                                                                 : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-4">
                                                             <div className={cn(
                                                                 "w-2.5 h-2.5 rounded-full transition-all duration-300",
-                                                                exchangeData.incomingStatus === status ? "bg-indigo-500 scale-125 shadow-lg shadow-indigo-200" : "bg-slate-200"
+                                                                exchangeData.incomingStatus === status ? "bg-primary scale-125 shadow-lg shadow-primary/30" : "bg-slate-200"
                                                             )}></div>
                                                             <span>
                                                                 {status === 'STANDBY' && 'سليمة (STANDBY) - صالحة فوراً'}
@@ -301,7 +301,7 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                                                         </div>
                                                         <div className={cn(
                                                             "p-2 rounded-lg transition-all",
-                                                            exchangeData.incomingStatus === status ? "bg-indigo-100 text-indigo-600" : "bg-slate-50 text-slate-300"
+                                                            exchangeData.incomingStatus === status ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300"
                                                         )}>
                                                             <CheckCircle size={16} strokeWidth={exchangeData.incomingStatus === status ? 3 : 2} />
                                                         </div>
@@ -320,7 +320,7 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                                                 value={exchangeData.incomingNotes}
                                                 onChange={(e) => setExchangeData(prev => ({ ...prev, incomingNotes: e.target.value }))}
                                                 required={exchangeData.incomingStatus === 'DEFECTIVE'}
-                                                className="smart-input min-h-[120px] py-5 px-6 text-sm font-bold resize-none bg-white border-2 shadow-inner leading-relaxed focus:border-indigo-500 transition-all"
+                                                className="smart-input min-h-[120px] py-5 px-6 text-sm font-bold resize-none bg-white border-2 shadow-inner leading-relaxed focus:border-primary transition-all"
                                             />
                                         </div>
                                     </div>
@@ -344,7 +344,7 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
                             className={cn(
                                 "smart-btn-primary flex-[2] h-18 font-black text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] disabled:grayscale disabled:opacity-40",
                                 exchangeData.incomingMachineId
-                                    ? "bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-700 hover:to-violet-800 shadow-indigo-100 text-white"
+                                    ? "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/90 shadow-primary/20 text-white"
                                     : "bg-slate-200 text-slate-400 border-0 shadow-none"
                             )}
                         >

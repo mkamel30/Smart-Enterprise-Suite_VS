@@ -7,7 +7,7 @@ const { success, error } = require('../../../utils/apiResponse');
 const asyncHandler = require('../../../utils/asyncHandler');
 const { calculateAllMetrics } = require('../shared/metricsCache.service');
 const { createBackup } = require('../../../utils/backup');
-const adminSyncService = require('../../../services/adminSync.service');
+const adminSyncService = require('../../services/adminSync.service');
 const { z } = require('zod');
 
 /**
@@ -17,7 +17,7 @@ const { z } = require('zod');
  */
 
 // GET /api/system/sync/status - Get portal sync connection status
-router.get('/status', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
+router.get('/status', authenticateToken, asyncHandler(async (req, res) => {
     return success(res, adminSyncService.getStatus());
 }));
 
@@ -174,6 +174,18 @@ router.post('/request-sync', portalAuth, asyncHandler(async (req, res) => {
         console.error('[Sync] HTTP fallback request failed:', err.message);
         return error(res, 'Failed to request sync from portal', 502);
     }
+}));
+
+// GET /api/system/update/check - Check for system updates (self-hosted)
+router.get('/update/check', authenticateToken, asyncHandler(async (req, res) => {
+    const currentVersion = process.env.APP_VERSION || '1.0.0';
+    return success(res, {
+        currentVersion,
+        latestVersion: currentVersion,
+        updateAvailable: false,
+        releaseNotes: '',
+        downloadUrl: ''
+    });
 }));
 
 module.exports = router;

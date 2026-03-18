@@ -59,7 +59,7 @@ export function TransferOrdersStats({ stats }: StatsProps) {
                 label="إجمالي الأذونات"
                 value={stats?.orders?.total || 0}
                 icon={<BarChart3 size={24} />}
-                color="bg-indigo-100 text-indigo-600 shadow-lg shadow-indigo-50"
+                color="bg-primary/5 text-primary shadow-lg shadow-primary/20"
                 delay={0.4}
             />
         </div>

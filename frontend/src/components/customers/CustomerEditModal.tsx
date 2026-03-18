@@ -133,7 +133,7 @@ export default function CustomerEditModal({ isOpen, onClose, customer, onUpdate,
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="flex items-center gap-2 text-slate-700 font-bold mb-1">
-                                        <Phone size={16} className="text-indigo-500" />
+                                        <Phone size={16} className="text-primary/70" />
                                         الهاتف 2
                                     </Label>
                                     <Input

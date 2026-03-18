@@ -8,7 +8,7 @@ import { ROLES, getRoleDisplayName } from '../../lib/permissions';
 const ROLE_COLORS: Record<string, string> = {
     [ROLES.SUPER_ADMIN]: 'bg-rose-500/10 text-rose-600 border-rose-200 shadow-sm shadow-rose-500/5',
     [ROLES.MANAGEMENT]: 'bg-amber-500/10 text-amber-600 border-amber-200 shadow-sm shadow-amber-500/5',
-    [ROLES.BRANCH_MANAGER]: 'bg-indigo-500/10 text-indigo-600 border-indigo-200 shadow-sm shadow-indigo-500/5',
+    [ROLES.BRANCH_MANAGER]: 'bg-primary/10 text-primary border-primary/20 shadow-sm shadow-primary/5',
     [ROLES.CS_SUPERVISOR]: 'bg-emerald-500/10 text-emerald-600 border-emerald-200 shadow-sm shadow-emerald-500/5',
     [ROLES.CS_AGENT]: 'bg-teal-500/10 text-teal-600 border-teal-200 shadow-sm shadow-teal-500/5',
 };

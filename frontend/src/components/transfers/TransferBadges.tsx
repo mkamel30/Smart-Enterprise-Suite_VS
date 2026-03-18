@@ -30,7 +30,7 @@ export function TransferOrderTypeBadge({ type }: { type: string }) {
     if (!orderType) return <span className="px-3 py-1.5 rounded-xl text-xs font-black bg-slate-100 text-slate-700 border border-slate-200 shadow-sm">{type}</span>;
 
     const colorStyles: Record<string, string> = {
-        indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100 shadow-indigo-50',
+        indigo: 'bg-primary/10 text-primary border-primary/10 shadow-primary/20',
         purple: 'bg-purple-50 text-purple-700 border-purple-100 shadow-purple-50',
         gray: 'bg-slate-50 text-slate-700 border-slate-100 shadow-slate-50',
     };

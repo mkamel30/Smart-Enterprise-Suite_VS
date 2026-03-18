@@ -155,7 +155,7 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                 {/* Modal Header */}
                 <div className="modal-header shrink-0 p-4 md:p-5 pb-3 bg-white border-b flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-50 rounded-lg border border-indigo-100 text-indigo-600">
+                        <div className="p-2 bg-primary/10 rounded-lg border border-primary/20 text-primary">
                             <PenTool size={16} strokeWidth={2.5} />
                         </div>
                         <div>
@@ -171,20 +171,20 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                 <div className="flex-1 overflow-y-auto px-4 md:px-5 py-3 pb-6 space-y-4 custom-scroll">
 
                     {/* Machine & Customer Info Card */}
-                    <div className="bg-gradient-to-br from-indigo-900 to-slate-800 p-4 rounded-xl shadow-lg relative overflow-hidden group border border-indigo-800/20">
+                    <div className="bg-gradient-to-br from-primary/90 to-slate-800 p-4 rounded-xl shadow-lg relative overflow-hidden group border border-primary/80/20">
                         {/* Decorative background elements */}
-                        <div className="absolute -top-10 -left-10 w-40 h-40 bg-indigo-600/20 rounded-full blur-3xl group-hover:bg-indigo-600/30 transition-all duration-700"></div>
-                        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-400/10 rounded-full blur-3xl group-hover:bg-indigo-400/20 transition-all duration-700"></div>
+                        <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-all duration-700"></div>
+                        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/40/10 rounded-full blur-3xl group-hover:bg-primary/40/20 transition-all duration-700"></div>
 
                         <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
-                                <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mb-1 opacity-70">العميل</p>
+                                <p className="text-[8px] font-black text-primary/30 uppercase tracking-widest mb-1 opacity-70">العميل</p>
                                 <div className="flex flex-col gap-1">
                                     <h3 className="text-white font-black text-base leading-tight">{request.customer?.client_name}</h3>
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-indigo-200/70 font-mono text-[10px] font-bold px-1 py-0.5 bg-white/5 rounded border border-white/10">{request.customer?.bkcode}</span>
+                                        <span className="text-primary/20/70 font-mono text-[10px] font-bold px-1 py-0.5 bg-white/5 rounded border border-white/10">{request.customer?.bkcode}</span>
                                         {request.customer?.clienttype && (
-                                            <span className="px-2 py-0.5 bg-indigo-500/30 border border-indigo-400/30 rounded text-[8px] font-black text-indigo-100 uppercase tracking-wider">
+                                            <span className="px-2 py-0.5 bg-primary/30 border border-primary/40/30 rounded text-[8px] font-black text-primary/100 uppercase tracking-wider">
                                                 {request.customer.clienttype}
                                             </span>
                                         )}
@@ -192,10 +192,10 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                                 </div>
                             </div>
                             <div className="space-y-1 md:text-left md:border-r md:border-white/10 md:pr-4">
-                                <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mb-1 opacity-70">الماكينة</p>
+                                <p className="text-[8px] font-black text-primary/30 uppercase tracking-widest mb-1 opacity-70">الماكينة</p>
                                 <div className="flex flex-col md:items-end gap-1">
                                     <div className="flex items-center gap-2">
-                                        <Package size={14} className="text-indigo-400" />
+                                        <Package size={14} className="text-primary/40" />
                                         <span className="text-white font-mono font-black text-lg tracking-tighter">
                                             {serialNumber}
                                         </span>
@@ -207,11 +207,11 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                             </div>
                             <div className="col-span-1 md:col-span-2 pt-3 mt-3 border-t border-white/10 flex gap-2.5">
                                 <div className="p-1.5 bg-white/10 rounded-lg">
-                                    <ClipboardList size={14} className="text-indigo-300" />
+                                    <ClipboardList size={14} className="text-primary/30" />
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-[8px] font-black text-indigo-300 mb-0.5 opacity-70 uppercase">الشكوى</p>
-                                    <p className="text-indigo-50 text-[11px] font-medium italic leading-relaxed">"{request.complaint}"</p>
+                                    <p className="text-[8px] font-black text-primary/30 mb-0.5 opacity-70 uppercase">الشكوى</p>
+                                    <p className="text-primary/50 text-[11px] font-medium italic leading-relaxed">"{request.complaint}"</p>
                                 </div>
                             </div>
                         </div>
@@ -220,13 +220,13 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                     {/* Action Taken Section */}
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-slate-800 font-black text-xs pr-1">
-                            <PenTool size={14} className="text-indigo-600" />
+                            <PenTool size={14} className="text-primary" />
                             الإجراء الذي تم اتخاذه
                         </label>
                         <textarea
                             value={actionTaken}
                             onChange={(e) => setActionTaken(e.target.value)}
-                            className="smart-input min-h-[60px] p-3 text-[11px] font-bold bg-white border-slate-200 focus:border-indigo-400 rounded-xl"
+                            className="smart-input min-h-[60px] p-3 text-[11px] font-bold bg-white border-slate-200 focus:border-primary/40 rounded-xl"
                             placeholder="صف ما تم عمله لإصلاح الماكينة..."
                         />
                     </div>
@@ -235,7 +235,7 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                     <div className="space-y-3">
                         <div className="flex items-center justify-between px-1">
                             <label className="flex items-center gap-2 text-slate-800 font-black text-xs">
-                                <Package size={14} className="text-indigo-600" />
+                                <Package size={14} className="text-primary" />
                                 قطع الغيار المستهلكة
                             </label>
                             <span className="text-[8px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-lg">
@@ -247,13 +247,13 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                             <div className="p-2 border-b border-slate-100 bg-slate-50/50">
                                 <div className="relative group">
-                                    <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+                                    <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
                                     <input
                                         type="text"
                                         placeholder="بحث عن قطعة..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full bg-white border-slate-200 focus:border-indigo-400 rounded-lg pr-9 pl-4 h-9 text-xs font-bold outline-none transition-all placeholder:text-slate-400"
+                                        className="w-full bg-white border-slate-200 focus:border-primary/40 rounded-lg pr-9 pl-4 h-9 text-xs font-bold outline-none transition-all placeholder:text-slate-400"
                                     />
                                 </div>
                             </div>
@@ -270,17 +270,17 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                                         return (
                                             <div
                                                 key={part.id}
-                                                className={`p-2.5 hover:bg-indigo-50/30 transition-all cursor-pointer flex items-center gap-3 ${selected ? 'bg-indigo-50/50' : ''}`}
+                                                className={`p-2.5 hover:bg-primary/10/30 transition-all cursor-pointer flex items-center gap-3 ${selected ? 'bg-primary/10/50' : ''}`}
                                                 onClick={() => togglePart(part)}
                                             >
-                                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
+                                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selected ? 'bg-primary border-primary' : 'border-slate-200'}`}>
                                                     {selected && <CheckCircle2 size={12} className="text-white" />}
                                                 </div>
 
                                                 <div className="flex-1">
                                                     <h5 className="font-black text-xs text-slate-800">{part.name}</h5>
                                                     <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                                                        <span className="text-[9px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
                                                             {part.defaultCost} ج.م
                                                         </span>
                                                         <span className="text-[8px] font-bold text-slate-400 flex items-center gap-1">
@@ -302,7 +302,7 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                                                                 <span className="w-5 text-center text-[10px] font-black text-slate-800">{selected.quantity}</span>
                                                                 <button
                                                                     onClick={() => updatePart(part.id, { quantity: selected.quantity + 1 })}
-                                                                    className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded font-black text-xs"
+                                                                    className="w-6 h-6 flex items-center justify-center bg-primary text-white rounded font-black text-xs"
                                                                 >+</button>
                                                             </div>
                                                         )}
@@ -344,8 +344,8 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                                     <p className="text-[8px] font-black text-rose-600 uppercase mb-0.5">قطع مدفوعة</p>
                                     <div className="text-base font-black text-rose-800">{totals.totalPaidCount} ق</div>
                                 </div>
-                                <div className="col-span-2 bg-indigo-600 p-4 rounded-xl shadow-lg shadow-indigo-100 flex justify-between items-center">
-                                    <div className="text-indigo-100 font-bold text-xs">الإجمالي المطلوب توريده:</div>
+                                <div className="col-span-2 bg-primary p-4 rounded-xl shadow-lg shadow-primary/100 flex justify-between items-center">
+                                    <div className="text-primary/100 font-bold text-xs">الإجمالي المطلوب توريده:</div>
                                     <div className="text-xl font-black text-white">{totals.totalCost} <span className="text-[10px]">ج.م</span></div>
                                 </div>
                             </div>
@@ -356,7 +356,7 @@ export function CloseRequestModal({ request, spareParts, onClose, onSubmit }: Cl
                     {totals.totalCost > 0 && (
                         <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-4">
                             <div className="flex items-center gap-2 pb-2 border-b border-slate-50">
-                                <CheckCircle2 size={16} className="text-indigo-600" />
+                                <CheckCircle2 size={16} className="text-primary" />
                                 <h4 className="font-black text-slate-800 text-xs italic">بيانات توريد النقدية</h4>
                             </div>
 

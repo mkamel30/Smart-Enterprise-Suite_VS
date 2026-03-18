@@ -503,7 +503,7 @@ export default function Requests() {
                             <select
                                 value={selectedTechnician}
                                 onChange={(e) => setSelectedTechnician(e.target.value)}
-                                className="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all bg-white"
+                                className="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs font-bold outline-none focus:border-primary transition-all bg-white"
                             >
                                 <option value="">اختر فني...</option>
                                 {Array.isArray(technicians) && technicians.map((t: Technician) => {
@@ -530,7 +530,7 @@ export default function Requests() {
                         </button>
                         <button
                             onClick={handleAssignSubmit}
-                            className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs shadow-lg shadow-indigo-100 transition-all disabled:opacity-50"
+                            className="flex-1 h-10 bg-primary hover:bg-primary/90 text-white rounded-lg font-black text-xs shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
                             disabled={!selectedTechnician}
                         >
                             تأكيد التعيين
@@ -633,7 +633,7 @@ function RequestDetailsModalContent({ request, partsData, onClose }: { request: 
 
             <DialogHeader className="bg-slate-50/50 p-4 md:p-5 border-b shrink-0 flex flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                    <div className="p-2 bg-primary text-white rounded-lg">
                         <Eye size={16} />
                     </div>
                     <div>
@@ -644,7 +644,7 @@ function RequestDetailsModalContent({ request, partsData, onClose }: { request: 
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setShowHistory(true)}
-                        className="h-8 px-3 bg-white text-indigo-600 border border-indigo-100 rounded-lg text-[9px] font-black hover:bg-indigo-50 transition-all flex items-center gap-1.5 shadow-sm"
+                        className="h-8 px-3 bg-white text-primary border border-primary/10 rounded-lg text-[9px] font-black hover:bg-primary/10 transition-all flex items-center gap-1.5 shadow-sm"
                     >
                         <FaHistory size={10} />
                         سجل الحركة
@@ -658,14 +658,14 @@ function RequestDetailsModalContent({ request, partsData, onClose }: { request: 
             <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 custom-scroll">
                 <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-16 h-16 bg-slate-50 rounded-full blur-2xl -mr-8 -mt-8"></div>
-                    <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 relative z-10">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary relative z-10">
                         <Printer size={20} />
                     </div>
                     <div className="relative z-10 flex-1">
                         <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">العميل</span>
                         <h3 className="text-sm font-black text-slate-900 leading-none mb-1">{request.customer?.client_name}</h3>
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-indigo-500 font-mono">{request.customer?.bkcode}</span>
+                            <span className="text-[10px] font-bold text-primary/70 font-mono">{request.customer?.bkcode}</span>
                             <span className="text-[9px] text-slate-400 font-bold"> - </span>
                             <span className="text-[10px] font-mono text-slate-700 font-black tracking-tight">{request.posMachine?.serialNumber || request.serialNumber || '-'}</span>
                         </div>
@@ -705,12 +705,12 @@ function RequestDetailsModalContent({ request, partsData, onClose }: { request: 
                         <p className="text-xs font-bold text-rose-900 leading-relaxed italic">{request.complaint}</p>
                     </div>
 
-                    <div className="bg-indigo-50/30 p-3 rounded-xl border border-indigo-100/50">
-                        <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                    <div className="bg-primary/10/30 p-3 rounded-xl border border-primary/10/50">
+                        <p className="text-[8px] font-black text-primary/40 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                             <CheckCircle size={10} />
                             الإجراء المتخذ
                         </p>
-                        <p className="text-xs font-bold text-indigo-900 leading-relaxed">{request.actionTaken || 'لا يوجد إجراء مسجل بعد'}</p>
+                        <p className="text-xs font-bold text-primary leading-relaxed">{request.actionTaken || 'لا يوجد إجراء مسجل بعد'}</p>
                     </div>
 
                     {partsData.parts.length > 0 && (
@@ -725,7 +725,7 @@ function RequestDetailsModalContent({ request, partsData, onClose }: { request: 
                                 {partsData.parts.map((part: any, i: number) => (
                                     <div key={i} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100/50">
                                         <div className="flex items-center gap-2">
-                                            <span className="w-5 h-5 bg-white rounded-md flex items-center justify-center text-[10px] font-black text-indigo-600 shadow-sm">{part.quantity}</span>
+                                            <span className="w-5 h-5 bg-white rounded-md flex items-center justify-center text-[10px] font-black text-primary shadow-sm">{part.quantity}</span>
                                             <span className="text-[10px] font-bold text-slate-700">{part.name}</span>
                                         </div>
                                         <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded", part.isPaid ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600')}>
@@ -736,7 +736,7 @@ function RequestDetailsModalContent({ request, partsData, onClose }: { request: 
                             </div>
                             {request.receiptNumber && (
                                 <div className="mt-3 pt-3 border-t border-dashed border-slate-100 text-center">
-                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">رقم الإيصال: {request.receiptNumber}</span>
+                                    <span className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/10">رقم الإيصال: {request.receiptNumber}</span>
                                 </div>
                             )}
                         </div>

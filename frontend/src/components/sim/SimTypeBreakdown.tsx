@@ -29,7 +29,7 @@ export function SimTypeBreakdown({ counts, typeFilter, setTypeFilter }: TypeBrea
         <div className="bg-white/50 border border-slate-200 rounded-3xl p-6 shadow-sm h-full">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
                         <PieChart size={18} />
                     </div>
                     <h3 className="font-black text-slate-800 text-sm tracking-tight">تصنيف الشركات</h3>
@@ -53,8 +53,8 @@ export function SimTypeBreakdown({ counts, typeFilter, setTypeFilter }: TypeBrea
                         className={cn(
                             "w-full flex items-center justify-between p-3 rounded-2xl border transition-all duration-300",
                             typeFilter === type
-                                ? "ring-2 ring-indigo-500 border-indigo-500 bg-white shadow-lg shadow-indigo-100 translate-x-2"
-                                : "border-slate-100 bg-white hover:border-indigo-200 hover:shadow-md hover:translate-x-1"
+                                ? "ring-2 ring-primary border-primary bg-white shadow-lg shadow-primary/20 translate-x-2"
+                                : "border-slate-100 bg-white hover:border-primary/20 hover:shadow-md hover:translate-x-1"
                         )}
                     >
                         <div className="flex items-center gap-3">

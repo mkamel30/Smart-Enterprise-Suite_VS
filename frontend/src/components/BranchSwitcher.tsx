@@ -34,7 +34,7 @@ export default function BranchSwitcher() {
     if (isLoading || !showSwitcher) {
         if (currentBranch) {
             return (
-                <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50/50 rounded-2xl text-[11px] font-black text-indigo-700 border border-indigo-100 shadow-sm transition-all hover:bg-indigo-50">
+                <div className="flex items-center gap-3 px-4 py-2 bg-primary/10 rounded-2xl text-[11px] font-black text-primary border border-primary/10 shadow-sm transition-all hover:bg-primary/10">
                     <Building size={14} strokeWidth={2.5} />
                     <span>{currentBranch.name}</span>
                 </div>
@@ -48,17 +48,17 @@ export default function BranchSwitcher() {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`flex items-center gap-3 pl-3 pr-4 py-2.5 rounded-2xl text-[11px] font-black transition-all duration-300 border shadow-sm group ${isOpen
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-200'
-                    : 'bg-white text-slate-700 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30'
+                    ? 'bg-primary text-white border-primary shadow-primary/20'
+                    : 'bg-white text-slate-700 border-slate-100 hover:border-primary/20 hover:bg-primary/10'
                     }`}
             >
-                <div className={`p-1.5 rounded-xl transition-all duration-300 ${isOpen ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'
+                    <div className={`p-1.5 rounded-xl transition-all duration-300 ${isOpen ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white'
                     }`}>
                     <Building size={15} strokeWidth={2.5} />
                 </div>
 
                 <div className="flex flex-col items-start leading-tight min-w-[100px]">
-                    <span className={`text-[8px] font-black uppercase tracking-widest mb-0.5 ${isOpen ? 'text-indigo-100' : 'text-slate-400'}`}>الفرع النشط</span>
+                    <span className={`text-[8px] font-black uppercase tracking-widest mb-0.5 ${isOpen ? 'text-primary/20' : 'text-slate-400'}`}>الفرع النشط</span>
                     <span className="font-black truncate max-w-[150px]">
                         {activeBranchId ? currentBranch?.name : 'الإدارة العامة'}
                     </span>
@@ -67,7 +67,7 @@ export default function BranchSwitcher() {
                 <ChevronDown
                     size={16}
                     strokeWidth={3}
-                    className={`transition-transform duration-500 ${isOpen ? 'rotate-180 text-white' : 'text-slate-300 group-hover:text-indigo-400'}`}
+                    className={`transition-transform duration-500 ${isOpen ? 'rotate-180 text-white' : 'text-slate-300 group-hover:text-primary/40'}`}
                 />
             </button>
 
@@ -79,7 +79,7 @@ export default function BranchSwitcher() {
                         {/* Header */}
                         <div className="p-6 pb-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <LayoutGrid size={16} className="text-indigo-600" strokeWidth={2.5} />
+                                <LayoutGrid size={16} className="text-primary" strokeWidth={2.5} />
                                 <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">
                                     تبديل فرع العمل
                                 </p>
@@ -137,12 +137,12 @@ export default function BranchSwitcher() {
                                         setIsOpen(false);
                                     }}
                                     className={`w-full group flex items-center justify-between p-4 rounded-3xl text-[11px] font-black transition-all duration-300 ${activeBranchId === branch.id
-                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
                                         : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-100'
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className={`p-2.5 rounded-2xl transition-colors ${activeBranchId === branch.id ? 'bg-white/20' : 'bg-slate-100 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white'}`}>
+                                        <div className={`p-2.5 rounded-2xl transition-colors ${activeBranchId === branch.id ? 'bg-white/20' : 'bg-slate-100 text-slate-400 group-hover:bg-primary group-hover:text-white'}`}>
                                             <div className="relative">
                                                 <Building size={18} strokeWidth={2.5} />
                                                 <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full border-2 border-white" />
@@ -150,13 +150,13 @@ export default function BranchSwitcher() {
                                         </div>
                                         <div className="text-right">
                                             <div className="mb-0.5">{branch.name}</div>
-                                            <div className={`text-[9px] font-bold ${activeBranchId === branch.id ? 'text-indigo-100/70' : 'text-slate-400'}`}>
+                                            <div className={`text-[9px] font-bold ${activeBranchId === branch.id ? 'text-primary/70' : 'text-slate-400'}`}>
                                                 {branch.type === 'ADMIN_AFFAIRS' ? 'شئون إدارية المركز' : 'مركز الصيانة العام'}
                                             </div>
                                         </div>
                                     </div>
                                     {activeBranchId === branch.id && (
-                                        <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center text-indigo-600 animate-in zoom-in duration-300">
+                                        <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center text-primary animate-in zoom-in duration-300">
                                             <Check size={12} strokeWidth={4} />
                                         </div>
                                     )}
@@ -178,21 +178,21 @@ export default function BranchSwitcher() {
                                         setIsOpen(false);
                                     }}
                                     className={`w-full group flex items-center justify-between p-4 rounded-2xl text-[11px] font-black transition-all duration-300 ${activeBranchId === branch.id
-                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
                                         : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-100'
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className={`p-2 rounded-xl transition-colors ${activeBranchId === branch.id ? 'bg-white/20' : 'bg-slate-100 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600'}`}>
+                                            <div className={`p-2 rounded-xl transition-colors ${activeBranchId === branch.id ? 'bg-white/20' : 'bg-slate-100 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary'}`}>
                                             <Building size={18} strokeWidth={2.5} />
                                         </div>
                                         <div className="text-right">
                                             <div className="mb-0.5">{branch.name}</div>
-                                            <div className={`text-[9px] font-bold ${activeBranchId === branch.id ? 'text-indigo-100/70' : 'text-slate-400'}`}>كود: {branch.code}</div>
+                                            <div className={`text-[9px] font-bold $                                            {activeBranchId === branch.id ? 'text-primary/70' : 'text-slate-400'}`}>كود: {branch.code}</div>
                                         </div>
                                     </div>
                                     {activeBranchId === branch.id && (
-                                        <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center text-indigo-600 animate-in zoom-in duration-300">
+                                        <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center text-primary animate-in zoom-in duration-300">
                                             <Check size={12} strokeWidth={4} />
                                         </div>
                                     )}

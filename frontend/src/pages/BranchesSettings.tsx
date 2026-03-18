@@ -165,7 +165,7 @@ export default function BranchesSettings() {
         switch (type) {
             case 'ADMIN_AFFAIRS': return 'bg-purple-100 text-purple-700 border-purple-200';
             case 'MAINTENANCE_CENTER': return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'MAIN_STORE': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
+            case 'MAIN_STORE': return 'bg-primary/5 text-primary border-primary/10';
             default: return 'bg-blue-100 text-blue-700 border-blue-200';
         }
     };
@@ -356,7 +356,7 @@ export default function BranchesSettings() {
 
                             {/* Decorative Background Elements */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
                         </div>
 
                         {/* Body */}

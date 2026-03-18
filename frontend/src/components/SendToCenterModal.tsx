@@ -53,7 +53,7 @@ export function SendToCenterModal({ request, onClose, onSuccess }: SendToCenterM
             <DialogContent className="p-0 border-0 [&>button]:hidden flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-sm rounded-2xl shadow-2xl bg-white" dir="rtl">
                 <DialogHeader className="bg-slate-50/50 p-4 md:p-5 border-b shrink-0 text-right">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                        <div className="p-2 bg-primary text-white rounded-lg">
                             <Truck size={16} />
                         </div>
                         <div>
@@ -82,7 +82,7 @@ export function SendToCenterModal({ request, onClose, onSuccess }: SendToCenterM
                                 <select
                                     value={selectedCenterId}
                                     onChange={e => setSelectedCenterId(e.target.value)}
-                                    className="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all bg-white"
+                                    className="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs font-bold outline-none focus:border-primary transition-all bg-white"
                                 >
                                     <option value="">-- اختر المركز --</option>
                                     {branches?.map((b: any) => (
@@ -98,7 +98,7 @@ export function SendToCenterModal({ request, onClose, onSuccess }: SendToCenterM
                         <textarea
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
-                            className="w-full border border-slate-200 rounded-lg p-3 text-xs font-bold outline-none focus:border-indigo-500 bg-slate-50/30 focus:bg-white transition-all min-h-[70px]"
+                            className="w-full border border-slate-200 rounded-lg p-3 text-xs font-bold outline-none focus:border-primary bg-slate-50/30 focus:bg-white transition-all min-h-[70px]"
                             placeholder="أي ملاحظات إضافية للفنيين بالمركز..."
                         />
                     </div>
@@ -114,7 +114,7 @@ export function SendToCenterModal({ request, onClose, onSuccess }: SendToCenterM
                     <button
                         onClick={() => transferMutation.mutate()}
                         disabled={transferMutation.isPending || !selectedCenterId}
-                        className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="flex-1 h-10 bg-primary hover:bg-primary/90 text-white rounded-lg font-black text-xs shadow-lg shadow-primary/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {transferMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Truck size={14} />}
                         تأكيد التوجيه

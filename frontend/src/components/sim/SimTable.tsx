@@ -34,7 +34,7 @@ export function SimTable({
                                         type="checkbox"
                                         checked={sims.length > 0 && selectedSims.size === sims.length}
                                         onChange={toggleSelectAll}
-                                        className="rounded-lg border-slate-300 w-5 h-5 cursor-pointer text-indigo-600 focus:ring-indigo-500/20"
+                                        className="rounded-lg border-slate-300 w-5 h-5 cursor-pointer text-primary focus:ring-primary/20"
                                     />
                                 </div>
                             </th>
@@ -52,7 +52,7 @@ export function SimTable({
                             <tr>
                                 <td colSpan={8} className="p-12 text-center">
                                     <div className="flex flex-col items-center gap-3">
-                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                                         <span className="text-slate-500 font-medium">جاري تحميل البيانات...</span>
                                     </div>
                                 </td>
@@ -72,7 +72,7 @@ export function SimTable({
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: index * 0.03 }}
                                 key={sim.id}
-                                className={`group hover:bg-slate-50/80 transition-all ${selectedSims.has(sim.id) ? 'bg-indigo-50/40' : ''}`}
+                                className={`group hover:bg-slate-50/80 transition-all ${selectedSims.has(sim.id) ? 'bg-primary/10' : ''}`}
                             >
                                 <td className="p-5">
                                     <div className="flex items-center justify-center">
@@ -80,7 +80,7 @@ export function SimTable({
                                             type="checkbox"
                                             checked={selectedSims.has(sim.id)}
                                             onChange={() => toggleSelectSim(sim.id)}
-                                            className="rounded-lg border-slate-300 w-5 h-5 cursor-pointer text-indigo-600 focus:ring-indigo-500/20 transition-all group-hover:scale-110"
+                                            className="rounded-lg border-slate-300 w-5 h-5 cursor-pointer text-primary focus:ring-primary/20 transition-all group-hover:scale-110"
                                         />
                                     </div>
                                 </td>
@@ -108,7 +108,7 @@ export function SimTable({
                                     <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={() => onEdit(sim)}
-                                            className="p-2 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all hover:shadow-lg shadow-indigo-100"
+                                            className="p-2 text-primary hover:bg-primary hover:text-white rounded-xl transition-all hover:shadow-lg shadow-primary/20"
                                             title="تعديل الشريحة"
                                         >
                                             <Edit3 size={16} />

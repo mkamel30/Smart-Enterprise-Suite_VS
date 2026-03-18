@@ -23,13 +23,13 @@ const ACTION_MAP: Record<string, { label: string; color: string }> = {
     'SELL': { label: 'بيع للعميل', color: 'bg-purple-100 text-purple-700' },
     'EXCHANGE_IN': { label: 'استبدال (وارد)', color: 'bg-teal-100 text-teal-700' },
     'EXCHANGE_OUT': { label: 'استبدال (صادر)', color: 'bg-cyan-100 text-cyan-700' },
-    'RETURN_TO_CUSTOMER': { label: 'إرجاع للعميل', color: 'bg-indigo-100 text-indigo-700' },
+    'RETURN_TO_CUSTOMER': { label: 'إرجاع للعميل', color: 'bg-primary/10 text-primary' },
     'RETURN_FROM_CUSTOMER': { label: 'مرتجع من عميل', color: 'bg-amber-100 text-amber-700' },
     'SALE_VOID': { label: 'إلغاء بيع', color: 'bg-red-100 text-red-700' },
     'MAINTENANCE_OUT': { label: 'خروج للصيانة', color: 'bg-yellow-100 text-yellow-700' },
     'MAINTENANCE_IN': { label: 'عودة من صيانة', color: 'bg-lime-100 text-lime-700' },
     'TRANSFER_IN': { label: 'استلام تحويل', color: 'bg-blue-100 text-blue-700' },
-    'TRANSFER_OUT': { label: 'صادر تحويل', color: 'bg-indigo-100 text-indigo-700' },
+    'TRANSFER_OUT': { label: 'صادر تحويل', color: 'bg-primary/10 text-primary' },
     'RETURN_TO_BRANCH': { label: 'إرجاع للفرع', color: 'bg-cyan-100 text-cyan-700' },
     'RECEIVED_FROM_CENTER': { label: 'استلام من المركز', color: 'bg-teal-100 text-teal-700' },
     'BULK_TRANSFER_TO_MAINTENANCE': { label: 'إرسال مجمع للصيانة', color: 'bg-rose-100 text-rose-700' },
@@ -195,7 +195,7 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
             if (log.action === 'TRANSFER_OUT') {
                 return (
                     <div className="text-xs">
-                        <span className="font-bold text-indigo-700">
+                        <span className="font-bold text-primary">
                             تحويل لفرع: {data.toBranchId ? getBranchName(data.toBranchId) : (data.toBranchName || 'غير محدد')}
                         </span>
                         <div className="text-slate-500">
@@ -351,7 +351,7 @@ export const MachineLogsTable: React.FC<MachineLogsTableProps> = ({
                                                     <span className="font-mono font-bold text-blue-600">{log.serialNumber}</span>
                                                     <button
                                                         onClick={() => onViewTechnicalReport(log.serialNumber)}
-                                                        className="p-1 rounded-md hover:bg-indigo-50 text-slate-300 hover:text-indigo-600 transition-colors"
+                                                        className="p-1 rounded-md hover:bg-primary/10 text-slate-300 hover:text-primary transition-colors"
                                                         title="السجل الفني"
                                                     >
                                                         <History size={14} />

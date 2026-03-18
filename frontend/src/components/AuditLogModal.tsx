@@ -69,9 +69,9 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                 // Handle Exchange
                 if (isExchange && depth === 0) {
                     return (
-                        <div className="text-sm space-y-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 shadow-sm">
+                        <div className="text-sm space-y-3 bg-primary/10 p-4 rounded-xl border border-primary/10 shadow-sm">
                             <div className="flex items-center gap-2">
-                                <span className="font-black text-indigo-700">🔄 استبدال ماكينة</span>
+                                <span className="font-black text-primary">🔄 استبدال ماكينة</span>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-white p-3 rounded-lg border border-red-100 shadow-sm">
@@ -83,11 +83,11 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                                     {renderObject(obj.incomingMachine, depth + 1)}
                                 </div>
                             </div>
-                            <div className="pt-3 border-t border-indigo-100 flex items-center justify-between">
+                            <div className="pt-3 border-t border-primary/10 flex items-center justify-between">
                                 <span className="text-slate-500 text-xs font-bold">العميل:</span>
                                 <p className="font-bold text-slate-900 text-sm">{obj.customer?.client_name} <span className="text-slate-400 font-mono text-xs">({obj.customer?.bkcode})</span></p>
                             </div>
-                            {obj.notes && <p className="text-xs text-slate-600 pt-1 italic bg-white/50 p-2 rounded-lg border border-indigo-50">📝 {obj.notes}</p>}
+                            {obj.notes && <p className="text-xs text-slate-600 pt-1 italic bg-white/50 p-2 rounded-lg border border-primary/5">📝 {obj.notes}</p>}
                         </div>
                     );
                 }
@@ -106,7 +106,7 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                                     <p className="text-[10px] text-slate-400 font-mono font-bold tracking-tight">{obj.partNumber}</p>
                                 </div>
                                 <div className="text-right">
-                                    <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-sm">
+                                    <span className="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black shadow-sm">
                                         الكمية: {obj.quantity}
                                     </span>
                                 </div>
@@ -168,7 +168,7 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                             <p className="font-mono text-sm font-black text-slate-900">{obj.serialNumber}</p>
                             <div className="flex items-center gap-1.5">
                                 <p className="text-[10px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">{obj.model || obj.manufacturer || '-'}</p>
-                                {obj.status && <p className="text-[10px] text-indigo-500 font-black">• {obj.status}</p>}
+                                {obj.status && <p className="text-[10px] text-primary/70 font-black">• {obj.status}</p>}
                             </div>
                         </div>
                     );
@@ -240,7 +240,7 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                                                 {parts.map((part: any, i: number) => (
                                                     <div key={i} className="flex justify-between items-center bg-slate-50/80 p-2.5 rounded-xl border border-slate-100/50 group/part hover:bg-white hover:shadow-sm transition-all duration-300">
                                                         <div className="flex items-center gap-2.5">
-                                                            <span className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-[11px] font-black text-indigo-600 shadow-sm border border-slate-100 group-hover/part:scale-110 transition-transform">{part.quantity}</span>
+                                                            <span className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-[11px] font-black text-primary shadow-sm border border-slate-100 group-hover/part:scale-110 transition-transform">{part.quantity}</span>
                                                             <span className="text-[11px] font-bold text-slate-700 leading-tight">{part.partName || part.name}</span>
                                                         </div>
                                                         <span className={cn(
@@ -269,7 +269,7 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
 
                                             // Highlight specific values
                                             if (key === 'status') {
-                                                return <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] font-black">{String(val)}</span>;
+                                                return <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/10 text-[10px] font-black">{String(val)}</span>;
                                             }
 
                                             return <span className="text-slate-800 text-sm font-bold leading-relaxed">{String(val)}</span>;
@@ -385,8 +385,8 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
             <SheetContent side="left" className="w-full sm:max-w-xl flex flex-col p-0 border-r-0 bg-slate-50/50" dir="rtl">
                 <SheetHeader className="bg-white p-6 border-b shrink-0 shadow-sm relative z-10">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-100 shadow-sm">
-                            <FaHistory className="text-indigo-600 text-2xl" />
+                        <div className="p-3 bg-primary/10 rounded-2xl border border-primary/10 shadow-sm">
+                            <FaHistory className="text-primary text-2xl" />
                         </div>
                         <div>
                             <SheetTitle className="text-2xl font-black text-slate-900 leading-tight">سجل الحركات</SheetTitle>
@@ -405,7 +405,7 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                 <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6 custom-scroll">
                     {loading ? (
                         <div className="flex flex-col justify-center items-center py-20 gap-4">
-                            <div className="animate-spin rounded-full h-12 w-12 border-[4px] border-indigo-600/20 border-t-indigo-600 shadow-sm"></div>
+                            <div className="animate-spin rounded-full h-12 w-12 border-[4px] border-primary/20 border-t-primary shadow-sm"></div>
                             <p className="text-slate-400 font-bold text-sm">جاري جلب السجلات...</p>
                         </div>
                     ) : logs.length === 0 ? (
@@ -424,9 +424,9 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                             {Array.isArray(logs) && logs.map((log, idx) => (
                                 <div key={log.id} className="relative translate-y-0 opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards" style={{ animationDelay: `${idx * 50}ms` }}>
                                     {/* Timeline Dot */}
-                                    <div className="absolute top-6 right-[17px] w-3 h-3 rounded-full bg-indigo-500 border-[3px] border-white shadow-sm z-10 hidden sm:block"></div>
+                                    <div className="absolute top-6 right-[17px] w-3 h-3 rounded-full bg-primary border-[3px] border-white shadow-sm z-10 hidden sm:block"></div>
 
-                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-100/50 transition-all group mr-0 sm:mr-10">
+                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-primary/20 transition-all group mr-0 sm:mr-10">
                                         <div className="flex justify-between items-start mb-4 gap-3 flex-wrap sm:flex-nowrap">
                                             <div className="flex items-center gap-2.5 flex-wrap">
                                                 <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-wider border shadow-sm ${getActionColor(log.action)}`}>
@@ -446,7 +446,7 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
 
                                                         if (machineSerial) {
                                                             return (
-                                                                <span className="text-[10px] bg-indigo-600 text-white px-2.5 py-1 rounded-lg font-mono font-black border border-indigo-700 shadow-sm">
+                                                                 <span className="text-[10px] bg-primary text-white px-2.5 py-1 rounded-lg font-mono font-black border border-primary/90 shadow-sm">
                                                                     {isSim ? '💳' : '📠'} {machineSerial}
                                                                 </span>
                                                             );
@@ -456,8 +456,8 @@ const AuditLogModal: React.FC<AuditLogModalProps> = ({ entityType, entityId, isO
                                                 })()}
                                             </div>
                                             <div className="flex flex-col items-end gap-1.5 min-w-[120px]">
-                                                <div className="text-[10px] font-black text-slate-700 flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100 group-hover:bg-indigo-50 group-hover:text-indigo-700 group-hover:border-indigo-100 transition-colors">
-                                                    <FaUser className="text-indigo-400 group-hover:text-indigo-600" size={10} />
+                                                <div className="text-[10px] font-black text-slate-700 flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100 group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/10 transition-colors">
+                                                    <FaUser className="text-primary/70 group-hover:text-primary" size={10} />
                                                     {log.performedBy || 'النظام'}
                                                 </div>
                                                 <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 opacity-80">

@@ -211,10 +211,10 @@ export function SparePartsTab() {
     if (isLoading) return <div>جاري التحميل...</div>;
 
     return (
-        <div className="bg-card rounded-[2rem] border border-border shadow-2xl overflow-hidden animate-fade-in">
+        <div className="bg-card rounded-xl border border-border shadow-2xl overflow-hidden animate-fade-in">
             <div className="p-8 border-b border-border flex flex-col md:flex-row justify-between items-start md:items-center bg-muted/20 gap-6">
                 <div>
-                    <h3 className="text-2xl font-black flex items-center gap-3">
+                    <h3 className="text-2xl font-bold flex items-center gap-3">
                         <Package className="text-primary" size={28} />
                         قانون قطع الغيار
                     </h3>
@@ -230,23 +230,23 @@ export function SparePartsTab() {
                                     bulkDeleteMutation.mutate(Array.from(selectedIds));
                                 }
                             }}
-                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-2xl font-black text-xs transition-all shadow-lg animate-pulse"
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-xl font-bold text-xs transition-all shadow-lg animate-pulse"
                         >
                             <Trash2 size={16} className="inline ml-2" />
                             حذف المحدد ({selectedIds.size})
                         </button>
                     )}
-                    <button onClick={handleDownloadTemplate} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-3 rounded-2xl font-black text-xs transition-all border border-border">
+                    <button onClick={handleDownloadTemplate} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-3 rounded-xl font-bold text-xs transition-all border border-border">
                         <Download size={16} /> قالب Excel
                     </button>
-                    <button onClick={() => fileInputRef.current?.click()} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-3 rounded-2xl font-black text-xs transition-all border border-border">
+                    <button onClick={() => fileInputRef.current?.click()} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-3 rounded-xl font-bold text-xs transition-all border border-border">
                         <Upload size={16} /> استيراد
                     </button>
                     <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-                    <button onClick={handleExport} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-3 rounded-2xl font-black text-xs transition-all border border-border">
+                    <button onClick={handleExport} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-muted hover:bg-accent text-foreground px-4 py-3 rounded-xl font-bold text-xs transition-all border border-border">
                         <Download size={16} /> تصدير
                     </button>
-                    <button onClick={() => setShowAddForm(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-black transition-all hover:shadow-lg active:scale-95">
+                    <button onClick={() => setShowAddForm(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold transition-all hover:shadow-lg active:scale-95">
                         <Plus size={20} strokeWidth={3} /> إضافة قطعة
                     </button>
                 </div>
@@ -260,7 +260,7 @@ export function SparePartsTab() {
                         placeholder="بحث بالاسم أو الكود..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-muted/30 border border-border rounded-2xl px-12 py-3 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        className="w-full bg-muted/30 border border-border rounded-xl px-12 py-3 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                     />
                     <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-muted-foreground">
                         <Package size={18} />
@@ -270,7 +270,7 @@ export function SparePartsTab() {
                     <select
                         value={modelFilter}
                         onChange={(e) => setModelFilter(e.target.value)}
-                        className="w-full bg-muted/30 border border-border rounded-2xl px-10 py-3 text-sm font-bold appearance-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        className="w-full bg-muted/30 border border-border rounded-xl px-10 py-3 text-sm font-bold appearance-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                     >
                         <option value="">كل الموديلات</option>
                         {allModels.map((m: any) => (
@@ -296,12 +296,12 @@ export function SparePartsTab() {
                                     />
                                 </div>
                             </th>
-                            <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">الكود</th>
-                            <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">اسم القطعة</th>
-                            <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">الموديلات المتوافقة</th>
-                            <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">السعر الرسمي</th>
-                            <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">متعدد؟</th>
-                            <th className="text-center p-5 text-xs font-black uppercase tracking-widest text-muted-foreground bg-muted/90">إجراءات</th>
+                            <th className="text-center p-5 text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted/90">الكود</th>
+                            <th className="text-center p-5 text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted/90">اسم القطعة</th>
+                            <th className="text-center p-5 text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted/90">الموديلات المتوافقة</th>
+                            <th className="text-center p-5 text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted/90">السعر الرسمي</th>
+                            <th className="text-center p-5 text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted/90">متعدد؟</th>
+                            <th className="text-center p-5 text-xs font-bold uppercase tracking-widest text-muted-foreground bg-muted/90">إجراءات</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
@@ -316,12 +316,12 @@ export function SparePartsTab() {
                                         />
                                     </div>
                                 </td>
-                                <td className="p-5 font-mono font-black text-primary text-sm">{p.partNumber}</td>
-                                <td className="p-5 font-black text-foreground">{p.name}</td>
+                                <td className="p-5 font-mono font-bold text-primary text-sm">{p.partNumber}</td>
+                                <td className="p-5 font-bold text-foreground">{p.name}</td>
                                 <td className="p-5">
                                     <div className="flex flex-wrap gap-1">
                                         {p.compatibleModels?.split(';').map((m: string, i: number) => (
-                                            <span key={i} className="px-2 py-0.5 bg-primary/5 text-primary border border-primary/10 rounded-full text-[10px] font-black uppercase">{m}</span>
+                                            <span key={i} className="px-2 py-0.5 bg-primary/5 text-primary border border-primary/10 rounded-full text-[10px] font-bold uppercase">{m}</span>
                                         )) || '-'}
                                     </div>
                                 </td>
@@ -344,7 +344,7 @@ export function SparePartsTab() {
                         {(!filteredParts?.length) && (
                             <tr><td colSpan={7} className="p-20 text-center text-muted-foreground">
                                 <Package size={64} className="mx-auto mb-4 opacity-20" />
-                                <p className="font-black text-xl">لا توجد قطع غيار مسجلة</p>
+                                <p className="font-bold text-xl">لا توجد قطع غيار مسجلة</p>
                                 <p className="text-sm mt-1">ابدأ بإضافة قطع يدوياً أو استيراد ملف Excel</p>
                             </td></tr>
                         )}
@@ -389,7 +389,7 @@ export function SparePartsTab() {
 
                         <div className="modal-body">
                             <p className="text-muted-foreground mb-6">
-                                سيتم إضافة <span className="text-foreground font-black underline decoration-primary decoration-4">{importData.length}</span> قطعة غيار جديدة للقانون.
+                                سيتم إضافة <span className="text-foreground font-bold underline decoration-primary decoration-4">{importData.length}</span> قطعة غيار جديدة للقانون.
                             </p>
 
                             <div className="border border-border rounded-xl overflow-hidden mb-6">
@@ -489,7 +489,7 @@ function PartFormModal({ title, initialData, onSubmit, onClose }: any) {
                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${formData.allowsMultiple ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500'}`}>
                                     <Package size={18} />
                                 </div>
-                                <span className="text-xs font-black text-slate-700">تعدد الاستخدام</span>
+                                <span className="text-xs font-bold text-slate-700">تعدد الاستخدام</span>
                             </div>
                             <Checkbox
                                 checked={formData.allowsMultiple}

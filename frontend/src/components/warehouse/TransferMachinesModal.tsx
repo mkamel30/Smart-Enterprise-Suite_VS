@@ -58,8 +58,8 @@ export const TransferMachinesModal: React.FC<TransferMachinesModalProps> = ({
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] h-auto overflow-hidden sm:max-w-md rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
 
-                {/* Header Section with Blue Gradient */}
-                <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-blue-600 to-indigo-700 relative overflow-hidden">
+                {/* Header Section */}
+                <div className="modal-header shrink-0 p-8 pb-6 bg-smart-gradient relative overflow-hidden">
                     {/* Visual Decor */}
                     <div className="absolute top-0 left-0 w-full h-full opacity-15 pointer-events-none">
                         <div className="absolute -top-1/2 -left-1/4 w-[120%] h-[150%] bg-white rounded-full blur-[100px] rotate-12"></div>
@@ -89,7 +89,7 @@ export const TransferMachinesModal: React.FC<TransferMachinesModalProps> = ({
 
                         {/* Batch Statistics Hero */}
                         <div className="relative group">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-[2.2rem] blur opacity-15 group-hover:opacity-25 transition duration-500"></div>
+                            <div className="absolute -inset-1 bg-white/10 rounded-[2.2rem] blur opacity-15 group-hover:opacity-25 transition duration-500"></div>
                             <div className="relative bg-white border border-slate-100/50 rounded-[2rem] p-6 flex items-center justify-between shadow-sm">
                                 <div className="flex items-center gap-5">
                                     <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border-2 border-white shadow-inner shrink-0">
@@ -145,7 +145,7 @@ export const TransferMachinesModal: React.FC<TransferMachinesModalProps> = ({
                         </div>
 
                         {/* Logistics Context Info */}
-                        <div className="p-5 bg-indigo-50/50 rounded-[2rem] border border-blue-100 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="p-5 bg-primary/10/50 rounded-[2rem] border border-blue-100 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
                             <Info size={20} className="text-blue-500 shrink-0 mt-0.5" />
                             <p className="text-[11px] font-bold text-blue-800 leading-relaxed">
                                 <span className="block font-black mb-1">تنبيه لوجيستي:</span>

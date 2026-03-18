@@ -202,7 +202,7 @@ export default function MonthlyClosing() {
         return (
             <div className="flex h-[80vh] items-center justify-center">
                 <div className="text-center space-y-4">
-                    <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
+                    <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
                     <p className="text-slate-500 font-black animate-pulse">جاري إعداد تقرير إقفال الشهر...</p>
                 </div>
             </div>
@@ -224,12 +224,12 @@ export default function MonthlyClosing() {
         <div className="flex items-center gap-3">
             {/* Month Picker */}
             <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2 shadow-sm">
-                <button onClick={() => navigateMonth(-1)} className="text-slate-400 hover:text-indigo-600 transition-colors font-bold text-lg px-1">→</button>
+                <button onClick={() => navigateMonth(-1)} className="text-slate-400 hover:text-primary transition-colors font-bold text-lg px-1">→</button>
                 <div className="flex items-center gap-2 min-w-[140px] justify-center">
-                    <CalendarDays size={18} className="text-indigo-500" />
+                    <CalendarDays size={18} className="text-primary" />
                     <span className="font-black text-slate-700">{getMonthLabel(selectedMonth)}</span>
                 </div>
-                <button onClick={() => navigateMonth(1)} className="text-slate-400 hover:text-indigo-600 transition-colors font-bold text-lg px-1">←</button>
+                <button onClick={() => navigateMonth(1)} className="text-slate-400 hover:text-primary transition-colors font-bold text-lg px-1">←</button>
             </div>
 
             <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-2 rounded-xl">
@@ -262,7 +262,7 @@ export default function MonthlyClosing() {
                         key={s.key}
                         onClick={() => setActiveSection(s.key as any)}
                         className={`px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeSection === s.key
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
                             : 'text-slate-500 hover:bg-slate-100'
                             }`}
                     >

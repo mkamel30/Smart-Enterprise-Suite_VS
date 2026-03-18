@@ -104,14 +104,14 @@ export const MachineRepairModal: React.FC<MachineRepairModalProps> = ({
                         </div>
 
                         {/* Transition Context Banner */}
-                        <div className="bg-indigo-50/70 border-2 border-indigo-100 p-6 rounded-[2rem] flex items-start gap-5 group">
-                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-50 group-hover:scale-110 transition-transform duration-500 shrink-0">
+                        <div className="bg-primary/10 border-2 border-primary/10 p-6 rounded-[2rem] flex items-start gap-5 group">
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-sm border border-primary/10 group-hover:scale-110 transition-transform duration-500 shrink-0">
                                 <ArrowUpRight size={24} strokeWidth={3} />
                             </div>
                             <div className="space-y-1.5">
-                                <h4 className="font-black text-indigo-900 text-sm tracking-tight leading-none">تغيير الحالة اللوجستية</h4>
-                                <p className="text-[11px] font-bold text-indigo-700/80 leading-relaxed">
-                                    سيتم إخراج الماكينة من سجل الأعطال ونقلها إلى خانة <strong className="text-indigo-900 font-black underline decoration-indigo-200">الاستبدال (STANDBY)</strong> لتكون متاحة لطلبات الصرف فور الحفظ.
+                                <h4 className="font-black text-primary text-sm tracking-tight leading-none">تغيير الحالة اللوجستية</h4>
+                                <p className="text-[11px] font-bold text-primary/80 leading-relaxed">
+                                    سيتم إخراج الماكينة من سجل الأعطال ونقلها إلى خانة <strong className="text-primary font-black underline decoration-primary/20">الاستبدال (STANDBY)</strong> لتكون متاحة لطلبات الصرف فور الحفظ.
                                 </p>
                             </div>
                         </div>

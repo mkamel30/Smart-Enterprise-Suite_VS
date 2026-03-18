@@ -235,7 +235,7 @@ export default function SimWarehouse() {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button className="flex-1 lg:flex-none bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl px-6 py-6 font-black shadow-xl transition-all gap-2">
+                            <Button className="flex-1 lg:flex-none bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white rounded-xl px-6 py-6 font-black shadow-xl transition-all gap-2">
                                 <Plus size={20} />
                                 <span className="whitespace-nowrap">إضافة شرائح</span>
                             </Button>
@@ -249,14 +249,14 @@ export default function SimWarehouse() {
                                     setShowAddModal(true);
                                 }}
                             >
-                                <Plus className="h-4 w-4 text-indigo-600" />
+                                <Plus className="h-4 w-4 text-primary" />
                                 إضافة يدوية
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 className="rounded-lg font-medium p-3 cursor-pointer hover:bg-slate-50 gap-2"
                                 onClick={() => setShowImportModal(true)}
                             >
-                                <FileSpreadsheet className="h-4 w-4 text-indigo-600" />
+                                <FileSpreadsheet className="h-4 w-4 text-primary" />
                                 استيراد من Excel
                             </DropdownMenuItem>
                         </DropdownMenuContent>

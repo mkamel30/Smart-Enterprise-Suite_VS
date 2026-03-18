@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiClient } from '../api/client';
+import { api } from '../api/client';
 
 interface PortalSyncStatus {
     portalConfigured: boolean;
@@ -23,7 +23,7 @@ export function usePortalSync(refreshInterval = 15000) {
 
     const fetchStatus = useCallback(async () => {
         try {
-            const data = await apiClient.get('/system/sync/status');
+            const data = await api.get('/system/sync/status') as PortalSyncStatus;
             setStatus(data);
         } catch {
             // Silently fail — status bar should not throw errors

@@ -88,7 +88,7 @@ export const RepairModal: React.FC<RepairModalProps> = ({
             <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] h-auto overflow-hidden sm:max-w-2xl rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
 
                 {/* Header Section with Purple Gradient */}
-                <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-indigo-600 to-purple-700 relative overflow-hidden">
+                <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-primary to-primary/90 relative overflow-hidden">
                     {/* Visual Decor */}
                     <div className="absolute top-0 left-0 w-full h-full opacity-15 pointer-events-none">
                         <div className="absolute -top-1/2 -left-1/4 w-[120%] h-[150%] bg-white rounded-full blur-[100px] rotate-12"></div>
@@ -118,18 +118,18 @@ export const RepairModal: React.FC<RepairModalProps> = ({
 
                         {/* Inventory Identity Banner */}
                         <div className="relative group">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2.2rem] blur opacity-15 group-hover:opacity-25 transition duration-500"></div>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-primary rounded-[2.2rem] blur opacity-15 group-hover:opacity-25 transition duration-500"></div>
                             <div className="relative bg-white border border-slate-100/50 rounded-[2rem] p-6 flex flex-col gap-6 shadow-sm">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-5">
-                                        <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center border-2 border-white shadow-inner shrink-0">
+                                        <div className="w-14 h-14 bg-primary/10 text-primary/70 rounded-2xl flex items-center justify-center border-2 border-white shadow-inner shrink-0">
                                             <Hash size={24} strokeWidth={2.5} />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">الماكينة تحت الإجراء</span>
                                             <div className="flex items-center gap-3">
                                                 <span className="text-xl font-black text-slate-900 font-mono tracking-wider">{selectedMachine?.serialNumber}</span>
-                                                <div className="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg border border-indigo-100 uppercase tracking-widest">In Inspection</div>
+                                                <div className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-black rounded-lg border border-primary/10 uppercase tracking-widest">In Inspection</div>
                                             </div>
                                         </div>
                                     </div>
@@ -144,7 +144,7 @@ export const RepairModal: React.FC<RepairModalProps> = ({
                         {/* Strategic Resolution Picker */}
                         <div className="space-y-4">
                             <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 leading-none">
-                                <Gauge size={14} className="text-indigo-500" />
+                                        <Gauge size={14} className="text-primary/70" />
                                 القرار الفني واللوجستي النهائي
                             </label>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -199,7 +199,7 @@ export const RepairModal: React.FC<RepairModalProps> = ({
                             <div className="space-y-4 animate-in fade-in slide-in-from-top-6 duration-700">
                                 <div className="flex items-center justify-between px-2">
                                     <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                                        <Package size={14} className="text-indigo-500" />
+                                        <Package size={14} className="text-primary/70" />
                                         إدارة قطع الغيار المستهلكة
                                     </label>
                                     <div className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl text-[11px] font-black shadow-lg shadow-emerald-100 border border-emerald-500 leading-none">
@@ -211,11 +211,11 @@ export const RepairModal: React.FC<RepairModalProps> = ({
                                     {/* Selection Row */}
                                     <div className="p-5 bg-slate-50 border-b border-white">
                                         <div className="relative group/select">
-                                            <div className="absolute top-1/2 -translate-y-1/2 right-5 p-2 bg-white text-indigo-500 rounded-xl shadow-sm border border-slate-100 group-focus-within/select:bg-indigo-600 group-focus-within/select:text-white transition-all duration-300 pointer-events-none z-10">
+                                            <div className="absolute top-1/2 -translate-y-1/2 right-5 p-2 bg-white text-primary/70 rounded-xl shadow-sm border border-slate-100 group-focus-within/select:bg-primary group-focus-within/select:text-white transition-all duration-300 pointer-events-none z-10">
                                                 <Plus size={20} strokeWidth={3} />
                                             </div>
                                             <select
-                                                className="w-full h-16 pr-18 pl-6 rounded-2xl bg-white border-2 border-slate-100 focus:border-indigo-500 font-black text-sm appearance-none outline-none transition-all cursor-pointer shadow-inner"
+                                                className="w-full h-16 pr-18 pl-6 rounded-2xl bg-white border-2 border-slate-100 focus:border-primary font-black text-sm appearance-none outline-none transition-all cursor-pointer shadow-inner"
                                                 onChange={(e) => addPart(e.target.value)}
                                                 value=""
                                             >
@@ -240,9 +240,9 @@ export const RepairModal: React.FC<RepairModalProps> = ({
                                             </div>
                                         ) : (
                                             usedParts.map(part => (
-                                                <div key={part.partId} className="p-5 flex items-center justify-between group hover:bg-indigo-50/30 transition-all duration-300 border-r-4 border-transparent hover:border-indigo-500">
+                                                <div key={part.partId} className="p-5 flex items-center justify-between group hover:bg-primary/10/30 transition-all duration-300 border-r-4 border-transparent hover:border-primary">
                                                     <div className="flex-1 pr-3">
-                                                        <p className="text-sm font-black text-slate-900 leading-tight group-hover:text-indigo-800 transition-colors uppercase">{part.name}</p>
+                                                        <p className="text-sm font-black text-slate-900 leading-tight group-hover:text-primary transition-colors uppercase">{part.name}</p>
                                                         <div className="flex items-center gap-2 mt-1.5">
                                                             <div className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md">{part.cost?.toLocaleString()} EGP/Unit</div>
                                                             <div className="w-1 h-1 rounded-full bg-slate-200"></div>
@@ -282,7 +282,7 @@ export const RepairModal: React.FC<RepairModalProps> = ({
                         {/* Engineering Technical Report */}
                         <div className="space-y-4">
                             <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 leading-none">
-                                <Cpu size={14} className="text-indigo-500" />
+                                        <Cpu size={14} className="text-primary/70" />
                                 التقرير الفني وحالة الاختبار
                             </label>
                             <div className="relative">

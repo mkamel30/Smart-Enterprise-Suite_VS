@@ -41,70 +41,14 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     return success(res, createPaginationResponse(parts, total, limit, offset));
 }));
 
-// POST create spare part
+// POST create spare part - BLOCKED: spare parts are managed by admin portal only
 router.post('/', authenticateToken, asyncHandler(async (req, res) => {
-    const count = await db.sparePart.count();
-    const partNumber = `SP${String(count + 1).padStart(4, '0')}`;
-    if (!req.body || !req.body.name) return error(res, 'الاسم مطلوب', 400);
-
-    const part = await db.sparePart.create({
-        data: {
-            partNumber,
-            name: String(req.body.name),
-            description: req.body.description || '',
-            compatibleModels: req.body.compatibleModels || '',
-            defaultCost: req.body.defaultCost ? parseFloat(req.body.defaultCost) : 0,
-            isConsumable: req.body.isConsumable === 'true' || req.body.isConsumable === true,
-            allowsMultiple: req.body.allowsMultiple === 'true' || req.body.allowsMultiple === true
-        }
-    });
-
-    await logAction({
-        entityType: 'SPARE_PART', entityId: part.id, action: 'CREATE',
-        details: { name: part.name, cost: part.defaultCost },
-        userId: req.user.id, performedBy: req.user.displayName, branchId: req.user.branchId
-    });
-
-    return success(res, part, 201);
+    return error(res, 'القطع الغيار تُدار من لوحة الإدارة المركزية فقط', 403);
 }));
 
-// PUT update spare part
+// PUT update spare part - BLOCKED: spare parts are managed by admin portal only
 router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
-    const currentPart = await db.sparePart.findUnique({ where: { id: req.params.id } });
-    if (!currentPart) return error(res, 'القطعة غير موجودة', 404);
-
-    if (req.body.defaultCost !== undefined && req.body.defaultCost !== currentPart.defaultCost) {
-        await db.priceChangeLog.create({
-            data: {
-                partId: req.params.id,
-                oldCost: currentPart.defaultCost,
-                newCost: req.body.defaultCost,
-                changedAt: new Date(),
-                userId: req.user.id || null
-            }
-        });
-    }
-
-    const part = await db.sparePart.update({
-        where: { id: req.params.id },
-        data: {
-            partNumber: req.body.partNumber,
-            name: req.body.name,
-            description: req.body.description,
-            compatibleModels: req.body.compatibleModels,
-            defaultCost: req.body.defaultCost,
-            isConsumable: req.body.isConsumable,
-            allowsMultiple: req.body.allowsMultiple
-        }
-    });
-
-    await logAction({
-        entityType: 'SPARE_PART', entityId: part.id, action: 'UPDATE',
-        details: { name: part.name, changes: req.body },
-        userId: req.user.id, performedBy: req.user.displayName, branchId: req.user.branchId
-    });
-
-    return success(res, part);
+    return error(res, 'القطع الغيار تُدار من لوحة الإدارة المركزية فقط', 403);
 }));
 
 // GET price change logs
@@ -116,31 +60,14 @@ router.get('/:id/price-logs', authenticateToken, asyncHandler(async (req, res) =
     return success(res, logs);
 }));
 
-// POST bulk delete
+// POST bulk delete - BLOCKED: spare parts are managed by admin portal only
 router.post('/bulk-delete', authenticateToken, asyncHandler(async (req, res) => {
-    const { ids } = req.body;
-    if (!Array.isArray(ids) || ids.length === 0) return error(res, 'ids array required', 400);
-
-    await db.priceChangeLog.deleteMany({ where: { partId: { in: ids } } });
-    await db.stockMovement.deleteMany({ where: { partId: { in: ids }, branchId: { not: 'GLOBAL_DELETE' } } });
-    await db.inventoryItem.deleteMany({ where: { partId: { in: ids }, branchId: { not: 'GLOBAL_DELETE' } } });
-    
-    const result = await db.sparePart.deleteMany({ where: { id: { in: ids } } });
-
-    await logAction({
-        entityType: 'SPARE_PART', entityId: 'BULK', action: 'BULK_DELETE',
-        details: { count: result.count, ids },
-        userId: req.user.id, performedBy: req.user.displayName, branchId: req.user.branchId
-    });
-
-    return success(res, { success: true, count: result.count });
+    return error(res, 'القطع الغيار تُدار من لوحة الإدارة المركزية فقط', 403);
 }));
 
-// POST import spare parts
+// POST import spare parts - BLOCKED: spare parts are managed by admin portal only
 router.post('/import', authenticateToken, upload.single('file'), asyncHandler(async (req, res) => {
-    if (!req.file) return error(res, 'يرجى رفع ملف', 400);
-    const results = await importSpareParts(req.file.buffer, req.user);
-    return success(res, results);
+    return error(res, 'القطع الغيار تُدار من لوحة الإدارة المركزية فقط', 403);
 }));
 
 // GET Export Spare Parts to Excel

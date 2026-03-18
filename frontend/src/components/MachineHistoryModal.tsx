@@ -233,7 +233,7 @@ export default function MachineHistoryModal({ serialNumber, onClose }: MachineHi
                                                                     if (action.includes('TRANSFER') || action === 'IMPORT' || data.orderId) {
                                                                         const isIncoming = action === 'TRANSFER_IN' || action === 'IMPORT';
                                                                         return (
-                                                                            <CompactMovementRow icon={isIncoming ? "📥" : "📤"} label={isIncoming ? "استلام تحويل" : "إرسال تحويل"} bgColor="bg-indigo-50/50" textColor="text-indigo-700" borderColor="border-indigo-100/50">
+                                                                            <CompactMovementRow icon={isIncoming ? "📥" : "📤"} label={isIncoming ? "استلام تحويل" : "إرسال تحويل"} bgColor="bg-primary/10" textColor="text-primary" borderColor="border-primary/10">
                                                                                 {isIncoming ? 'من: ' : 'إلى: '} {data.fromBranchName || data.toBranchName || 'فرع آخر'}
                                                                             </CompactMovementRow>
                                                                         );

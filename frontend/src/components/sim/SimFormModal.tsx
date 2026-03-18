@@ -34,7 +34,7 @@ export function SimFormModal({
             <div className="bg-white rounded-[32px] w-full max-w-sm sm:max-w-md shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
                 <div className="p-8 pb-4 flex justify-between items-center bg-slate-50/50 border-b border-slate-100 shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                        <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <Smartphone size={24} />
                         </div>
                         <h2 className="text-xl font-black text-slate-900">
@@ -52,7 +52,7 @@ export function SimFormModal({
                             <div>
                                 <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 mr-1">الفرع المسئول *</label>
                                 <select
-                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700"
+                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all font-bold text-slate-700"
                                     value={formData.branchId || ''}
                                     onChange={e => setFormData({ ...formData, branchId: e.target.value })}
                                     required={!editingSim}
@@ -71,7 +71,7 @@ export function SimFormModal({
                                 type="text"
                                 value={formData.serialNumber}
                                 onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
-                                className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-mono font-bold text-slate-900 text-lg shadow-inner"
+                                className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all font-mono font-bold text-slate-900 text-lg shadow-inner"
                                 placeholder="8920100000000001"
                                 required
                                 dir="ltr"
@@ -84,7 +84,7 @@ export function SimFormModal({
                                 <select
                                     value={formData.type}
                                     onChange={e => setFormData({ ...formData, type: e.target.value })}
-                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700"
+                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all font-bold text-slate-700"
                                 >
                                     <option value="">-- اختر --</option>
                                     {SIM_TYPES.map(t => (
@@ -97,7 +97,7 @@ export function SimFormModal({
                                 <select
                                     value={formData.networkType || ''}
                                     onChange={e => setFormData({ ...formData, networkType: e.target.value })}
-                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700"
+                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all font-bold text-slate-700"
                                 >
                                     <option value="">-- تلقائي --</option>
                                     {NETWORK_TYPES.map(t => (
@@ -150,7 +150,7 @@ export function SimFormModal({
                             <textarea
                                 value={formData.notes}
                                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium text-slate-700 min-h-[100px]"
+                                className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all font-medium text-slate-700 min-h-[100px]"
                                 placeholder="أضف أي تفاصيل أو ملاحظات هنا..."
                             />
                         </div>
@@ -160,7 +160,7 @@ export function SimFormModal({
                         <Button
                             type="submit"
                             disabled={isPending}
-                            className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-7 font-black shadow-xl shadow-indigo-100 transition-all gap-2"
+                            className="flex-[2] bg-primary hover:bg-primary/90 text-white rounded-2xl py-7 font-black shadow-xl shadow-primary/20 transition-all gap-2"
                         >
                             <Save size={20} />
                             {isPending ? 'جاري الحفظ...' : editingSim ? 'تحديث الشريحة' : 'حفظ الشريحة'}

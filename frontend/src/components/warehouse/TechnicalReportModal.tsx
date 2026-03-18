@@ -69,7 +69,7 @@ export const TechnicalReportModal: React.FC<TechnicalReportModalProps> = ({
             <DialogContent className="p-0 border-0 flex flex-col max-h-[96vh] h-auto overflow-hidden sm:max-w-4xl rounded-[2.5rem] shadow-2xl bg-slate-50 [&>button]:hidden print:shadow-none print:max-h-none print:w-full print:bg-white" dir="rtl">
 
                 {/* Modal Header */}
-                <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-indigo-700 to-indigo-900 relative overflow-hidden text-right print:bg-white print:text-black">
+                <div className="modal-header shrink-0 p-8 pb-6 bg-smart-gradient relative overflow-hidden text-right print:bg-white print:text-black">
                     <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none print:hidden">
                         <div className="absolute top-[-50%] left-[-20%] w-[100%] h-[150%] bg-white rounded-full blur-[80px]"></div>
                     </div>
@@ -109,9 +109,9 @@ export const TechnicalReportModal: React.FC<TechnicalReportModalProps> = ({
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-20 space-y-6">
                             <div className="relative">
-                                <div className="w-16 h-16 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                                <div className="w-16 h-16 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <Activity size={24} className="text-indigo-600 animate-pulse" />
+                                    <Activity size={24} className="text-primary animate-pulse" />
                                 </div>
                             </div>
                             <div className="text-center">
@@ -130,14 +130,14 @@ export const TechnicalReportModal: React.FC<TechnicalReportModalProps> = ({
 
                             {/* Summary Card */}
                             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 relative overflow-hidden group">
-                                <div className="absolute top-0 left-0 w-2 h-full bg-indigo-600"></div>
+                                <div className="absolute top-0 left-0 w-2 h-full bg-primary"></div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                             <Hash size={12} />
                                             الرقم التسلسلي
                                         </p>
-                                        <h4 className="font-mono text-xl font-black text-indigo-600">{report.machine.serialNumber}</h4>
+                                        <h4 className="font-mono text-xl font-black text-primary">{report.machine.serialNumber}</h4>
                                     </div>
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -204,7 +204,7 @@ export const TechnicalReportModal: React.FC<TechnicalReportModalProps> = ({
                             {/* Timeline View */}
                             <div className="space-y-6">
                                 <div className="flex items-center gap-3 px-2">
-                                    <div className="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
+                                    <div className="w-1.5 h-6 bg-primary rounded-full"></div>
                                     <h3 className="font-black text-slate-900 text-lg uppercase tracking-tight">السجل الزمني للأحداث</h3>
                                     <span className="text-[10px] font-black bg-slate-200 text-slate-500 px-3 py-1 rounded-full">{report.timeline.length} نشاط</span>
                                 </div>
@@ -267,9 +267,9 @@ export const TechnicalReportModal: React.FC<TechnicalReportModalProps> = ({
                                                                         </div>
                                                                     )}
                                                                     {item.details.receiptNumber && (
-                                                                        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
-                                                                            <FileText size={14} className="text-indigo-500" />
-                                                                            <span className="text-[11px] font-black text-indigo-700">إيصال: {item.details.receiptNumber}</span>
+                                                                        <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/20">
+                                                                            <FileText size={14} className="text-primary/70" />
+                                                                            <span className="text-[11px] font-black text-primary/90">إيصال: {item.details.receiptNumber}</span>
                                                                         </div>
                                                                     )}
                                                                 </div>

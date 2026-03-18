@@ -185,7 +185,7 @@ export default function TransferOrders() {
                         className={cn(
                             "flex items-center gap-2 px-6 py-3.5 rounded-2xl font-black transition-all shadow-lg active:scale-95",
                             activeTab === 'list'
-                                ? "bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700"
+                                ? "bg-primary text-white shadow-primary/20 hover:bg-primary/90"
                                 : "bg-slate-800 text-white shadow-slate-200 hover:bg-slate-900"
                         )}
                     >
@@ -229,7 +229,7 @@ export default function TransferOrders() {
                                     className={cn(
                                         "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all",
                                         filterDirection === dir.id
-                                            ? "bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200"
+                                            ? "bg-white text-primary shadow-sm ring-1 ring-slate-200"
                                             : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
                                     )}
                                 >

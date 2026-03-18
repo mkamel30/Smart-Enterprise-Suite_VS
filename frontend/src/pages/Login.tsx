@@ -140,7 +140,7 @@ export default function Login() {
 
                     {!showMfa && (
                         <div className="text-center mt-2">
-                            <Link to="/forgot-password" size="sm" className="text-sm text-primary/60 hover:text-primary font-bold transition-colors">
+                            <Link to="/forgot-password" className="text-sm text-primary/60 hover:text-primary font-bold transition-colors">
                                 نسيت كلمة المرور؟
                             </Link>
                         </div>

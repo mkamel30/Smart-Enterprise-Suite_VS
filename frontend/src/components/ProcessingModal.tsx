@@ -138,7 +138,7 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                     subtitle: 'سيتم إرسال تقرير التكلفة وقطع الغيار لفرع المنشأ للموافقة',
                     icon: <ClipboardCheck size={24} strokeWidth={2.5} />,
                     colorClass: 'bg-blue-50 text-blue-600 border-blue-100',
-                    headerGradient: 'from-blue-600 to-indigo-700'
+                    headerGradient: 'from-blue-600 to-primary/70'
                 };
             case 'SCRAP':
                 return {
@@ -198,7 +198,7 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                     {/* Top Stats/Info Bar */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-white p-5 rounded-[2rem] border border-slate-100 flex items-center gap-5 shadow-sm">
-                            <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                            <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
                                 <Package size={28} />
                             </div>
                             <div className="text-right">
@@ -208,18 +208,18 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                             </div>
                         </div>
 
-                        <div className="bg-white p-5 rounded-[2rem] border border-indigo-100 flex items-center justify-between shadow-sm relative overflow-hidden group">
+                        <div className="bg-white p-5 rounded-[2rem] border border-primary/10 flex items-center justify-between shadow-sm relative overflow-hidden group">
                             <div className="absolute left-[-10px] bottom-[-10px] opacity-10 group-hover:rotate-12 transition-transform duration-700">
                                 <DollarSign size={80} />
                             </div>
                             <div className="text-right relative z-10">
-                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">إجمالي التكلفة</span>
+                                <span className="text-[10px] font-black text-primary/50 uppercase tracking-widest block mb-1">إجمالي التكلفة</span>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-black text-indigo-900 font-mono tracking-tighter">{grandTotal.toLocaleString('ar-EG')}</span>
-                                    <span className="text-xs font-black text-indigo-400">EGP</span>
+                                    <span className="text-3xl font-black text-primary font-mono tracking-tighter">{grandTotal.toLocaleString('ar-EG')}</span>
+                                    <span className="text-xs font-black text-primary/50">EGP</span>
                                 </div>
                             </div>
-                            <div className="p-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100">
+                            <div className="p-3 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
                                 <Sparkles size={24} />
                             </div>
                         </div>
@@ -297,13 +297,13 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                                     {/* Action Notes */}
                                     <div className="space-y-4">
                                         <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-3 leading-none">
-                                            <PenTool size={14} className="text-indigo-500" />
+                                            <PenTool size={14} className="text-primary/70" />
                                             تفاصيل العمل الفني / ملاحظات
                                         </label>
                                         <textarea
                                             value={notes}
                                             onChange={(e) => setNotes(e.target.value)}
-                                            className="smart-input min-h-[140px] p-6 text-sm font-bold bg-white border-2 border-slate-100 focus:border-indigo-500 rounded-[2rem] shadow-sm resize-none transition-all placeholder:text-slate-200"
+                                            className="smart-input min-h-[140px] p-6 text-sm font-bold bg-white border-2 border-slate-100 focus:border-primary rounded-[2rem] shadow-sm resize-none transition-all placeholder:text-slate-200"
                                             placeholder="اكتب ما تم فحصه، الأعطال المكتشفة، وتفاصيل الإصلاح..."
                                         />
                                     </div>
@@ -311,7 +311,7 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                                     {/* Costs / Settings */}
                                     <div className="space-y-4">
                                         <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-3 leading-none">
-                                            <DollarSign size={14} className="text-indigo-500" />
+                                            <DollarSign size={14} className="text-primary/70" />
                                             تكلفة المصنعية أو العمل (Labor)
                                         </label>
                                         <div className="relative group">
@@ -320,11 +320,11 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                                                 inputMode="decimal"
                                                 value={laborCostInput}
                                                 onChange={(e) => setLaborCostInput(e.target.value.replace(/[^0-9.]/g, ''))}
-                                                className="smart-input h-16 pr-12 pl-12 text-xl font-black bg-white border-2 border-slate-100 focus:border-indigo-500 rounded-2xl shadow-sm font-mono tracking-tighter"
+                                                className="smart-input h-16 pr-12 pl-12 text-xl font-black bg-white border-2 border-slate-100 focus:border-primary rounded-2xl shadow-sm font-mono tracking-tighter"
                                                 placeholder="0.00"
                                             />
                                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">EGP</span>
-                                            <DollarSign className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                                            <DollarSign className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={20} />
                                         </div>
                                     </div>
                                 </div>
@@ -334,7 +334,7 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                                     {actionType !== 'SCRAP' && (
                                         <div className="space-y-4">
                                             <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-3 leading-none">
-                                                <Package size={14} className="text-indigo-500" />
+                                                <Package size={14} className="text-primary/70" />
                                                 قطع الغيار المستهلكة
                                             </label>
 
@@ -342,11 +342,11 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                                                 <input
                                                     type="text"
                                                     placeholder="ابحث عن قطعة غيار أو SKU..."
-                                                    className="smart-input h-14 pr-12 text-sm font-bold bg-white border-2 border-slate-100 focus:border-indigo-500 rounded-2xl shadow-sm transition-all"
+                                                    className="smart-input h-14 pr-12 text-sm font-bold bg-white border-2 border-slate-100 focus:border-primary rounded-2xl shadow-sm transition-all"
                                                     value={searchQuery}
                                                     onChange={(e) => setSearchQuery(e.target.value)}
                                                 />
-                                                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                                                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={18} />
                                             </div>
 
                                             <div className="bg-white rounded-[2.5rem] border-2 border-slate-50 overflow-hidden shadow-sm flex flex-col h-[280px]">
@@ -359,14 +359,14 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                                                                     key={part.id}
                                                                     onClick={() => togglePart(part)}
                                                                     className={cn(
-                                                                        "p-4 flex items-center justify-between hover:bg-indigo-50 transition-all cursor-pointer group/item",
-                                                                        isSelected && "bg-indigo-50/50"
+                                                                        "p-4 flex items-center justify-between hover:bg-primary/10 transition-all cursor-pointer group/item",
+                                                                        isSelected && "bg-primary/10"
                                                                     )}
                                                                 >
                                                                     <div className="flex items-center gap-3">
                                                                         <div className={cn(
                                                                             "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
-                                                                            isSelected ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100" : "border-slate-200 bg-white"
+                                                                            isSelected ? "bg-primary border-primary text-white shadow-md shadow-primary/20" : "border-slate-200 bg-white"
                                                                         )}>
                                                                             {isSelected && <CheckCircle2 size={14} strokeWidth={3} />}
                                                                         </div>
@@ -380,17 +380,17 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                                                                     </div>
 
                                                                     {isSelected && (
-                                                                        <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-indigo-100" onClick={e => e.stopPropagation()}>
+                                                                        <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-primary/10" onClick={e => e.stopPropagation()}>
                                                                             <button
                                                                                 onClick={() => updatePartQuantity(part.id, -1)}
-                                                                                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-50 text-slate-400 hover:text-indigo-600 transition-all"
+                                                                                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-50 text-slate-400 hover:text-primary transition-all"
                                                                             >
                                                                                 <Minus size={16} strokeWidth={3} />
                                                                             </button>
-                                                                            <span className="w-6 text-center text-sm font-black text-indigo-900 font-mono italic">{isSelected.usedQuantity}</span>
+                                                                            <span className="w-6 text-center text-sm font-black text-primary font-mono italic">{isSelected.usedQuantity}</span>
                                                                             <button
                                                                                 onClick={() => updatePartQuantity(part.id, 1)}
-                                                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all"
+                                                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/20 transition-all"
                                                                             >
                                                                                 <Plus size={16} strokeWidth={3} />
                                                                             </button>
@@ -409,7 +409,7 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
 
                                                 {/* Selected parts summary chip */}
                                                 {selectedParts.length > 0 && (
-                                                    <div className="p-4 bg-indigo-600 text-white flex items-center justify-between shadow-xl">
+                                                    <div className="p-4 bg-primary text-white flex items-center justify-between shadow-xl">
                                                         <span className="text-xs font-black">إجمالي القطع: {selectedParts.length}</span>
                                                         <span className="font-mono font-black italic">{partsTotal.toLocaleString('ar-EG')} EGP</span>
                                                     </div>
@@ -454,7 +454,7 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                             (actionType && !isSubmitting)
                                 ? actionType === 'SCRAP'
                                     ? "bg-red-600 border-b-4 border-red-800 hover:bg-red-700 text-white shadow-red-100"
-                                    : "bg-indigo-600 border-b-4 border-indigo-800 hover:bg-indigo-700 text-white shadow-indigo-100"
+                                    : "bg-primary border-b-4 border-primary/90 hover:bg-primary/90 text-white shadow-primary/20"
                                 : "bg-slate-100 text-slate-300 cursor-not-allowed border-0 shadow-none grayscale"
                         )}
                     >

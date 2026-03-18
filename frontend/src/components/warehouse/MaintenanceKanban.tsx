@@ -16,7 +16,7 @@ import { cn } from '../../lib/utils';
 
 const COLUMNS = {
     RECEIVED_AT_CENTER: { title: 'تم الاستلام', color: 'bg-blue-50/50', headerColor: 'bg-blue-100', borderColor: 'border-blue-200', icon: <Package size={18} /> },
-    ASSIGNED: { title: 'تم التعيين', color: 'bg-indigo-50/50', headerColor: 'bg-indigo-100', borderColor: 'border-indigo-200', icon: <UserPlus size={18} /> },
+    ASSIGNED: { title: 'تم التعيين', color: 'bg-primary/10', headerColor: 'bg-primary/5', borderColor: 'border-primary/20', icon: <UserPlus size={18} /> },
     UNDER_INSPECTION: { title: 'تحت الفحص', color: 'bg-yellow-50/50', headerColor: 'bg-yellow-100', borderColor: 'border-yellow-200', icon: <Search size={18} /> },
     AWAITING_APPROVAL: { title: 'بانتظار الموافقة', color: 'bg-orange-50/50', headerColor: 'bg-orange-100', borderColor: 'border-orange-200', icon: <Clock size={18} /> },
     IN_PROGRESS: { title: 'جاري الإصلاح', color: 'bg-purple-50/50', headerColor: 'bg-purple-100', borderColor: 'border-purple-200', icon: <Wrench size={18} /> },
@@ -270,7 +270,7 @@ const MaintenanceKanban: React.FC = () => {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="w-full mt-4 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs gap-3 shadow-lg shadow-indigo-100 active:scale-95 transition-all transition-duration-500"
+                                                                    className="w-full mt-4 h-12 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-xs gap-3 shadow-lg shadow-primary/20 active:scale-95 transition-all transition-duration-500"
                                                                     onClick={() => {
                                                                         setSelectedMachineForAssign(machine);
                                                                         setModal({ type: 'ASSIGN_TECH', isOpen: true });
@@ -305,7 +305,7 @@ const MaintenanceKanban: React.FC = () => {
                                                                             <Button
                                                                                 variant="ghost"
                                                                                 size="sm"
-                                                                                className="w-full mt-4 h-12 rounded-2xl bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-100 border border-transparent font-black text-xs gap-3 transition-all"
+                                                                                className="w-full mt-4 h-12 rounded-2xl bg-slate-50 text-slate-600 hover:bg-primary/10 hover:text-primary hover:border-primary/20 border border-transparent font-black text-xs gap-3 transition-all"
                                                                                 onClick={() => {
                                                                                     setSelectedMachineForAssign(machine);
                                                                                     setModal({ type: 'ASSIGN_TECH', isOpen: true });
@@ -335,7 +335,7 @@ const MaintenanceKanban: React.FC = () => {
             {/* Inspection Modal */}
             <Dialog open={modal.isOpen && modal.type === 'INSPECTION'} onOpenChange={(open) => !open && setModal({ ...modal, isOpen: false })}>
                 <DialogContent className="p-0 border-0 flex flex-col max-h-[90vh] h-auto overflow-hidden sm:max-w-xl rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
-                    <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-indigo-600 to-indigo-800 relative overflow-hidden text-right">
+                    <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-primary to-primary/80 relative overflow-hidden text-right">
                         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
                             <div className="absolute top-[-50%] left-[-20%] w-[100%] h-[150%] bg-white rounded-full blur-[80px]"></div>
                         </div>
@@ -346,7 +346,7 @@ const MaintenanceKanban: React.FC = () => {
                                 </div>
                                 <div className="text-right">
                                     <h2 className="modal-title font-black text-white leading-tight tracking-tight text-xl">بدء فحص الماكينة</h2>
-                                    <p className="text-indigo-100 font-bold text-[10px] uppercase tracking-widest opacity-80 mt-1">Inspection Activation Workflow</p>
+                                    <p className="text-primary/70 font-bold text-[10px] uppercase tracking-widest opacity-80 mt-1">Inspection Activation Workflow</p>
                                 </div>
                             </div>
                         </div>
@@ -359,21 +359,21 @@ const MaintenanceKanban: React.FC = () => {
                         <div className="space-y-4">
                             <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 leading-none justify-end">
                                 ملاحظات الفحص والتشخيص المبدئي
-                                <FileText size={14} className="text-indigo-400" />
+                                <FileText size={14} className="text-primary/50" />
                             </label>
                             <Textarea
                                 placeholder="اكتب ملاحظات الفحص هنا... (مثال: الشاشة مكسورة، الجهاز لا يعمل بالكهرباء)"
                                 value={formData.notes || ''}
                                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                className="smart-input min-h-[160px] p-6 text-sm font-bold bg-white border-2 border-slate-100 focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 resize-none transition-all duration-500"
+                                className="smart-input min-h-[160px] p-6 text-sm font-bold bg-white border-2 border-slate-100 focus:border-primary focus:ring-8 focus:ring-primary/5 resize-none transition-all duration-500"
                             />
                         </div>
 
-                        <div className="p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-center gap-4">
-                            <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                        <div className="p-5 bg-primary/10 rounded-2xl border border-primary/10 flex items-center gap-4">
+                            <div className="p-2 bg-primary/10 text-primary rounded-lg">
                                 <Info size={16} />
                             </div>
-                            <p className="text-[11px] font-bold text-indigo-700 leading-relaxed text-right">سيتم تحويل حالة الماكينة تلقائياً إلى <span className="font-black">تحت الفحص</span> وإخطار مدير المركز ببدء العمل.</p>
+                            <p className="text-[11px] font-bold text-primary leading-relaxed text-right">سيتم تحويل حالة الماكينة تلقائياً إلى <span className="font-black">تحت الفحص</span> وإخطار مدير المركز ببدء العمل.</p>
                         </div>
                     </div>
 
@@ -382,7 +382,7 @@ const MaintenanceKanban: React.FC = () => {
                         <button
                             onClick={handleModalSubmit}
                             disabled={submitting}
-                            className="smart-btn-primary flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base flex items-center justify-center gap-3 shadow-lg shadow-indigo-100 transition-all active:scale-95"
+                            className="smart-btn-primary flex-1 h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-base flex items-center justify-center gap-3 shadow-lg shadow-primary/20 transition-all active:scale-95"
                         >
                             {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle size={20} strokeWidth={3} />}
                             تأكيد وبدء الفحص الآن

@@ -28,8 +28,8 @@ export function OverallSummary({ summary }: SummaryProps) {
             label: 'إجمالي المبيعات',
             value: summary.totalSalesValue,
             icon: <TrendingUp size={24} />,
-            textColor: 'text-indigo-600',
-            bgColor: 'bg-indigo-50'
+            textColor: 'text-primary',
+            bgColor: 'bg-primary/10'
         },
         {
             label: 'أقساط متأخرة',

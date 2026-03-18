@@ -239,7 +239,7 @@ export const getMachineColumns = (
                             </Button>
                         )}
                         <Button variant="ghost" size="icon" onClick={() => handlers.onViewHistory(m)} title="السجل الفني" className="h-8 w-8">
-                            <History size={16} className="text-slate-400 hover:text-indigo-600" />
+                            <History size={16} className="text-slate-400 hover:text-primary" />
                         </Button>
                     </div>
                 );

@@ -43,7 +43,7 @@ export function SimStatsCards({ counts }: StatsCardsProps) {
             label: 'إجمالي الشرائح',
             value: counts?.total || 0,
             icon: <Smartphone size={24} />,
-            color: 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100',
+            color: 'bg-primary/10 text-primary group-hover:bg-primary/5',
         },
         {
             label: 'شرائح سليمة',

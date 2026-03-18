@@ -75,7 +75,7 @@ export function PerformanceReportModal({ isOpen, onClose, branchId }: Performanc
 
                 {/* Modal Header */}
                 <div className="shrink-0 p-4 md:p-5 pb-3 md:pb-4 bg-gradient-to-b from-slate-50 to-white border-b border-slate-100 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600"></div>
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-primary to-purple-600"></div>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 relative z-10">
                         <div className="flex items-center gap-3">
                             <div className="p-2.5 bg-gradient-to-br from-[#0A2472] to-[#1E3A8A] rounded-xl shadow-lg shadow-blue-900/10 text-white">
@@ -288,7 +288,7 @@ export function PerformanceReportModal({ isOpen, onClose, branchId }: Performanc
                                             {Object.entries(report.requestMetrics?.byStatus || {}).slice(0, 4).map(([status, count]: [string, any], idx) => (
                                                 <div key={status} className="bg-white/60 p-3 rounded-xl border border-slate-100 flex justify-between items-center group/item hover:bg-white transition-all">
                                                     <div className="flex items-center gap-2">
-                                                        <div className={`w-2 h-2 rounded-full ${idx === 0 ? 'bg-blue-500' : idx === 1 ? 'bg-indigo-500' : 'bg-purple-500'}`}></div>
+                                                        <div className={`w-2 h-2 rounded-full ${idx === 0 ? 'bg-blue-500' : idx === 1 ? 'bg-primary' : 'bg-purple-500'}`}></div>
                                                         <span className="text-[10px] font-bold text-slate-500">{status}</span>
                                                     </div>
                                                     <span className="font-black text-sm text-slate-900">{count}</span>

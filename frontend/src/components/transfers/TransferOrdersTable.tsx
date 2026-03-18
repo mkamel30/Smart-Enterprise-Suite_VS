@@ -32,7 +32,7 @@ export function TransferOrdersTable({ isLoading, orders, onViewOrder, userBranch
                             <tr>
                                 <td colSpan={7} className="p-12 text-center">
                                     <div className="flex flex-col items-center gap-3">
-                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                                         <span className="text-slate-500 font-medium">جاري تحميل البيانات...</span>
                                     </div>
                                 </td>
@@ -66,7 +66,7 @@ export function TransferOrdersTable({ isLoading, orders, onViewOrder, userBranch
                                         <div className="flex items-center gap-4">
                                             <div className={cn(
                                                 "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:rotate-12",
-                                                isSent ? "bg-amber-100 text-amber-600" : "bg-indigo-100 text-indigo-600"
+                                                isSent ? "bg-amber-100 text-amber-600" : "bg-primary/5 text-primary"
                                             )}>
                                                 <ArrowLeftRight size={20} />
                                             </div>
@@ -78,7 +78,7 @@ export function TransferOrdersTable({ isLoading, orders, onViewOrder, userBranch
                                                 </div>
                                                 <span className={cn(
                                                     "text-[10px] font-black uppercase tracking-widest",
-                                                    isSent ? "text-amber-500" : "text-indigo-500"
+                                                    isSent ? "text-amber-500" : "text-primary/70"
                                                 )}>
                                                     {isSent ? 'صادر من فرعك' : 'وارد إلى فرعك'}
                                                 </span>
@@ -103,7 +103,7 @@ export function TransferOrdersTable({ isLoading, orders, onViewOrder, userBranch
                                     <td className="p-5">
                                         <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
-                                                className="p-2.5 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-lg shadow-indigo-100/50 bg-white border border-indigo-100"
+                                                className="p-2.5 text-primary hover:bg-primary hover:text-white rounded-xl transition-all shadow-lg shadow-primary/20 bg-white border border-primary/10"
                                             >
                                                 <Eye size={18} />
                                             </button>

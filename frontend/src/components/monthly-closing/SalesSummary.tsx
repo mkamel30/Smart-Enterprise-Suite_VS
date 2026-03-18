@@ -17,7 +17,7 @@ export function SalesSummary({ sales }: SalesProps) {
     return (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 animate-fade-in">
             <div className="flex items-center gap-3">
-                <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
+                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
                     <ShoppingCart size={24} />
                 </div>
                 <h2 className="text-xl font-black text-slate-800">المبيعات</h2>
@@ -35,10 +35,10 @@ export function SalesSummary({ sales }: SalesProps) {
                     <p className="text-2xl font-black text-blue-700">{sales.installment.count}</p>
                     <p className="text-sm font-bold text-blue-600">{fmt(sales.installment.totalPrice)} ج.م</p>
                 </div>
-                <div className="bg-indigo-50 rounded-2xl p-4 text-center">
-                    <p className="text-sm text-indigo-600 font-medium">إجمالي المبيعات</p>
-                    <p className="text-2xl font-black text-indigo-700">{fmt(sales.totalRevenue)}</p>
-                    <p className="text-sm font-bold text-indigo-600">ج.م</p>
+                <div className="bg-primary/10 rounded-2xl p-4 text-center">
+                    <p className="text-sm text-primary font-medium">إجمالي المبيعات</p>
+                    <p className="text-2xl font-black text-primary">{fmt(sales.totalRevenue)}</p>
+                    <p className="text-sm font-bold text-primary">ج.م</p>
                 </div>
                 <div className="bg-amber-50 rounded-2xl p-4 text-center">
                     <p className="text-sm text-amber-600 font-medium">المحصّل فعلياً</p>

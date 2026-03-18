@@ -17,7 +17,7 @@ export function InventorySnapshot({ inventory }: InventoryProps) {
             label: 'أجهزة بالمخزن',
             value: inventory.machines,
             icon: <Package size={22} />,
-            color: 'bg-indigo-50 text-indigo-600 border-indigo-100'
+            color: 'bg-primary/10 text-primary border-primary/10'
         },
         {
             label: 'شرائح بالمخزن',
@@ -42,7 +42,7 @@ export function InventorySnapshot({ inventory }: InventoryProps) {
     return (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 animate-fade-in">
             <div className="flex items-center gap-3">
-                <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
+                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
                     <Package size={24} />
                 </div>
                 <h2 className="text-xl font-black text-slate-800">حالة المخزون</h2>

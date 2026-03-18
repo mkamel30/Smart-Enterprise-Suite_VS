@@ -165,7 +165,7 @@ export default function CustomerInfoTab({ customer: initialCustomer }: { custome
     const rows = [
         { key: 'address', label: 'العنوان الجغرافي', icon: <MapPin size={22} />, color: 'text-emerald-500', editable: true },
         { key: 'telephone_1', label: 'رقم التواصل الأساسي', icon: <Phone size={22} />, color: 'text-blue-500', editable: true },
-        { key: 'telephone_2', label: 'رقم التواصل البديل', icon: <Phone size={22} />, color: 'text-indigo-500', editable: true },
+        { key: 'telephone_2', label: 'رقم التواصل البديل', icon: <Phone size={22} />, color: 'text-primary/70', editable: true },
         { key: 'contact_person', label: 'الشخص المسؤول', icon: <User size={22} />, color: 'text-purple-500', editable: true },
         { key: 'national_id', label: 'الرقم القومي / السجل', icon: <Landmark size={22} />, color: 'text-rose-500', editable: true },
         { key: 'supply_office', label: 'مكتب التموين', icon: <Building2 size={22} />, color: 'text-amber-500', editable: true },

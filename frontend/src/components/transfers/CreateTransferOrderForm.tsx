@@ -144,7 +144,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                 <div className="lg:col-span-7 space-y-8">
                     <div className="space-y-6">
                         <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-                            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center shadow-sm">
                                 <Landmark size={22} />
                             </div>
                             <div>
@@ -162,7 +162,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                                 <select
                                     value={selectedBranch}
                                     onChange={e => setSelectedBranch(e.target.value)}
-                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700"
+                                    className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all font-bold text-slate-700"
                                 >
                                     <option value="">-- اختر الفرع المستلم --</option>
                                     {legalBranches?.map((b: any) => (
@@ -193,19 +193,19 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                                                 className={cn(
                                                     "flex-1 p-3.5 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all active:scale-95 group",
                                                     isSelected
-                                                        ? "border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-100/50 scale-[1.02]"
+                                                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/20 scale-[1.02]"
                                                         : "border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white"
                                                 )}
                                             >
                                                 <div className={cn(
                                                     "p-2 rounded-lg transition-colors",
-                                                    isSelected ? "bg-indigo-500 text-white" : "bg-slate-200 text-slate-400 group-hover:bg-slate-300"
+                                                    isSelected ? "bg-primary text-white" : "bg-slate-200 text-slate-400 group-hover:bg-slate-300"
                                                 )}>
                                                     <Icon size={20} />
                                                 </div>
                                                 <span className={cn(
                                                     "text-xs font-black",
-                                                    isSelected ? "text-indigo-600" : "text-slate-500"
+                                                    isSelected ? "text-primary" : "text-slate-500"
                                                 )}>{type.label}</span>
                                             </button>
                                         );
@@ -229,7 +229,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                         <div className="bg-slate-50/50 border border-slate-200/50 p-6 rounded-[24px]">
                             <div className="relative flex gap-3" ref={searchRef}>
                                 <div className="flex-1 relative group">
-                                    <Search size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+                                    <Search size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
                                     <input
                                         type="text"
                                         placeholder="ابدأ بكتابة السيريال للبحث..."
@@ -240,7 +240,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                                             setShowSuggestions(true);
                                         }}
                                         onFocus={() => setShowSuggestions(true)}
-                                        className="w-full pr-12 pl-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 disabled:opacity-50 disabled:bg-slate-50"
+                                        className="w-full pr-12 pl-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-bold text-slate-700 disabled:opacity-50 disabled:bg-slate-50"
                                         disabled={!selectedType}
                                         onKeyDown={e => e.key === 'Enter' && addItem()}
                                     />
@@ -257,13 +257,13 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                                                             key={item.id}
                                                             type="button"
                                                             onClick={() => handleSelectItem(item)}
-                                                            className="w-full text-right px-5 py-3 hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0 flex justify-between items-center group"
+                                                            className="w-full text-right px-5 py-3 hover:bg-primary/10 transition-colors border-b border-slate-50 last:border-0 flex justify-between items-center group"
                                                         >
                                                             <div className="flex flex-col items-start">
-                                                                <span className="font-mono font-black text-slate-900 group-hover:text-indigo-600">{item.serialNumber}</span>
+                                                                <span className="font-mono font-black text-slate-900 group-hover:text-primary transition-colors">{item.serialNumber}</span>
                                                                 <span className="text-[10px] text-slate-400 font-bold uppercase">{selectedType === 'MACHINE' ? 'Machine S/N' : 'SIM Card'}</span>
                                                             </div>
-                                                            <span className="bg-slate-100 group-hover:bg-indigo-100 text-slate-500 group-hover:text-indigo-600 px-3 py-1 rounded-lg text-xs font-black transition-colors">
+                                                                <span className="bg-slate-100 group-hover:bg-primary/5 text-slate-500 group-hover:text-primary px-3 py-1 rounded-lg text-xs font-black transition-colors">
                                                                 {selectedType === 'MACHINE' ? item.model : item.type}
                                                             </span>
                                                         </button>
@@ -285,7 +285,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                                     type="button"
                                     onClick={addItem}
                                     disabled={!newItem.serialNumber || !selectedType}
-                                    className="bg-indigo-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
+                                    className="bg-primary text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
                                 >
                                     <Plus size={28} />
                                 </button>
@@ -355,7 +355,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                             <textarea
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
-                                className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium text-slate-700 min-h-[120px]"
+                                className="w-full border-slate-200 rounded-2xl px-5 py-4 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all font-medium text-slate-700 min-h-[120px]"
                                 placeholder="اكتب أي تعليمات أو أسباب تخص عملية النقل..."
                                 rows={3}
                             />
@@ -366,7 +366,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                 {/* Right Column - Items Preview */}
                 <div className="lg:col-span-5 flex flex-col h-full space-y-6">
                     <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-                        <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-100">
+                        <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <span className="text-lg font-black">{items.length}</span>
                         </div>
                         <div className="flex-1">
@@ -420,7 +420,7 @@ export function CreateTransferOrderForm({ branches, user, onCreate, onImport, is
                             <Button
                                 onClick={handleSubmit}
                                 disabled={isPending || !selectedBranch || !selectedType || items.length === 0}
-                                className="w-full py-8 text-lg font-black rounded-[20px] transition-all bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100"
+                                className="w-full py-8 text-lg font-black rounded-[20px] transition-all bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20"
                             >
                                 {isPending ? (
                                     <div className="flex items-center gap-2">

@@ -60,7 +60,7 @@ export function ChildBranchReport({ childBranches, month }: ChildBranchProps) {
                                     </div>
                                 </td>
                                 <td className="py-3 px-4 font-bold">{b.sales.count}</td>
-                                <td className="py-3 px-4 font-bold text-indigo-600">{fmt(b.sales.totalPrice)} ج.م</td>
+                                <td className="py-3 px-4 font-bold text-primary">{fmt(b.sales.totalPrice)} ج.م</td>
                                 <td className="py-3 px-4 font-bold text-emerald-600">{fmt(b.sales.paidAmount)} ج.م</td>
                                 <td className="py-3 px-4">
                                     <span className="font-bold">{fmt(b.installmentsCollected.amount)} ج.م</span>

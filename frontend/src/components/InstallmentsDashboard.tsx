@@ -25,12 +25,12 @@ const colorMap = {
         glow: 'from-blue-600/20 to-transparent'
     },
     indigo: {
-        bg: 'bg-indigo-50/50',
-        iconBg: 'bg-indigo-600 shadow-indigo-200',
-        text: 'text-indigo-600',
-        border: 'border-indigo-100/50',
-        hoverBorder: 'hover:border-indigo-200',
-        glow: 'from-indigo-600/20 to-transparent'
+        bg: 'bg-primary/10',
+        iconBg: 'bg-primary shadow-primary/20',
+        text: 'text-primary',
+        border: 'border-primary/10',
+        hoverBorder: 'hover:border-primary/20',
+        glow: 'from-primary/20 to-transparent'
     },
     emerald: {
         bg: 'bg-emerald-50/50',

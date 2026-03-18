@@ -49,18 +49,18 @@ export function ViewTransferOrderModal({ order, onClose, onReceive, onReject, on
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 className={cn(
                     "bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-white/20",
-                    highlightedOrderId === order.id ? 'ring-4 ring-indigo-500/20' : ''
+                    highlightedOrderId === order.id ? 'ring-4 ring-primary/20' : ''
                 )}
             >
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+                        <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <FileText size={24} />
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-slate-900 dark:text-white">تفاصيل الإذن</h2>
-                            <p className="text-xs font-mono font-black text-indigo-600 uppercase tracking-tighter">#{order.orderNumber}</p>
+                            <p className="text-xs font-mono font-black text-primary uppercase tracking-tighter">#{order.orderNumber}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
@@ -78,7 +78,7 @@ export function ViewTransferOrderModal({ order, onClose, onReceive, onReject, on
                             </div>
                             <div className="space-y-1 sm:text-left">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">جهة الاستلام</span>
-                                <div className="text-lg font-black text-indigo-600">{order.toBranch?.name || '—'}</div>
+                                <div className="text-lg font-black text-primary">{order.toBranch?.name || '—'}</div>
                             </div>
                             {/* Direction Arrow */}
                             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden sm:flex w-10 h-10 bg-white dark:bg-slate-700 rounded-full border border-slate-100 dark:border-slate-600 items-center justify-center text-slate-400 shadow-sm">
@@ -90,7 +90,7 @@ export function ViewTransferOrderModal({ order, onClose, onReceive, onReject, on
                     {/* Meta Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center"><Package size={16} /></div>
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/30 text-primary flex items-center justify-center"><Package size={16} /></div>
                             <div>
                                 <span className="text-[10px] text-slate-400 font-black uppercase block">النوع</span>
                                 <span className="text-xs font-black text-slate-700 dark:text-slate-300">{ORDER_TYPES.find(t => t.value === order.type)?.label}</span>
@@ -113,13 +113,13 @@ export function ViewTransferOrderModal({ order, onClose, onReceive, onReject, on
                     </div>
 
                     {/* Status Tracker */}
-                    <div className="flex items-center gap-4 p-5 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/50">
+                    <div className="flex items-center gap-4 p-5 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/10 dark:border-primary/10">
                         <div className="flex-1">
-                            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">حالة الإذن الحالية</span>
+                            <span className="text-[10px] font-black text-primary/70 uppercase tracking-widest block mb-1">حالة الإذن الحالية</span>
                             <div className="flex items-center gap-3">
                                 <TransferOrderStatusBadge status={order.status} />
                                 {order.receivedAt && (
-                                    <span className="text-[10px] text-indigo-400 font-black">
+                                    <span className="text-[10px] text-primary/70 font-black">
                                         استلم في {new Date(order.receivedAt).toLocaleString('ar-EG')}
                                     </span>
                                 )}
@@ -131,7 +131,7 @@ export function ViewTransferOrderModal({ order, onClose, onReceive, onReject, on
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                <Package size={16} className="text-indigo-600" />
+                                <Package size={16} className="text-primary" />
                                 الأصناف المشمولة ({order.items?.length})
                             </h3>
                         </div>
@@ -256,7 +256,7 @@ export function ViewTransferOrderModal({ order, onClose, onReceive, onReject, on
                             </Button>
                             <Button
                                 onClick={() => onReceive(order.id)}
-                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-8 font-black shadow-xl shadow-indigo-100 transition-all active:scale-95"
+                                className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-2xl py-8 font-black shadow-xl shadow-primary/20 transition-all active:scale-95"
                                 disabled={isProcessing}
                             >
                                 {isProcessing ? (

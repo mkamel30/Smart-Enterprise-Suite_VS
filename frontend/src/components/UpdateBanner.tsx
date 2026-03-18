@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { X, Download, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { useUpdateCheck } from '../hooks/useUpdateCheck';
+import { useAuth } from '../context/AuthContext';
 
 export default function UpdateBanner() {
-    const { update, refetch } = useUpdateCheck();
+    const { user } = useAuth();
+    const { update, refetch } = useUpdateCheck({ enabled: !!user });
     const [dismissed, setDismissed] = useState(false);
     const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
 
