@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../db');
 const crypto = require('crypto');
+const { adminAuth } = require('../middleware/auth');
+
+router.use(adminAuth);
 
 // Get all branches
 router.get('/', async (req, res) => {
@@ -24,7 +27,7 @@ router.get('/', async (req, res) => {
 // Register new branch
 router.post('/', async (req, res) => {
     try {
-        const { code, name, address } = req.body;
+        const { code, name, address, authorizedHWID } = req.body;
         
         if (!code || !name) {
             return res.status(400).json({ error: 'Code and Name are required' });
@@ -43,7 +46,8 @@ router.post('/', async (req, res) => {
                 code,
                 name,
                 address,
-                apiKey
+                apiKey,
+                authorizedHWID
             }
         });
 
@@ -51,6 +55,42 @@ router.post('/', async (req, res) => {
     } catch (error) {
         console.error('Failed to register branch:', error);
         res.status(500).json({ error: 'Failed to register branch' });
+    }
+});
+
+// Update branch
+router.put('/:id', async (req, res) => {
+    try {
+        const { name, code, address, authorizedHWID, status } = req.body;
+        
+        const branch = await prisma.branch.update({
+            where: { id: req.params.id },
+            data: {
+                name,
+                code,
+                address,
+                authorizedHWID,
+                status
+            }
+        });
+        
+        res.json(branch);
+    } catch (error) {
+        console.error('Failed to update branch:', error);
+        res.status(500).json({ error: 'Failed to update branch' });
+    }
+});
+
+// Delete branch
+router.delete('/:id', async (req, res) => {
+    try {
+        await prisma.branch.delete({
+            where: { id: req.params.id }
+        });
+        res.json({ message: 'Branch deleted successfully' });
+    } catch (error) {
+        console.error('Failed to delete branch:', error);
+        res.status(500).json({ error: 'Failed to delete branch' });
     }
 });
 

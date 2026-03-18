@@ -11,22 +11,43 @@ async function main() {
   const adminPassword = 'admin_password_2026';
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
+  const recoveryKey = Math.random().toString(36).substring(2, 10).toUpperCase();
+
   const admin = await prisma.adminUser.upsert({
     where: { username: 'admin' },
-    update: {},
+    update: {
+      // If recoveryKey is null, set it, otherwise keep existing
+    },
     create: {
       username: 'admin',
       passwordHash: hashedPassword,
       name: 'Super Admin',
-      role: 'SUPER_ADMIN'
+      role: 'SUPER_ADMIN',
+      recoveryKey: recoveryKey
     }
   });
 
-  logger.info({ username: admin.username }, 'Admin created');
+  // Force update if recoveryKey is null
+  let finalAdmin = await prisma.adminUser.findUnique({ where: { username: 'admin' } });
+  if (!finalAdmin.recoveryKey) {
+    finalAdmin = await prisma.adminUser.update({
+        where: { username: 'admin' },
+        data: { recoveryKey: recoveryKey }
+    });
+  }
+  
+  logger.info({ 
+    username: admin.username, 
+    recoveryKey: finalAdmin.recoveryKey 
+  }, 'Admin created/verified');
+
+  console.log('==========================================');
+  console.log('SUPER ADMIN RECOVERY KEY: ' + finalAdmin.recoveryKey);
+  console.log('KEEP THIS KEY SAFE FOR PASSWORD RESET');
+  console.log('==========================================');
 
   // 2. Default Parameters
   const defaultParams = [
-    { key: 'EXCHANGE_RATE', value: '50.5', type: 'NUMBER', group: 'FINANCE' },
     { key: 'SYSTEM_NAME', value: 'Smart Enterprise Suite', type: 'STRING', group: 'SYSTEM' },
     { key: 'MAINTENANCE_FEE', value: '500', type: 'NUMBER', group: 'MAINTENANCE' }
   ];
@@ -40,6 +61,38 @@ async function main() {
   }
 
   logger.info(`${defaultParams.length} Default parameters seeded.`);
+
+  // 3. POS Machine Parameters
+  const posParams = [
+    { prefix: '191', model: 'S90', manufacturer: 'PAX' },
+    { prefix: '203', model: 'A920', manufacturer: 'PAX' },
+    { prefix: 'N86', model: 'N86', manufacturer: 'NEXGO' }
+  ];
+
+  for (const posP of posParams) {
+    await prisma.machineParameter.upsert({
+      where: { prefix: posP.prefix },
+      update: {},
+      create: posP
+    });
+  }
+  logger.info('POS Parameters seeded.');
+
+  // 4. Master Spare Parts
+  const masterParts = [
+    { partNumber: 'BATT-S90', name: 'S90 Battery', defaultCost: 450, category: 'POS', isConsumable: true },
+    { partNumber: 'PRN-ROLL', name: 'Thermal Paper Roll', defaultCost: 15, category: 'GENERAL', isConsumable: true },
+    { partNumber: 'LCD-A920', name: 'A920 Screen Assembly', defaultCost: 1200, category: 'POS', isConsumable: false }
+  ];
+
+  for (const part of masterParts) {
+    await prisma.masterSparePart.upsert({
+      where: { partNumber: part.partNumber },
+      update: {},
+      create: part
+    });
+  }
+  logger.info('Master Spare Parts seeded.');
 }
 
 main()

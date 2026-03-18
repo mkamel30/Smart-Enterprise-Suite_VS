@@ -68,7 +68,7 @@ In `SmartEnterprise_Admin/frontend`:
 ```powershell
 npm run dev
 ```
-*Dashboard will be available at http://localhost:5173 (standard Vite port)*
+*Dashboard will be available at http://localhost:5175*
 
 ---
 
@@ -76,4 +76,4 @@ npm run dev
 - [ ] Ensure Node.js (v18+) is installed.
 - [ ] Verify `backend/.env` exists and contains a `JWT_SECRET`.
 - [ ] Run `node seed.js` at least once to create the login account.
-- [ ] Ensure port `5005` (API) and `5173` (UI) are not in use.
+- [ ] Ensure port `5005` (API) and `5175` (UI) are not in use.

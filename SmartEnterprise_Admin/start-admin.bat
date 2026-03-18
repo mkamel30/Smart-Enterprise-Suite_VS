@@ -23,7 +23,7 @@ start "Admin Frontend" cmd /k "cd frontend && npm run dev"
 echo.
 echo Management Portal is initializing.
 echo API: http://localhost:5005
-echo UI:  http://localhost:5173
+echo UI:  http://localhost:5175
 echo.
 echo Keep this window open or close it once servers are up.
 pause

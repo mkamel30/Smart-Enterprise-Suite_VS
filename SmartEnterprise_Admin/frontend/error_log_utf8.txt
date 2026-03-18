@@ -1,0 +1,71 @@
+﻿node.exe : [31mfailed to 
+load config from C:\Users\mka
+me\OneDrive\Documents\GitHub\
+Smart-Enterprise-Suite_VS_202
+60210_20260315\SmartEnterpris
+e_Admin\frontend\vite.config.
+ts[39m
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" "C:\Us
+ers\mkame\AppData\Roaming\ 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: ([31mfa  
+  iled to ....config.ts[3   
+ 9m:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+[31merror when starting dev 
+server:
+Error [ERR_PACKAGE_PATH_NOT_E
+XPORTED]: Package subpath 
+'./internal' is not defined 
+by "exports" in C:\Users\mkam
+e\OneDrive\Documents\GitHub\S
+mart-Enterprise-Suite_VS_2026
+0210_20260315\SmartEnterprise
+_Admin\frontend\node_modules\
+vite\package.json imported 
+from C:\Users\mkame\OneDrive\
+Documents\GitHub\Smart-Enterp
+rise-Suite_VS_20260210_202603
+15\SmartEnterprise_Admin\fron
+tend\node_modules\@vitejs\plu
+gin-react\dist\index.js
+    at exportsNotFound (node:
+internal/modules/esm/resolve:
+313:10)
+    at packageExportsResolve 
+(node:internal/modules/esm/re
+solve:660:9)
+    at packageResolve (node:i
+nternal/modules/esm/resolve:7
+73:12)
+    at moduleResolve (node:in
+ternal/modules/esm/resolve:85
+3:18)
+    at defaultResolve (node:i
+nternal/modules/esm/resolve:9
+83:11)
+    at 
+ModuleLoader.defaultResolve (
+node:internal/modules/esm/loa
+der:783:12)
+    at #cachedDefaultResolve 
+(node:internal/modules/esm/lo
+ader:707:25)
+    at ModuleLoader.resolve (
+node:internal/modules/esm/loa
+der:690:38)
+    at ModuleLoader.getModule
+JobForImport (node:internal/m
+odules/esm/loader:307:38)
+    at ModuleJob._link (node:
+internal/modules/esm/module_j
+ob:183:49)[39m
