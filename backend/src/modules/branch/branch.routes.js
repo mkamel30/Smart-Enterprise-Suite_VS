@@ -75,8 +75,7 @@ router.get('/authorized', authenticateToken, async (req, res) => {
                 code: true,
                 type: true,
                 isActive: true,
-                parentBranchId: true,
-                maintenanceCenterId: true
+                parentBranchId: true
             }
         });
 

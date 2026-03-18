@@ -61,7 +61,7 @@ async function calculateAllMetrics() {
         // ===================== FINANCIAL METRICS =====================
         logger.debug('[MetricsCache] Calculating Financial metrics...');
 
-        const [currentRevenue, previousRevenue, pendingDebts, overdueDebts] = await Promise.all([
+        const [currentRevenue, previousRevenue] = await Promise.all([
             db.payment.aggregate({
                 where: {
                     createdAt: { gte: currentMonthStart, lte: currentMonthEnd },
@@ -73,21 +73,6 @@ async function calculateAllMetrics() {
                 where: {
                     createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
                     branchId: { not: null }
-                },
-                _sum: { amount: true }
-            }),
-            db.branchDebt.aggregate({
-                where: {
-                    status: 'PENDING',
-                    debtorBranchId: { not: '' }
-                },
-                _sum: { amount: true }
-            }),
-            db.branchDebt.aggregate({
-                where: {
-                    status: 'PENDING',
-                    createdAt: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-                    debtorBranchId: { not: '' }
                 },
                 _sum: { amount: true }
             })
@@ -257,8 +242,8 @@ async function calculateAllMetrics() {
                 totalRevenue: currentTotal,
                 previousRevenue: previousTotal,
                 revenueChange: parseFloat(revenueChange),
-                pendingDebts: pendingDebts?._sum?.amount || 0,
-                overdueDebts: overdueDebts?._sum?.amount || 0,
+                pendingDebts: 0,
+                overdueDebts: 0,
                 closureRate,
                 overdueRequests,
                 inventoryHealth

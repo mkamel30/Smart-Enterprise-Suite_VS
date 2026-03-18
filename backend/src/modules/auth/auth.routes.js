@@ -241,4 +241,24 @@ router.get('/admin/generate-password',
     })
 );
 
+// Forgot Password - Initiate
+router.post('/forgot-password', asyncHandler(async (req, res) => {
+    const { identifier } = req.body;
+    if (!identifier) return res.status(400).json({ error: 'Identifier is required' });
+    
+    const result = await authService.requestPasswordReset(identifier);
+    res.json(result);
+}));
+
+// Reset Password - Complete
+router.post('/reset-password', asyncHandler(async (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+        return res.status(400).json({ error: 'Token and new password are required' });
+    }
+    
+    const result = await authService.resetPassword(token, newPassword);
+    res.json(result);
+}));
+
 module.exports = router;

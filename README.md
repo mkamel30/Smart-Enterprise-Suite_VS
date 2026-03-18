@@ -1,4 +1,4 @@
-# 🏢 Smart Enterprise Suite
+# 🏢 Smart Enterprise Suite (Branch Version)
 
 A comprehensive **enterprise-grade business management system** for branch operations, maintenance management, inventory tracking, and real-time reporting.
 
@@ -14,11 +14,14 @@ A comprehensive **enterprise-grade business management system** for branch opera
 - [🧑‍💻 System Architecture & Concepts](docs/ARCHITECTURE.md)
 - [🛠️ Developer Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)
 - [🤖 Guidelines for AI Agents](AGENTS.md)
-- *(Note: Legacy analysis & design docs are archived in `docs/archive/`)*
+- 🚀 **[Admin Portal Repository (Separate)](https://github.com/mkamel30/SmartEnterprise_AD)**
 
 ---
 
-## 🚀 Quick Start & Run
+> [!IMPORTANT]
+> **Note:** The Central Admin Portal has been moved to its own repository for better deployment and maintenance. You can find it here: [SmartEnterprise_AD](https://github.com/mkamel30/SmartEnterprise_AD).
+
+## 🚀 Quick Start & Run (Branch App)
 
 ```bash
 # To run both Backend and Frontend simultaneously (Windows):
@@ -43,17 +46,17 @@ npm run dev
 ```
 
 **Endpoints:**
-*   Frontend UI: `http://localhost:5174`
-*   Backend API: `http://localhost:5000/api` (or `5002` based on `.env`)
+*   Frontend UI: `http://localhost:5173`
+*   Backend API: `http://localhost:5002`
 
 ---
 
 ## ✨ Core Features
 
-1. **Multi-branch & Customers** - Manage unlimited business branches, clients, and POS machine assignments.
+1. **Multi-branch & Customers** - Manage local business branches, clients, and POS machine assignments.
 2. **Maintenance Workflows** - Create, assign to technicians, track lifecycle, and close maintenance orders.
 3. **Inventory & Warehouse** - Track spare parts, SIM cards, and log all inwards/outwards movements.
-4. **Real-Time System** - Socket.IO pushes live notifications for maintenance updates and low stock alerts.
-5. **Dashboard & Accounting** - Monitor debt, sales, parts consumption, and technician KPI rankings.
+4. **Real-Time System** - Socket.IO (Local) pushes live notifications for maintenance updates.
+5. **Admin Sync** - Bidirectional communication with the Central Admin via WebSockets.
 
 If you encounter any issues during local development or testing, please consult the `IMPLEMENTATION_GUIDE.md`.

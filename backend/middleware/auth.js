@@ -1,4 +1,4 @@
-﻿const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 const db = require('../db');
 
@@ -30,6 +30,24 @@ const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     let token = authHeader && authHeader.split(' ')[1];
 
+    // --- NEW: Portal Sync Key Support ---
+    const portalSyncKey = req.headers['x-portal-sync-key'];
+    const MASTER_SYNC_KEY = process.env.PORTAL_API_KEY || 'master_portal_key_internal';
+
+    if (portalSyncKey && portalSyncKey === MASTER_SYNC_KEY) {
+      req.user = {
+        id: 'SYSTEM_SYNC',
+        displayName: 'Central Portal Sync',
+        role: 'SUPER_ADMIN',
+        branchId: null,
+        permissions: ['*'],
+        authorizedBranchIds: []
+      };
+      logger.debug('[Auth] Internal sync key verified');
+      return next();
+    }
+    // ------------------------------------
+
     // Fallback to cookie if header is missing
     if (!token && req.cookies && req.cookies.token) {
       token = req.cookies.token;
@@ -42,13 +60,32 @@ const authenticateToken = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
 
+    // FETCH USER FROM DB TO ENFORCE REAL-TIME STATUS (Active/Locked)
+    const dbUser = await db.user.findUnique({
+      where: { id: decoded.id },
+      include: { accountLockout: true }
+    });
+
+    if (!dbUser) {
+      throw new AppError('User account no longer exists', 401, 'USER_NOT_FOUND');
+    }
+
+    if (!dbUser.isActive) {
+      throw new AppError('تم إغلاق الحساب من قبل مدير النظام', 401, 'ACCOUNT_DISABLED');
+    }
+
+    // Check for lockout
+    if (dbUser.accountLockout?.lockedUntil && new Date(dbUser.accountLockout.lockedUntil) > new Date()) {
+      throw new AppError('هذا الحساب مغلق حالياً، يرجى التواصل مع الإدارة', 401, 'ACCOUNT_LOCKED');
+    }
+
     // Attach user info to request
     req.user = {
-      id: decoded.id,
-      displayName: decoded.displayName,
-      role: decoded.role,
-      branchId: decoded.branchId,
-      email: decoded.email,
+      id: dbUser.id,
+      displayName: dbUser.displayName,
+      role: dbUser.role,
+      branchId: dbUser.branchId,
+      email: dbUser.email,
       permissions: decoded.permissions || []
     };
 

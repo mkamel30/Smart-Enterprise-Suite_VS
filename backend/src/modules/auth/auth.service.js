@@ -446,6 +446,95 @@ async function unlockAccount(adminUserId, targetUserId) {
     };
 }
 
+/**
+ * Request a password reset token
+ * In this system, since it's likely internal, we log the token for the admin
+ * @param {string} identifier - Email, username or UID
+ */
+async function requestPasswordReset(identifier) {
+    const user = await db.user.findFirst({
+        where: {
+            OR: [{ email: identifier }, { username: identifier }, { uid: identifier }]
+        }
+    });
+
+    if (!user) {
+        // Return success even if user not found for security (timing attacks)
+        return { message: 'If an account exists, a reset token has been generated.' };
+    }
+
+    // Generate a 6-digit numeric token for ease of use
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 mins
+
+    await db.user.update({
+        where: { id: user.id },
+        data: {
+            resetPasswordToken: token,
+            resetPasswordExpires: expires
+        }
+    });
+
+    // LOG THE TOKEN - In an internal system, the admin can find this in the logs
+    // and provide it to the user if no email is configured.
+    logAction({
+        entityType: 'USER',
+        entityId: user.id,
+        action: 'PASSWORD_RESET_REQUESTED',
+        details: `Reset token generated: ${token} (Expires: ${expires})`,
+        userId: user.id,
+        performedBy: 'SYSTEM'
+    });
+
+    console.log(`[AUTH] Password Reset Token for ${user.email}: ${token}`);
+
+    return { 
+        message: 'تم إنشاء كود إعادة التعيين. يرجى التواصل مع مسؤول النظام للحصول عليه أو التحقق من بريدك الإلكتروني.',
+        token: process.env.NODE_ENV === 'development' ? token : undefined 
+    };
+}
+
+/**
+ * Reset password using a valid token
+ */
+async function resetPassword(token, newPassword) {
+    const user = await db.user.findFirst({
+        where: {
+            resetPasswordToken: token,
+            resetPasswordExpires: { gt: new Date() }
+        }
+    });
+
+    if (!user) {
+        throw ApiError('كود إعادة التعيين غير صالح أو منتهي الصلاحية', 400);
+    }
+
+    // Hash and update
+    const hashedPassword = await passwordPolicy.hashPassword(newPassword);
+    
+    await db.user.update({
+        where: { id: user.id },
+        data: {
+            password: hashedPassword,
+            resetPasswordToken: null,
+            resetPasswordExpires: null,
+            passwordChangedAt: new Date(),
+            mustChangePassword: false
+        }
+    });
+
+    await logAction({
+        entityType: 'USER',
+        entityId: user.id,
+        action: 'PASSWORD_RESET_COMPLETED',
+        details: 'User successfully reset their password via token',
+        userId: user.id,
+        performedBy: user.displayName
+    });
+
+    return { message: 'تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.' };
+}
+
 module.exports = {
     getProfile,
     updatePreferences,
@@ -453,5 +542,7 @@ module.exports = {
     login,
     forcePasswordChange,
     unlockAccount,
-    refreshAccessToken
+    refreshAccessToken,
+    requestPasswordReset,
+    resetPassword
 };

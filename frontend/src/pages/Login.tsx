@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
@@ -139,10 +139,10 @@ export default function Login() {
                     </button>
 
                     {!showMfa && (
-                        <div className="text-center">
-                            <button type="button" className="text-sm text-muted-foreground hover:text-foreground">
-                                نسيت كلمة المرور؟ يرجى التواصل مع مدير النظام لإعادة تعيينها.
-                            </button>
+                        <div className="text-center mt-2">
+                            <Link to="/forgot-password" size="sm" className="text-sm text-primary/60 hover:text-primary font-bold transition-colors">
+                                نسيت كلمة المرور؟
+                            </Link>
                         </div>
                     )}
                 </form>

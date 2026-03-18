@@ -47,6 +47,25 @@ router.post('/machine-parameters', async (req, res) => {
     }
 });
 
+// PUT update machine parameter
+router.put('/machine-parameters/:id', async (req, res) => {
+    try {
+        const { model, manufacturer } = req.body;
+        const param = await db.machineParameter.update({
+            where: { id: req.params.id },
+            data: {
+                model: model ? String(model).toUpperCase() : undefined,
+                manufacturer: manufacturer ? String(manufacturer).toUpperCase() : undefined
+            }
+        });
+        res.json(param);
+    } catch (error) {
+        console.error('Failed to update machine parameter:', error);
+        if (error?.code === 'P2025') return res.status(404).json({ error: 'MachineParameter not found' });
+        res.status(500).json({ error: 'Failed to update machine parameter' });
+    }
+});
+
 // DELETE machine parameter
 // DELETE machine parameter
 router.delete('/machine-parameters/:id', async (req, res) => {

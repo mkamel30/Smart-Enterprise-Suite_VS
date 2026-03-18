@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { api } from '../../api/client';
 import { useApiMutation } from '../../hooks/useApiMutation';
-import type { ClientType, MachineParameter } from '../../lib/types';
+import type { MachineParameter } from '../../lib/types';
 
 export function MachineParametersTab() {
     const [showAddForm, setShowAddForm] = useState(false);
+    const [editParam, setEditParam] = useState<MachineParameter | null>(null);
     const [newParam, setNewParam] = useState({ prefix: '', model: '', manufacturer: '' });
+    const [editForm, setEditForm] = useState({ model: '', manufacturer: '' });
 
     const { data: params, isLoading } = useQuery<MachineParameter[]>({
         queryKey: ['machine-parameters'],
@@ -26,6 +28,14 @@ export function MachineParametersTab() {
             setShowAddForm(false);
             setNewParam({ prefix: '', model: '', manufacturer: '' });
         }
+    });
+
+    const updateMutation = useApiMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) => api.updateMachineParameter(id, data),
+        successMessage: 'تم تعديل البارامتر بنجاح',
+        errorMessage: 'فشل تعديل البارامتر',
+        invalidateKeys: [['machine-parameters']],
+        onSuccess: () => setEditParam(null)
     });
 
     const deleteMutation = useApiMutation({
@@ -50,6 +60,17 @@ export function MachineParametersTab() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         createMutation.mutate(newParam);
+    };
+
+    const handleEditOpen = (p: MachineParameter) => {
+        setEditParam(p);
+        setEditForm({ model: p.model || '', manufacturer: p.manufacturer || '' });
+    };
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editParam) return;
+        updateMutation.mutate({ id: editParam.id, data: editForm });
     };
 
     if (isLoading) return <div>جاري التحميل...</div>;
@@ -98,13 +119,22 @@ export function MachineParametersTab() {
                                 <td className="p-5 font-bold">{p.model}</td>
                                 <td className="p-5 text-muted-foreground">{p.manufacturer}</td>
                                 <td className="p-5">
-                                    <button
-                                        onClick={() => deleteMutation.mutate(p.id)}
-                                        className="p-2.5 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
-                                        title="حذف البارامتر"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <button
+                                            onClick={() => handleEditOpen(p)}
+                                            className="p-2.5 text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all"
+                                            title="تعديل البارامتر"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => deleteMutation.mutate(p.id)}
+                                            className="p-2.5 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                                            title="حذف البارامتر"
+                                        >
+                                            <Trash2 size={20} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -112,6 +142,7 @@ export function MachineParametersTab() {
                 </table>
             </div>
 
+            {/* Add Modal */}
             {showAddForm && (
                 <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
                     <div className="bg-card rounded-[2.5rem] p-10 w-full max-w-md border border-border shadow-2xl animate-scale-in">
@@ -133,8 +164,51 @@ export function MachineParametersTab() {
                                 <input placeholder="مثال: PAX" value={newParam.manufacturer} onChange={e => setNewParam({ ...newParam, manufacturer: e.target.value.toUpperCase() })} className="w-full bg-muted/50 border border-border rounded-2xl px-4 py-4 focus:ring-4 focus:ring-primary/10 transition-all outline-none font-bold uppercase" required />
                             </div>
                             <div className="flex gap-4 pt-4">
-                                <button type="submit" className="flex-1 bg-primary text-primary-foreground py-4 rounded-2xl font-black text-lg shadow-lg shadow-primary/20 transition-all active:scale-95">حفظ</button>
+                                <button type="submit" disabled={createMutation.isPending} className="flex-1 bg-primary text-primary-foreground py-4 rounded-2xl font-black text-lg shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50">
+                                    {createMutation.isPending ? 'جاري الحفظ...' : 'حفظ'}
+                                </button>
                                 <button type="button" onClick={() => setShowAddForm(false)} className="flex-1 bg-muted hover:bg-accent text-foreground py-4 rounded-2xl font-black text-lg transition-all active:scale-95">إلغاء</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Modal */}
+            {editParam && (
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+                    <div className="bg-card rounded-[2.5rem] p-10 w-full max-w-md border border-border shadow-2xl animate-scale-in">
+                        <h2 className="text-2xl font-black mb-2 flex items-center gap-3 text-foreground">
+                            <Pencil size={28} className="text-blue-500" />
+                            تعديل بارامتر
+                        </h2>
+                        <p className="text-sm text-muted-foreground mb-8">
+                            البادئة: <span className="font-mono font-black text-primary">{editParam.prefix}</span> (لا يمكن تغييرها)
+                        </p>
+                        <form onSubmit={handleEditSubmit} className="space-y-5">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-muted-foreground mr-1">الموديل (Model)</label>
+                                <input
+                                    value={editForm.model}
+                                    onChange={e => setEditForm({ ...editForm, model: e.target.value.toUpperCase() })}
+                                    className="w-full bg-muted/50 border border-border rounded-2xl px-4 py-4 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold uppercase"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-muted-foreground mr-1">الشركة المصنعة</label>
+                                <input
+                                    value={editForm.manufacturer}
+                                    onChange={e => setEditForm({ ...editForm, manufacturer: e.target.value.toUpperCase() })}
+                                    className="w-full bg-muted/50 border border-border rounded-2xl px-4 py-4 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold uppercase"
+                                    required
+                                />
+                            </div>
+                            <div className="flex gap-4 pt-4">
+                                <button type="submit" disabled={updateMutation.isPending} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50">
+                                    {updateMutation.isPending ? 'جاري الحفظ...' : 'حفظ التعديل'}
+                                </button>
+                                <button type="button" onClick={() => setEditParam(null)} className="flex-1 bg-muted hover:bg-accent text-foreground py-4 rounded-2xl font-black text-lg transition-all active:scale-95">إلغاء</button>
                             </div>
                         </form>
                     </div>

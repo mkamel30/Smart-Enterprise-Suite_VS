@@ -27,7 +27,7 @@ router.post('/:id/transition', authenticateToken, asyncHandler(async (req, res) 
     const result = await machineStateService.transition(id, targetStatus, context);
 
     return success(res, {
-        message: 'Êã ÊÛííÑ ÍÇáÉ ÇáãÇßíäÉ ÈäÌÇÍ',
+        message: 'تم تغيير حالة الماكينة بنجاح',
         machine: result
     });
 }));

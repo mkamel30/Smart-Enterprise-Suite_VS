@@ -18,6 +18,7 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 const { importUsers } = require('../shared/importExport.service');
 const { exportEntitiesToExcel, transformUsersForExport, setExcelHeaders, generateExportFilename } = require('../../../utils/excel');
+const adminSyncService = require('../../../services/adminSync.service');
 
 // GET all users (admin only) - PAGINATED
 router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) => {
@@ -178,6 +179,9 @@ router.post('/', authenticateToken, requireSuperAdmin, asyncHandler(async (req, 
         branchId: branchId || req.user.branchId
     });
 
+    // Sync newly created user to Central Admin
+    adminSyncService.syncUserToAdmin(user);
+
     return success(res, user, 201);
 }));
 
@@ -241,6 +245,11 @@ router.put('/:id', authenticateToken, requireSuperAdmin, asyncHandler(async (req
         performedBy: req.user.displayName,
         branchId: updated?.branchId || req.user.branchId
     });
+
+    // Sync updated user to Central Admin
+    if (updated) {
+        adminSyncService.syncUserToAdmin(updated);
+    }
 
     return success(res, updated);
 }));

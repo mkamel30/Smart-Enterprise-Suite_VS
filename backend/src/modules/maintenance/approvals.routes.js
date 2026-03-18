@@ -76,7 +76,7 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
         entityType: 'MAINTENANCE_APPROVAL',
         entityId: approval.id,
         action: 'CREATE',
-        details: `ÅäÔÇÁ ØáÈ ãæÇÝÞÉ - ÇáÊßáÝÉ: ${roundMoney(cost)} - ÇáØáÈ: ${requestId}`,
+        details: `إنشاء طلب موافقة - التكلفة: ${roundMoney(cost)} - الطلب: ${requestId}`,
         userId: req.user?.id,
         performedBy: req.user?.displayName || 'System',
         branchId: request.branchId
@@ -87,8 +87,8 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
         await createNotification({
             branchId: request.branchId,
             type: 'APPROVAL_REQUEST',
-            title: 'ØáÈ ãæÇÝÞÉ Úáì ÕíÇäÉ',
-            message: `ãØáæÈ ãæÇÝÞÉ Úáì ÊßáÝÉ ÕíÇäÉ ááØáÈ ÑÞã ${requestId} ÈÞíãÉ ${cost}`,
+            title: 'طلب موافقة على صيانة',
+            message: `مطلوب موافقة على تكلفة صيانة للطلب رقم ${requestId} بقيمة ${cost}`,
             data: { requestId, approvalId: approval.id },
             link: `/requests/${requestId}`
         });
@@ -149,7 +149,7 @@ router.put('/:id/respond', authenticateToken, asyncHandler(async (req, res) => {
         entityType: 'MAINTENANCE_APPROVAL',
         entityId: id,
         action: status === 'APPROVED' ? 'APPROVE' : 'REJECT',
-        details: `${status === 'APPROVED' ? 'ãæÇÝÞÉ' : 'ÑÝÖ'} Úáì ÇáÕíÇäÉ - ÇáØáÈ: ${previousApproval.requestId}${responseNotes ? ' - ' + responseNotes : ''}`,
+        details: `${status === 'APPROVED' ? 'موافقة' : 'رفض'} على الصيانة - الطلب: ${previousApproval.requestId}${responseNotes ? ' - ' + responseNotes : ''}`,
         userId: req.user?.id,
         performedBy: responderName,
         branchId: previousApproval?.branchId
@@ -160,8 +160,8 @@ router.put('/:id/respond', authenticateToken, asyncHandler(async (req, res) => {
         await createNotification({
             branchId: result.request.servicedByBranchId,
             type: 'APPROVAL_RESPONSE',
-            title: `Êã ${status === 'APPROVED' ? 'ÇáãæÇÝÞÉ Úáì' : 'ÑÝÖ'} ÇáÕíÇäÉ`,
-            message: `Êã ÇáÑÏ Úáì ØáÈ ÇáãæÇÝÞÉ ááØáÈ ${result.requestId}`,
+            title: `تم ${status === 'APPROVED' ? 'الموافقة على' : 'رفض'} الصيانة`,
+            message: `تم الرد على طلب الموافقة للطلب ${result.requestId}`,
             data: { requestId: result.requestId },
             link: `/requests/${previousApproval.requestId}`
         });

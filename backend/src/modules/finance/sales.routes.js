@@ -100,27 +100,27 @@ router.get('/export', authenticateToken, asyncHandler(async (req, res) => {
     const { items: sales } = await salesService.getAllSales(req);
 
     const data = sales.map(s => ({
-        'ÇáÊÇÑíÎ': s.saleDate ? new Date(s.saleDate).toLocaleDateString('ar-EG') : '-',
-        'ÇáÚãíá': s.customerName || s.customer?.client_name || '-',
-        'ßæÏ ÇáÚãíá': s.customer?.bkcode || '-',
-        'ÇáÓíÑíÇá': s.serialNumber || '-',
-        'äæÚ ÇáÈíÚ': s.type === 'CASH' ? 'ßÇÔ' : 'ÊÞÓíØ',
-        'ÅÌãÇáí ÇáÓÚÑ': s.totalPrice || 0,
-        'ÇáãÏÝæÚ': s.paidAmount || 0,
-        'ÇáãÊÈÞí': (s.totalPrice || 0) - (s.paidAmount || 0),
-        'ÇáÍÇáÉ': s.status === 'COMPLETED' ? 'ãßÊãá' : s.status === 'ONGOING' ? 'ÌÇÑí' : 'ãÚáÞ'
+        'التاريخ': s.saleDate ? new Date(s.saleDate).toLocaleDateString('ar-EG') : '-',
+        'العميل': s.customerName || s.customer?.client_name || '-',
+        'كود العميل': s.customer?.bkcode || '-',
+        'السيريال': s.serialNumber || '-',
+        'نوع البيع': s.type === 'CASH' ? 'كاش' : 'تقسيط',
+        'إجمالي السعر': s.totalPrice || 0,
+        'المدفوع': s.paidAmount || 0,
+        'المتبقي': (s.totalPrice || 0) - (s.paidAmount || 0),
+        'الحالة': s.status === 'COMPLETED' ? 'مكتمل' : s.status === 'ONGOING' ? 'جاري' : 'معلق'
     }));
 
     const columns = [
-        { header: 'ÇáÊÇÑíÎ', key: 'ÇáÊÇÑíÎ', width: 15 },
-        { header: 'ÇáÚãíá', key: 'ÇáÚãíá', width: 25 },
-        { header: 'ßæÏ ÇáÚãíá', key: 'ßæÏ ÇáÚãíá', width: 15 },
-        { header: 'ÇáÓíÑíÇá', key: 'ÇáÓíÑíÇá', width: 20 },
-        { header: 'äæÚ ÇáÈíÚ', key: 'äæÚ ÇáÈíÚ', width: 12 },
-        { header: 'ÅÌãÇáí ÇáÓÚÑ', key: 'ÅÌãÇáí ÇáÓÚÑ', width: 15 },
-        { header: 'ÇáãÏÝæÚ', key: 'ÇáãÏÝæÚ', width: 15 },
-        { header: 'ÇáãÊÈÞí', key: 'ÇáãÊÈÞí', width: 15 },
-        { header: 'ÇáÍÇáÉ', key: 'ÇáÍÇáÉ', width: 12 }
+        { header: 'التاريخ', key: 'التاريخ', width: 15 },
+        { header: 'العميل', key: 'العميل', width: 25 },
+        { header: 'كود العميل', key: 'كود العميل', width: 15 },
+        { header: 'السيريال', key: 'السيريال', width: 20 },
+        { header: 'نوع البيع', key: 'نوع البيع', width: 12 },
+        { header: 'إجمالي السعر', key: 'إجمالي السعر', width: 15 },
+        { header: 'المدفوع', key: 'المدفوع', width: 15 },
+        { header: 'المتبقي', key: 'المتبقي', width: 15 },
+        { header: 'الحالة', key: 'الحالة', width: 12 }
     ];
 
     const buffer = await exportToExcel(data, columns, 'sales_export');

@@ -286,6 +286,10 @@ metricsCache.initializeCache().catch(err => {
   logger.warn({ error: err.message }, 'Initial metrics cache failed - will retry on schedule');
 });
 
+// Initialize Admin Sync service (Polling from Portal)
+const adminSyncService = require('./src/services/adminSync.service');
+adminSyncService.init();
+
 // Refresh metrics cache every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
   logger.debug('Refreshing metrics cache...');

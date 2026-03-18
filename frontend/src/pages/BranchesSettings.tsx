@@ -460,9 +460,6 @@ export default function BranchesSettings() {
                                     </div>
                                 )}
 
-                                    </div>
-                                </div>
-
                                 <div className="space-y-4 pt-4 border-t border-slate-100">
                                     <div className="flex items-center gap-2 text-[#0A2472]">
                                         <Shield size={18} className="font-bold" />

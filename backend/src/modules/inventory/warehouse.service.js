@@ -9,13 +9,13 @@ const { ensureBranchWhere } = require('../../../prisma/branchHelpers');
  */
 async function importMachines(machines, branchId, performedBy = 'System') {
     if (!Array.isArray(machines)) {
-        const err = new Error('ÇáãÇßíäÇÊ íÌÈ Ãä Êßæä ÞÇÆãÉ (Array)');
+        const err = new Error('الماكينات يجب أن تكون قائمة (Array)');
         err.status = 400;
         throw err;
     }
 
     if (!branchId) {
-        const err = new Error('ãÚÑÝ ÇáÝÑÚ ãØáæÈ ááÇÓÊíÑÇÏ');
+        const err = new Error('معرف الفرع مطلوب للاستيراد');
         err.status = 400;
         throw err;
     }
@@ -32,7 +32,7 @@ async function importMachines(machines, branchId, performedBy = 'System') {
 
             if (existing) {
                 if (existing.branchId !== branchId) {
-                    throw new Error(`ÇáãÇßíäÉ ãæÌæÏÉ Ýí ÝÑÚ ÂÎÑ (${existing.branchId})`);
+                    throw new Error(`الماكينة موجودة في فرع آخر (${existing.branchId})`);
                 }
 
                 if (existing.status !== machine.status) {
@@ -40,7 +40,7 @@ async function importMachines(machines, branchId, performedBy = 'System') {
                         machineId: existing.id,
                         serialNumber: existing.serialNumber,
                         action: 'STATUS_CHANGE',
-                        details: `ÊÛíÑÊ ãä ${existing.status} Åáì ${machine.status} ÚÈÑ ÇáÇÓÊíÑÇÏ`,
+                        details: `تغيرت من ${existing.status} إلى ${machine.status} عبر الاستيراد`,
                         performedBy,
                         branchId: existing.branchId
                     });
@@ -64,9 +64,9 @@ async function importMachines(machines, branchId, performedBy = 'System') {
                 if (existsWithCustomer) {
                     if (existsWithCustomer.customer && existsWithCustomer.customer.branchId !== branchId) {
                         const branchName = existsWithCustomer.customer.branch?.name || existsWithCustomer.customer.branchId;
-                        throw new Error(`ãÇßíäÉ ãÓÌáÉ áÏì Úãíá Ýí ÝÑÚ "${branchName}"`);
+                        throw new Error(`ماكينة مسجلة لدى عميل في فرع "${branchName}"`);
                     }
-                    throw new Error(`ãÇßíäÉ ãÓÌáÉ áÏì Úãíá (${existsWithCustomer.customer?.client_name || existsWithCustomer.customerId})`);
+                    throw new Error(`ماكينة مسجلة لدى عميل (${existsWithCustomer.customer?.client_name || existsWithCustomer.customerId})`);
                 }
 
                 const detectedParams = detectMachineParams(serialNumber, machineParams);
@@ -88,7 +88,7 @@ async function importMachines(machines, branchId, performedBy = 'System') {
                     machineId: newMachine.id,
                     serialNumber: newMachine.serialNumber,
                     action: 'IMPORT',
-                    details: `Êã ÇáÇÓÊíÑÇÏ ÈÍÇáÉ ${machine.status} ááÝÑÚ ${branchId}`,
+                    details: `تم الاستيراد بحالة ${machine.status} للفرع ${branchId}`,
                     performedBy,
                     branchId
                 });
@@ -110,13 +110,13 @@ async function createMachine(data, user) {
     const { canAccessBranch } = require('../../../middleware/permissions');
     const branchId = data.branchId || user.branchId;
     if (!branchId) {
-        const err = new Error('ãÚÑÝ ÇáÝÑÚ ãÝÞæÏ');
+        const err = new Error('معرف الفرع مفقود');
         err.status = 400;
         throw err;
     }
 
     if (!await canAccessBranch({ user }, branchId, db)) {
-        const err = new Error('áíÓ áÏíß ÕáÇÍíÉ ÇáæÕæá áåÐÇ ÇáÝÑÚ');
+        const err = new Error('ليس لديك صلاحية الوصول لهذا الفرع');
         err.status = 403;
         throw err;
     }
@@ -125,7 +125,7 @@ async function createMachine(data, user) {
         where: { serialNumber: data.serialNumber, branchId: { not: null } }
     });
     if (existsWithCustomer) {
-        const err = new Error(`ÇáãÇßíäÉ ãæÌæÏÉ ÈÇáÝÚá áÏì Úãíá ÈÑÞã ÊÚÑíÝ: ${existsWithCustomer.customerId}`);
+        const err = new Error(`الماكينة موجودة بالفعل لدى عميل برقم تعريف: ${existsWithCustomer.customerId}`);
         err.status = 400;
         throw err;
     }
@@ -134,7 +134,7 @@ async function createMachine(data, user) {
         where: { serialNumber: data.serialNumber, branchId: { not: null } }
     });
     if (existing) {
-        const err = new Error(`ÇáãÇßíäÉ ãæÌæÏÉ ÈÇáÝÚá Ýí ÇáãÎÒä (ID: ${existing.id})`);
+        const err = new Error(`الماكينة موجودة بالفعل في المخزن (ID: ${existing.id})`);
         err.status = 400;
         throw err;
     }
@@ -158,7 +158,7 @@ async function createMachine(data, user) {
         machineId: machine.id,
         serialNumber: machine.serialNumber,
         action: 'CREATE',
-        details: `ÊãÊ ÇáÅÖÇÝÉ íÏæíÇð ÈÍÇáÉ ${machine.status} ááÝÑÚ ${branchId}`,
+        details: `تمت الإضافة يدوياً بحالة ${machine.status} للفرع ${branchId}`,
         performedBy: data.performedBy || user.displayName || user.name || 'System',
         branchId
     });
@@ -182,10 +182,10 @@ async function returnMachineFromClient(payload, user) {
 
     const { canAccessBranch } = require('../../../middleware/permissions');
     const branchId = payload.branchId || user.branchId;
-    if (!branchId) throw new Error('ãÚÑÝ ÇáÝÑÚ ãØáæÈ');
+    if (!branchId) throw new Error('معرف الفرع مطلوب');
 
     if (!await canAccessBranch({ user }, branchId, db)) {
-        throw new Error('áíÓ áÏíß ÕáÇÍíÉ ÇáæÕæá áåÐÇ ÇáÝÑÚ');
+        throw new Error('ليس لديك صلاحية الوصول لهذا الفرع');
     }
 
     const validStatuses = ['CLIENT_REPAIR', 'STANDBY', 'DEFECTIVE', 'NEW'];
@@ -200,18 +200,18 @@ async function returnMachineFromClient(payload, user) {
             select: { id: true, client_name: true, bkcode: true, branchId: true }
         });
 
-        if (!customer) throw new Error('ÇáÚãíá ÛíÑ ãæÌæÏ');
+        if (!customer) throw new Error('العميل غير موجود');
         // Hierarchical check already covered by findFirst with branchId and canAccessBranch above
         // But for safety:
-        if (!await canAccessBranch({ user }, customer.branchId, tx)) throw new Error('áíÓ áÏíß ÕáÇÍíÉ ÇáæÕæá áåÐÇ ÇáÚãíá');
+        if (!await canAccessBranch({ user }, customer.branchId, tx)) throw new Error('ليس لديك صلاحية الوصول لهذا العميل');
 
         // 2. Find Valid Machine
         const posMachine = await tx.posMachine.findFirst({
             where: { id: machineId, branchId: { not: null } }
         });
 
-        if (!posMachine) throw new Error('ÇáãÇßíäÉ ÛíÑ ãæÌæÏÉ');
-        if (posMachine.customerId !== customer.id) throw new Error('åÐå ÇáãÇßíäÉ áÇ ÊäÊãí áåÐÇ ÇáÚãíá');
+        if (!posMachine) throw new Error('الماكينة غير موجودة');
+        if (posMachine.customerId !== customer.id) throw new Error('هذه الماكينة لا تنتمي لهذا العميل');
 
         // Detect model/manufacturer if missing
         const machineParams = await tx.machineParameter.findMany();
@@ -291,7 +291,7 @@ async function returnMachineFromClient(payload, user) {
             entityType: 'CUSTOMER',
             entityId: customerId,
             action: 'MACHINE_RETURN',
-            details: `ÅÑÌÇÚ ãÇßíäÉ: ${posMachine.serialNumber}. ÇáÓÈÈ: ${reason || 'ÛíÑ ãÍÏÏ'}`,
+            details: `إرجاع ماكينة: ${posMachine.serialNumber}. السبب: ${reason || 'غير محدد'}`,
             performedBy: performedBy || user.displayName || user.name || 'System',
             branchId: branchId
         });
@@ -322,15 +322,15 @@ async function exchangeMachine(payload, user) {
         const outgoing = await tx.warehouseMachine.findFirst({
             where: { id: outgoingMachineId, branchId: { not: null } }
         });
-        if (!outgoing) throw new Error('ÇáãÇßíäÉ ÇáÕÇÏÑÉ ÛíÑ ãæÌæÏÉ');
-        if (!await canAccessBranch({ user }, outgoing.branchId, tx)) throw new Error('áíÓ áÏíß ÕáÇÍíÉ ÇáæÕæá áåÐå ÇáãÇßíäÉ');
+        if (!outgoing) throw new Error('الماكينة الصادرة غير موجودة');
+        if (!await canAccessBranch({ user }, outgoing.branchId, tx)) throw new Error('ليس لديك صلاحية الوصول لهذه الماكينة');
 
         // Check if exists with ANY customer
         const existingPos = await tx.posMachine.findFirst({
             where: { serialNumber: outgoing.serialNumber, branchId: { not: null } }
         });
         if (existingPos) {
-            throw new Error(`ÇáãÇßíäÉ ${outgoing.serialNumber} ãÓÌáÉ ÈÇáÝÚá áÏì Úãíá ÈÑÞã ÊÚÑíÝ: ${existingPos.customerId}`);
+            throw new Error(`الماكينة ${outgoing.serialNumber} مسجلة بالفعل لدى عميل برقم تعريف: ${existingPos.customerId}`);
         }
 
         // Fetch Customer
@@ -338,7 +338,7 @@ async function exchangeMachine(payload, user) {
             where: { bkcode: customerId, branchId },
             select: { id: true, client_name: true, bkcode: true, branchId: true }
         });
-        if (!customer) throw new Error('ÇáÚãíá ÛíÑ ãæÌæÏ');
+        if (!customer) throw new Error('العميل غير موجود');
 
         // Update warehouse status
         await tx.warehouseMachine.updateMany({
@@ -361,7 +361,7 @@ async function exchangeMachine(payload, user) {
         const incomingPos = await tx.posMachine.findFirst({
             where: { id: incomingMachineId, branchId: { not: null } }
         });
-        if (!incomingPos) throw new Error('ÇáãÇßíäÉ ÇáæÇÑÏÉ ÛíÑ ãæÌæÏÉ');
+        if (!incomingPos) throw new Error('الماكينة الواردة غير موجودة');
 
         // Detect model/manufacturer if missing
         const machineParams = await tx.machineParameter.findMany();
@@ -455,7 +455,7 @@ async function exchangeMachine(payload, user) {
             entityType: 'CUSTOMER',
             entityId: customerId,
             action: 'MACHINE_EXCHANGE',
-            details: `ÇÓÊÈÏÇá ãÇßíäÉ ${incomingPos.serialNumber} ÈÇáãÇßíäÉ ${outgoing.serialNumber}`,
+            details: `استبدال ماكينة ${incomingPos.serialNumber} بالماكينة ${outgoing.serialNumber}`,
             performedBy: performedBy || user.displayName || user.name || 'System',
             branchId: branchId
         });
@@ -472,12 +472,12 @@ async function returnToBranch(payload, user, req) {
     const fromBranchId = user.branchId;
 
     if (!serialNumbers?.length || !toBranchId) {
-        throw new Error('ÇáÃÑÞÇã ÇáÊÓáÓáíÉ æÝÑÚ ÇáæÌåÉ ãØáæÈÇä');
+        throw new Error('الأرقام التسلسلية وفرع الوجهة مطلوبان');
     }
 
     // Verify role
     if (!['CENTER_MANAGER', 'CENTER_TECH', 'SUPER_ADMIN', 'MANAGEMENT'].includes(user.role)) {
-        throw new Error('ÝÞØ ãÑßÒ ÇáÕíÇäÉ Ãæ ÇáÅÏÇÑÉ íãßäåã ÅÑÌÇÚ ÇáãÇßíäÇÊ');
+        throw new Error('فقط مركز الصيانة أو الإدارة يمكنهم إرجاع الماكينات');
     }
 
     return await db.$transaction(async (tx) => {
@@ -492,13 +492,13 @@ async function returnToBranch(payload, user, req) {
         if (machines.length !== serialNumbers.length) {
             const found = machines.map(m => m.serialNumber);
             const missing = serialNumbers.filter(s => !found.includes(s));
-            throw new Error(`ÈÚÖ ÇáãÇßíäÇÊ ÛíÑ ÌÇåÒÉ ááÅÑÌÇÚ Ãæ ÛíÑ ãæÌæÏÉ: ${missing.join(', ')}`);
+            throw new Error(`بعض الماكينات غير جاهزة للإرجاع أو غير موجودة: ${missing.join(', ')}`);
         }
 
         // Verify destination
         const wrongBranch = machines.filter(m => m.originBranchId && m.originBranchId !== toBranchId);
         if (wrongBranch.length > 0) {
-            throw new Error(`ÈÚÖ ÇáãÇßíäÇÊ ÊäÊãí áÝÑæÚ ÃÎÑì: ${wrongBranch.map(m => m.serialNumber).join(', ')}`);
+            throw new Error(`بعض الماكينات تنتمي لفروع أخرى: ${wrongBranch.map(m => m.serialNumber).join(', ')}`);
         }
 
         const orderNumber = `TO-RT-${Date.now()}`;
@@ -513,7 +513,7 @@ async function returnToBranch(payload, user, req) {
                 toBranchId,
                 branchId: toBranchId,
                 type: 'RETURN',
-                notes: notes || 'ÅÑÌÇÚ ãÇßíäÇÊ ãä ãÑßÒ ÇáÕíÇäÉ',
+                notes: notes || 'إرجاع ماكينات من مركز الصيانة',
                 createdByUserId: user.id,
                 createdByName: performedBy || user.displayName || user.name || 'System',
                 items: {
@@ -537,7 +537,7 @@ async function returnToBranch(payload, user, req) {
                 where: { serialNumber: serial, branchId: fromBranchId },
                 data: {
                     status: 'RETURNING',
-                    notes: `Ýí ØÑíÞ ÇáÚæÏÉ - ÅÐä ${orderNumber}. ÈæáíÕÉ: ${waybillNumber || 'áÇ íæÌÏ'}`,
+                    notes: `في طريق العودة - إذن ${orderNumber}. بوليصة: ${waybillNumber || 'لا يوجد'}`,
                     branchId: toBranchId
                 }
             });
@@ -547,7 +547,7 @@ async function returnToBranch(payload, user, req) {
                     machineId: m.id,
                     serialNumber: serial,
                     action: 'RETURN_TO_BRANCH',
-                    details: `ÅÑÌÇÚ ááÝÑÚ - ÅÐä ${orderNumber}. ÇáäÊíÌÉ: ${m.resolution || 'ÛíÑ ãÍÏÏ'}`,
+                    details: `إرجاع للفرع - إذن ${orderNumber}. النتيجة: ${m.resolution || 'غير محدد'}`,
                     performedBy: performedBy || user.displayName || user.name || 'System',
                     branchId: fromBranchId
                 }
@@ -558,7 +558,7 @@ async function returnToBranch(payload, user, req) {
                     where: { id: m.requestId, branchId: fromBranchId },
                     data: {
                         status: 'RETURNING_FROM_CENTER',
-                        actionTaken: m.resolution === 'REPAIRED' ? 'Êã ÇáÅÕáÇÍ ÈãÑßÒ ÇáÕíÇäÉ' : 'ÊÇáÝÉ/ÎÑÏÉ'
+                        actionTaken: m.resolution === 'REPAIRED' ? 'تم الإصلاح بمركز الصيانة' : 'تالفة/خردة'
                     }
                 });
             }
@@ -579,15 +579,15 @@ async function receiveReturn(machineId, user, performedBy) {
             where: { id: machineId, branchId: { not: null } }
         });
 
-        if (!machine) throw new Error('ÇáãÇßíäÉ ÛíÑ ãæÌæÏÉ');
-        if (machine.status !== 'RETURNING') throw new Error('ÇáãÇßíäÉ áíÓÊ Ýí ÍÇáÉ "Ýí ØÑíÞ ÇáÚæÏÉ"');
-        if (!await canAccessBranch({ user }, machine.branchId, tx)) throw new Error('áíÓ áÏíß ÕáÇÍíÉ ÇÓÊáÇã åÐå ÇáãÇßíäÉ');
+        if (!machine) throw new Error('الماكينة غير موجودة');
+        if (machine.status !== 'RETURNING') throw new Error('الماكينة ليست في حالة "في طريق العودة"');
+        if (!await canAccessBranch({ user }, machine.branchId, tx)) throw new Error('ليس لديك صلاحية استلام هذه الماكينة');
 
         await tx.warehouseMachine.updateMany({
             where: { id: machineId, branchId: machine.branchId },
             data: {
                 status: 'COMPLETED',
-                notes: `Êã ÇáÇÓÊáÇã ãä ãÑßÒ ÇáÕíÇäÉ - ${machine.resolution || 'ÛíÑ ãÍÏÏ'}`,
+                notes: `تم الاستلام من مركز الصيانة - ${machine.resolution || 'غير محدد'}`,
                 readyForPickup: machine.resolution === 'REPAIRED'
             }
         });
@@ -597,7 +597,7 @@ async function receiveReturn(machineId, user, performedBy) {
                 machineId: machine.id,
                 serialNumber: machine.serialNumber,
                 action: 'RECEIVED_FROM_CENTER',
-                details: `Êã ÇáÇÓÊáÇã ÇáäåÇÆí æÇáÚãáíÉ ãßÊãáÉ`,
+                details: `تم الاستلام النهائي والعملية مكتملة`,
                 performedBy: performedBy || user.displayName || user.name || 'System',
                 branchId: machine.branchId
             }

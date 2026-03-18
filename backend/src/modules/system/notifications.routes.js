@@ -45,7 +45,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(createPaginationResponse(notifications, total, limit, offset));
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
-        res.status(500).json({ error: 'ÝÔá Ýí ÌáÈ ÇáÅÔÚÇÑÇÊ' });
+        res.status(500).json({ error: 'فشل في جلب الإشعارات' });
     }
 });
 
@@ -77,7 +77,7 @@ router.get('/count', authenticateToken, async (req, res) => {
         res.json({ count });
     } catch (error) {
         console.error('Failed to count notifications:', error);
-        res.status(500).json({ error: 'ÝÔá Ýí ÌáÈ ÚÏÏ ÇáÅÔÚÇÑÇÊ' });
+        res.status(500).json({ error: 'فشل في جلب عدد الإشعارات' });
     }
 });
 
@@ -91,7 +91,7 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
                 _skipBranchEnforcer: true
             }
         });
-        if (!notif) return res.status(404).json({ error: 'ÇáÅÔÚÇÑ ÛíÑ ãæÌæÏ' });
+        if (!notif) return res.status(404).json({ error: 'الإشعار غير موجود' });
 
         // Authorization: allow if same branch or targeted user or authorized via hierarchy
         const authorizedIds = req.user.authorizedBranchIds || (req.user.branchId ? [req.user.branchId] : []);
@@ -99,7 +99,7 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
         const sameUser = notif.userId && notif.userId === req.user.id;
         const isAdmin = isGlobalRole(req.user.role);
         if (!(canAccess || sameUser || isAdmin)) {
-            return res.status(403).json({ error: 'áÇ Êãáß ÕáÇÍíÉ ÊÍÏíË åÐÇ ÇáÅÔÚÇÑ' });
+            return res.status(403).json({ error: 'لا تملك صلاحية تحديث هذا الإشعار' });
         }
 
         await db.notification.updateMany({
@@ -112,7 +112,7 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
         res.json(notification);
     } catch (error) {
         console.error('Failed to mark notification as read:', error);
-        res.status(500).json({ error: 'ÝÔá Ýí ÊÍÏíË ÇáÅÔÚÇÑ' });
+        res.status(500).json({ error: 'فشل في تحديث الإشعار' });
     }
 });
 
@@ -130,10 +130,10 @@ router.put('/read-all', authenticateToken, async (req, res) => {
             data: { isRead: true }
         }, req));
 
-        res.json({ message: 'Êã ÊÚáíã ßá ÇáÅÔÚÇÑÇÊ ßãÞÑæÁÉ' });
+        res.json({ message: 'تم تعليم كل الإشعارات كمقروءة' });
     } catch (error) {
         console.error('Failed to mark all as read:', error);
-        res.status(500).json({ error: 'ÝÔá Ýí ÊÍÏíË ÇáÅÔÚÇÑÇÊ' });
+        res.status(500).json({ error: 'فشل في تحديث الإشعارات' });
     }
 });
 
@@ -146,7 +146,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         });
 
         if (!notification) {
-            return res.status(404).json({ error: 'ÇáÅÔÚÇÑ ÛíÑ ãæÌæÏ' });
+            return res.status(404).json({ error: 'الإشعار غير موجود' });
         }
 
         // Authorization check
@@ -156,17 +156,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         const isAdmin = isGlobalRole(req.user.role);
 
         if (!(canAccess || sameUser || isAdmin)) {
-            return res.status(403).json({ error: 'áÇ Êãáß ÕáÇÍíÉ ÍÐÝ åÐÇ ÇáÅÔÚÇÑ' });
+            return res.status(403).json({ error: 'لا تملك صلاحية حذف هذا الإشعار' });
         }
 
         await db.notification.deleteMany({
             where: { id: req.params.id, branchId: notification.branchId }
         });
 
-        res.json({ message: 'Êã ÍÐÝ ÇáÅÔÚÇÑ' });
+        res.json({ message: 'تم حذف الإشعار' });
     } catch (error) {
         console.error('Failed to delete notification:', error);
-        res.status(500).json({ error: 'ÝÔá Ýí ÍÐÝ ÇáÅÔÚÇÑ' });
+        res.status(500).json({ error: 'فشل في حذف الإشعار' });
     }
 });
 

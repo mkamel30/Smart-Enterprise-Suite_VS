@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../../../db');
 const { authenticateToken, requireSuperAdmin } = require('../../../middleware/auth');
+const portalAuth = require('../../../middleware/portalAuth');
 const { success, error } = require('../../../utils/apiResponse');
 const asyncHandler = require('../../../utils/asyncHandler');
 const { calculateAllMetrics } = require('../shared/metricsCache.service');
@@ -15,27 +16,27 @@ const { z } = require('zod');
  */
 
 // GET /api/system/sync/heartbeat - Quick check if branch is alive
-router.get('/heartbeat', authenticateToken, asyncHandler(async (req, res) => {
+router.get('/heartbeat', portalAuth, asyncHandler(async (req, res) => {
     return success(res, {
         status: 'online',
-        branchId: req.user.branchId || 'MASTER',
+        branchId: process.env.BRANCH_CODE || 'BR001',
         version: process.env.APP_VERSION || '1.0.0',
         timestamp: new Date().toISOString()
     });
 }));
 
 // GET /api/system/sync/metrics - Pull latest metrics from branch
-router.get('/metrics', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
+router.get('/metrics', portalAuth, asyncHandler(async (req, res) => {
     // Force recalculation of metrics
     const metrics = await calculateAllMetrics();
     return success(res, metrics);
 }));
 
-// POST /api/system/sync/parameters - Push global params from Master to Branch
-router.post('/parameters', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
-    const { machineParameters, constants } = req.body;
+// POST /api/system/sync/parameters - Push global params from Master to Branch (Backup mechanism)
+router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
+    const { machineParameters, globalParameters } = req.body;
 
-    if (!machineParameters && !constants) {
+    if (!machineParameters && !globalParameters) {
         return error(res, 'No data to sync', 400);
     }
 
@@ -50,15 +51,33 @@ router.post('/parameters', authenticateToken, requireSuperAdmin, asyncHandler(as
                 });
             }
         }
-        
-        // Potential for more global settings here
+
+        if (globalParameters && Array.isArray(globalParameters)) {
+            // Update or create global parameters
+            for (const param of globalParameters) {
+                await tx.globalParameter.upsert({
+                    where: { key: param.key },
+                    update: { 
+                        value: String(param.value), 
+                        type: param.type || 'STRING',
+                        group: param.group || null
+                    },
+                    create: { 
+                        key: param.key, 
+                        value: String(param.value), 
+                        type: param.type || 'STRING',
+                        group: param.group || null
+                    }
+                });
+            }
+        }
     });
 
     return success(res, { message: 'Parameters synced successfully' });
 }));
 
 // POST /api/system/sync/trigger-backup - Remotely trigger a backup and get metadata
-router.post('/trigger-backup', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
+router.post('/trigger-backup', portalAuth, asyncHandler(async (req, res) => {
     const backup = await createBackup('remote_sync');
     return success(res, backup);
 }));

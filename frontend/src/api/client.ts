@@ -132,6 +132,7 @@ class ApiClient {
     // Settings & Configuration
     getMachineParameters = settingsApi.getMachineParameters;
     createMachineParameter = settingsApi.createMachineParameter;
+    updateMachineParameter = settingsApi.updateMachineParameter;
     deleteMachineParameter = settingsApi.deleteMachineParameter;
     applyMachineParameters = settingsApi.applyMachineParameters;
     forceUpdateMachineModels = settingsApi.forceUpdateMachineModels;
@@ -158,6 +159,7 @@ class ApiClient {
     getCenterBranches = branchApi.getCenterBranches;
     getBranchesLookup = branchApi.getBranchesLookup;
     getAuthorizedBranches = branchApi.getAuthorizedBranches;
+    getSystemHwid = branchApi.getSystemHwid;
 
     // Sims
     getAllSimCards = simApi.getAllSimCards;

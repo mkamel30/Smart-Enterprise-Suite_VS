@@ -67,7 +67,7 @@ router.get('/', authenticateToken, async (req, res) => {
         return paginated(res, payments, total, limit, offset);
     } catch (err) {
         console.error('Failed to fetch pending payments:', err);
-        return error(res, 'ÝÔá Ýí ÌáÈ ÇáãÓÊÍÞÇÊ');
+        return error(res, 'فشل في جلب المستحقات');
     }
 });
 
@@ -113,7 +113,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
         return success(res, { totalAmount, count });
     } catch (err) {
         console.error('Failed to fetch payments summary:', err);
-        return error(res, 'ÝÔá Ýí ÌáÈ ãáÎÕ ÇáãÓÊÍÞÇÊ');
+        return error(res, 'فشل في جلب ملخص المستحقات');
     }
 });
 
@@ -131,13 +131,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
         });
 
         if (!payment) {
-            return error(res, 'ÇáãÓÊÍÞ ÛíÑ ãæÌæÏ', 404);
+            return error(res, 'المستحق غير موجود', 404);
         }
 
         return success(res, payment);
     } catch (err) {
         console.error('Failed to fetch pending payment:', err);
-        return error(res, 'ÝÔá Ýí ÌáÈ ÇáãÓÊÍÞ');
+        return error(res, 'فشل في جلب المستحق');
     }
 });
 
@@ -147,7 +147,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         const { receiptNumber, paymentPlace } = req.body;
 
         if (!receiptNumber) {
-            return error(res, 'íÑÌì ÅÏÎÇá ÑÞã ÇáÅíÕÇá', 400);
+            return error(res, 'يرجى إدخال رقم الإيصال', 400);
         }
 
         const payment = await db.branchDebt.findFirst({
@@ -155,11 +155,11 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         });
 
         if (!payment) {
-            return error(res, 'ÇáãÓÊÍÞ ÛíÑ ãæÌæÏ', 404);
+            return error(res, 'المستحق غير موجود', 404);
         }
 
         if (payment.status !== DEBT_STATUS.PENDING) {
-            return error(res, 'Êã ÓÏÇÏ åÐÇ ÇáãÓÊÍÞ ãÓÈÞÇð', 400);
+            return error(res, 'تم سداد هذا المستحق مسبقاً', 400);
         }
 
         // Check if receipt number already exists
@@ -168,7 +168,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         }, req));
 
         if (existingReceipt) {
-            return error(res, 'ÑÞã ÇáÅíÕÇá ãÓÌá ãä ÞÈá', 400);
+            return error(res, 'رقم الإيصال مسجل من قبل', 400);
         }
 
         const result = await db.$transaction(async (tx) => {
@@ -178,7 +178,7 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
                 data: {
                     status: DEBT_STATUS.PAID,
                     receiptNumber,
-                    paymentPlace: paymentPlace || 'ÖÇãä',
+                    paymentPlace: paymentPlace || 'ضامن',
                     paidAt: new Date(),
                     paidBy: req.user.displayName || req.user.email,
                     paidByUserId: req.user.id,
@@ -198,8 +198,8 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
                     customerName: payment.customerName,
                     amount: payment.amount,
                     type: 'MAINTENANCE_CENTER',
-                    reason: `ÞØÚ ÛíÇÑ ÕíÇäÉ ãÑßÒ - ${payment.machineSerial}`,
-                    paymentPlace: paymentPlace || 'ÖÇãä',
+                    reason: `قطع غيار صيانة مركز - ${payment.machineSerial}`,
+                    paymentPlace: paymentPlace || 'ضامن',
                     receiptNumber,
                     userId: req.user.id,
                     userName: req.user.displayName || req.user.email,
@@ -231,15 +231,15 @@ router.put('/:id/pay', authenticateToken, async (req, res) => {
         await createNotification({
             branchId: payment.creditorBranchId,
             type: 'PAYMENT_RECEIVED',
-            title: '?? Êã ÇÓÊáÇã ÓÏÇÏ',
-            message: `Êã ÊÓÌíá ÓÏÇÏ ${payment.amount} Ì.ã ááãÇßíäÉ ${payment.machineSerial} - ÅíÕÇá: ${receiptNumber}`,
+            title: 'تم استلام سداد',
+            message: `تم تسجيل سداد ${payment.amount} ج.م للماكينة ${payment.machineSerial} - إيصال: ${receiptNumber}`,
             link: '/pending-payments'
         });
 
         return success(res, result);
     } catch (err) {
         console.error('Failed to pay pending payment:', err);
-        return error(res, 'ÝÔá Ýí ÊÓÌíá ÇáÓÏÇÏ');
+        return error(res, 'فشل في تسجيل السداد');
     }
 });
 
@@ -267,25 +267,25 @@ router.get('/export', authenticateToken, async (req, res) => {
         });
 
         const data = payments.map(p => ({
-            'ÇáÊÇÑíÎ': new Date(p.createdAt).toLocaleDateString('ar-EG'),
-            'ÇáÓíÑíÇá': p.machineSerial || '-',
-            'ÇáÚãíá': p.customerName || '-',
-            'ÇáãÈáÛ': p.amount || 0,
-            'ÇáãÊÈÞí': p.remainingAmount || 0,
-            'ÇáÍÇáÉ': p.status === 'PENDING' ? 'ãÚáÞ' : p.status === 'PAID' ? 'ãÏÝæÚ' : p.status,
-            'ÑÞã ÇáÅíÕÇá': p.receiptNumber || '-',
-            'ÊÇÑíÎ ÇáÓÏÇÏ': p.paidAt ? new Date(p.paidAt).toLocaleDateString('ar-EG') : '-'
+            'التاريخ': new Date(p.createdAt).toLocaleDateString('ar-EG'),
+            'السيريال': p.machineSerial || '-',
+            'العميل': p.customerName || '-',
+            'المبلغ': p.amount || 0,
+            'المتبقي': p.remainingAmount || 0,
+            'الحالة': p.status === 'PENDING' ? 'معلق' : p.status === 'PAID' ? 'مدفوع' : p.status,
+            'رقم الإيصال': p.receiptNumber || '-',
+            'تاريخ السداد': p.paidAt ? new Date(p.paidAt).toLocaleDateString('ar-EG') : '-'
         }));
 
         const columns = [
-            { header: 'ÇáÊÇÑíÎ', key: 'ÇáÊÇÑíÎ', width: 15 },
-            { header: 'ÇáÓíÑíÇá', key: 'ÇáÓíÑíÇá', width: 20 },
-            { header: 'ÇáÚãíá', key: 'ÇáÚãíá', width: 25 },
-            { header: 'ÇáãÈáÛ', key: 'ÇáãÈáÛ', width: 12 },
-            { header: 'ÇáãÊÈÞí', key: 'ÇáãÊÈÞí', width: 12 },
-            { header: 'ÇáÍÇáÉ', key: 'ÇáÍÇáÉ', width: 12 },
-            { header: 'ÑÞã ÇáÅíÕÇá', key: 'ÑÞã ÇáÅíÕÇá', width: 15 },
-            { header: 'ÊÇÑíÎ ÇáÓÏÇÏ', key: 'ÊÇÑíÎ ÇáÓÏÇÏ', width: 15 }
+            { header: 'التاريخ', key: 'التاريخ', width: 15 },
+            { header: 'السيريال', key: 'السيريال', width: 20 },
+            { header: 'العميل', key: 'العميل', width: 25 },
+            { header: 'المبلغ', key: 'المبلغ', width: 12 },
+            { header: 'المتبقي', key: 'المتبقي', width: 12 },
+            { header: 'الحالة', key: 'الحالة', width: 12 },
+            { header: 'رقم الإيصال', key: 'رقم الإيصال', width: 15 },
+            { header: 'تاريخ السداد', key: 'تاريخ السداد', width: 15 }
         ];
 
         const buffer = await exportToExcel(data, columns, 'pending_payments_export');
@@ -294,7 +294,7 @@ router.get('/export', authenticateToken, async (req, res) => {
         res.send(buffer);
     } catch (error) {
         console.error('Failed to export pending payments:', error);
-        res.status(500).json({ error: 'ÝÔá Ýí ÊÕÏíÑ ÇáãÓÊÍÞÇÊ' });
+        res.status(500).json({ error: 'فشل في تصدير المستحقات' });
     }
 });
 

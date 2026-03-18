@@ -18,7 +18,7 @@ export function PerformanceReportModal({ isOpen, onClose, branchId }: Performanc
         queryFn: async () => {
             const params = new URLSearchParams();
             if (branchId) params.append('branchId', branchId);
-            return request<any>(`/maintenance/branch-performance-report?${params.toString()}`);
+            return request<any>(`/reports/performance?${params.toString()}`);
         },
         enabled: isOpen
     });

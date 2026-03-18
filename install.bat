@@ -30,7 +30,7 @@ echo.
 echo [2/2] Setting up Frontend...
 cd frontend
 echo [i] Installing frontend dependencies...
-call npm install --no-audit --no-fund
+call npm install --no-audit --no-fund --legacy-peer-deps
 cd ..
 
 echo.

@@ -207,10 +207,11 @@ export const AddMachineModal: React.FC<AddMachineModalProps> = ({
                                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                                     className="smart-input h-18 pr-18 pl-8 rounded-2xl bg-white border-2 border-white focus:border-emerald-500 font-black text-sm appearance-none outline-none transition-all shadow-xl shadow-slate-400/5"
                                 >
-                                    <option value="NEW">ماكينة جديدة (NEW 2024) - عهدة بكر</option>
-                                    {!isAffairs && <option value="STANDBY">ماكينة استبدال (STANDBY) - مستعملة مجددة</option>}
-                                    <option value="DEFECTIVE">ماكينة تالفة (REPAIR) - تحتاج دخول صيانة</option>
-                                    {!isAffairs && <option value="CLIENT_REPAIR">صيانة طرف عميل (CLIENT_REPAIR)</option>}
+                                    <option value="NEW">ماكينات جديدة</option>
+                                    {!isAffairs && <option value="STANDBY">ماكينات استبدال</option>}
+                                    <option value="DEFECTIVE">ماكينات تالفة</option>
+                                    {!isAffairs && <option value="CLIENT_REPAIR">صيانة عملاء</option>}
+                                    {!isAffairs && <option value="REPAIRED">ماكينات من الصيانة</option>}
                                 </select>
                                 <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
