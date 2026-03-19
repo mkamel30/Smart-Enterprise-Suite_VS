@@ -110,32 +110,34 @@ router.get('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res
     return success(res, user);
 }));
 
-// POST create user (super admin only)
-router.post('/', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
+// POST create user (admin: super admin or branch admin)
+router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) => {
     const { email, displayName, password, role, branchId, canDoMaintenance } = req.body;
 
-    // Admin roles don't require a specific branchId (HQ/Global)
-    const isAdminRole = isGlobalRole(role);
-
-    // If it's a Branch Tech, email and password are optional
+    const isGlobalUser = isGlobalRole(req.user.role);
     const isVirtualUser = role === ROLES.BRANCH_TECH;
 
-    if (!displayName) {
-        return res.status(400).json({ error: 'الاسم مطلوب' });
+    // Branch Admin: can only create branch-level roles for their own branch
+    if (!isGlobalUser) {
+        if (!displayName) return res.status(400).json({ error: 'الاسم مطلوب' });
+        const branchLevelRoles = [ROLES.BRANCH_MANAGER, ROLES.CS_SUPERVISOR, ROLES.CS_AGENT, ROLES.BRANCH_TECH, ROLES.TECHNICIAN];
+        if (!branchLevelRoles.includes(role)) {
+            return res.status(403).json({ error: 'ليس لديك صلاحية لإنشاء هذا النوع من المستخدمين' });
+        }
+        if (branchId && branchId !== req.user.branchId) {
+            return res.status(403).json({ error: 'لا يمكنك إنشاء مستخدم لفرع آخر' });
+        }
+    } else {
+        if (!displayName) return res.status(400).json({ error: 'الاسم مطلوب' });
     }
 
     if (!isVirtualUser && !email) {
         return res.status(400).json({ error: 'البريد الإلكتروني مطلوب للمستخدمين النشطين' });
     }
 
-    // Check for duplicate email if one is provided
     if (email) {
-        const existing = await db.user.findFirst({
-            where: { email }
-        });
-        if (existing) {
-            return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
-        }
+        const existing = await db.user.findFirst({ where: { email } });
+        if (existing) return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
     }
 
     // Hash password if provided, otherwise for virtual users use a dummy
@@ -147,13 +149,15 @@ router.post('/', authenticateToken, requireSuperAdmin, asyncHandler(async (req, 
         hashedPassword = await bcrypt.hash('1234567890Aa!', 10);
     }
 
+    const targetBranchId = isGlobalUser ? (branchId || null) : req.user.branchId;
+
     const user = await db.user.create({
         data: {
             email,
             displayName,
             password: hashedPassword,
             role: role || 'CS_AGENT',
-            branchId: branchId || null,
+            branchId: targetBranchId,
             canDoMaintenance: canDoMaintenance || false,
             isActive: true // Default to active
         },
@@ -185,23 +189,38 @@ router.post('/', authenticateToken, requireSuperAdmin, asyncHandler(async (req, 
     return success(res, user, 201);
 }));
 
-// PUT update user (super admin only)
-router.put('/:id', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
+// PUT update user (admin: super admin or branch admin)
+router.put('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res) => {
     const { displayName, role, branchId, canDoMaintenance, password } = req.body;
 
-    const existing = await db.user.findFirst({
-        where: { id: req.params.id }
-    });
+    const existing = await db.user.findFirst({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'المستخدم غير موجود' });
 
-    if (!existing) {
-        return res.status(404).json({ error: 'المستخدم غير موجود' });
+    const isGlobalUser = isGlobalRole(req.user.role);
+
+    // Branch Admin: can only update users in their own branch
+    if (!isGlobalUser) {
+        if (existing.branchId !== req.user.branchId) {
+            return res.status(403).json({ error: 'لا يمكنك تعديل مستخدمين من فروع أخرى' });
+        }
+        if (existing.role === ROLES.BRANCH_ADMIN || existing.role === ROLES.SUPER_ADMIN) {
+            return res.status(403).json({ error: 'لا يمكنك تعديل بيانات المدراء' });
+        }
+        // Branch Admin cannot promote users to global roles
+        if (role && isGlobalRole(role)) {
+            return res.status(403).json({ error: 'ليس لديك صلاحية لتعيين هذا الدور' });
+        }
     }
 
     const updateData = {};
     if (displayName) updateData.displayName = displayName;
     if (role) updateData.role = role;
-    // Allow setting branchId to null for admin roles
-    if (branchId !== undefined) updateData.branchId = branchId || null;
+    // Branch Admin cannot change branch assignment
+    if (branchId !== undefined && isGlobalUser) {
+        updateData.branchId = branchId || null;
+    } else if (!isGlobalUser) {
+        // Keep existing branchId for branch admins
+    }
     if (canDoMaintenance !== undefined) updateData.canDoMaintenance = canDoMaintenance;
     if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive === true || req.body.isActive === 'true';
 
@@ -254,24 +273,28 @@ router.put('/:id', authenticateToken, requireSuperAdmin, asyncHandler(async (req
     return success(res, updated);
 }));
 
-// DELETE user (super admin only)
-router.delete('/:id', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
-    const existing = await db.user.findFirst({
-        where: { id: req.params.id }
-    });
+// DELETE user (admin: super admin or branch admin)
+router.delete('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res) => {
+    const existing = await db.user.findFirst({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'المستخدم غير موجود' });
 
-    if (!existing) {
-        return res.status(404).json({ error: 'المستخدم غير موجود' });
-    }
-
-    // Prevent deleting yourself
     if (existing.id === req.user.id) {
         return res.status(400).json({ error: 'لا يمكنك حذف حسابك الخاص' });
     }
 
-    await db.user.delete({
-        where: { id: req.params.id }
-    });
+    const isGlobalUser = isGlobalRole(req.user.role);
+
+    // Branch Admin: can only delete users in their own branch
+    if (!isGlobalUser) {
+        if (existing.branchId !== req.user.branchId) {
+            return res.status(403).json({ error: 'لا يمكنك حذف مستخدمين من فروع أخرى' });
+        }
+        if (existing.role === ROLES.BRANCH_ADMIN || existing.role === ROLES.SUPER_ADMIN) {
+            return res.status(403).json({ error: 'لا يمكنك حذف المدراء' });
+        }
+    }
+
+    await db.user.delete({ where: { id: req.params.id } });
 
     await logAction({
         entityType: 'USER',
@@ -282,6 +305,9 @@ router.delete('/:id', authenticateToken, requireSuperAdmin, asyncHandler(async (
         performedBy: req.user.displayName,
         branchId: existing.branchId || req.user.branchId
     });
+
+    // Sync deletion to Admin Portal
+    adminSyncService.syncUserToAdmin({ ...existing, _deleted: true });
 
     return success(res, { success: true, message: 'تم حذف المستخدم بنجاح' });
 }));

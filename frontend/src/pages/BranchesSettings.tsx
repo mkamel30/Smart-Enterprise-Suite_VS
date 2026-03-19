@@ -51,8 +51,8 @@ export default function BranchesSettings() {
 
     const createMutation = useMutation({
         mutationFn: (data: any) => api.createBranch(data),
-        onSuccess: () => {
-            toast.success('تم إنشاء الفرع بنجاح');
+        onSuccess: (newBranch) => {
+            toast.success(`تم إنشاء الفرع بنجاح${newBranch?.code ? ` — الكود: ${newBranch.code}` : ''}`);
             queryClient.invalidateQueries({ queryKey: ['branches'] });
             closeModal();
         },
@@ -363,23 +363,21 @@ export default function BranchesSettings() {
                         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                             <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {editingBranch && (
-                                        <div className="space-y-2">
+                                <div className="space-y-2">
                                             <label className="text-sm font-bold text-slate-700">كود الفرع</label>
                                             <div className="relative group">
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                                                     <Hash size={18} />
                                                 </div>
                                                 <input
                                                     type="text"
-                                                    value={formData.code}
+                                                    value={editingBranch ? (formData.code || editingBranch.code || 'يتم إنشاؤه تلقائياً') : (formData.code || 'يتم إنشاؤه تلقائياً')}
                                                     readOnly
                                                     className="w-full pr-10 pl-4 py-3 bg-slate-100/50 text-slate-500 border-2 border-slate-200 rounded-xl outline-none font-mono font-bold text-right cursor-not-allowed"
                                                     placeholder="يتم إنشاؤه تلقائياً"
                                                 />
                                             </div>
                                         </div>
-                                    )}
 
                                     <div className={`space-y-2 ${!editingBranch ? 'col-span-1 md:col-span-2' : ''}`}>
                                         <label className="text-sm font-bold text-slate-700">اسم الفرع <span className="text-red-500">*</span></label>

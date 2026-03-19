@@ -124,38 +124,29 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create branch
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        let { code, name, address, type, maintenanceCenterId, parentBranchId, isActive, authorizedHWID } = req.body;
+        const { name, address, type, maintenanceCenterId, parentBranchId, isActive, authorizedHWID } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: 'الاسم مطلوب' });
         }
 
-        if (!code) {
-           const branches = await db.branch.findMany({
-               where: { code: { startsWith: 'BR' } },
-               select: { code: true }
-           });
-           let nextNum = 1;
-           if (branches.length > 0) {
-              const maxNum = branches.map(b => {
-                 const match = b.code.match(/BR(\d+)/);
-                 return match ? parseInt(match[1], 10) : 0;
-              }).sort((a,b) => b - a)[0];
-              nextNum = maxNum + 1;
-           }
-           code = `BR${String(nextNum).padStart(3, '0')}`;
-           while (await db.branch.findUnique({ where: { code } })) {
-               nextNum++;
-               code = `BR${String(nextNum).padStart(3, '0')}`;
-           }
-        } else {
-            // Check for duplicate code if provided manually
-            const existing = await db.branch.findUnique({
-                where: { code }
-            });
-            if (existing) {
-                return res.status(400).json({ error: 'كود الفرع موجود مسبقاً' });
-            }
+        // Always auto-generate branch code (ignore any code provided by client)
+        const branches = await db.branch.findMany({
+            where: { code: { startsWith: 'BR' } },
+            select: { code: true }
+        });
+        let nextNum = 1;
+        if (branches.length > 0) {
+            const maxNum = branches.map(b => {
+                const match = b.code.match(/BR(\d+)/);
+                return match ? parseInt(match[1], 10) : 0;
+            }).sort((a, b) => b - a)[0];
+            nextNum = maxNum + 1;
+        }
+        let code = `BR${String(nextNum).padStart(3, '0')}`;
+        while (await db.branch.findUnique({ where: { code } })) {
+            nextNum++;
+            code = `BR${String(nextNum).padStart(3, '0')}`;
         }
 
         // Validate maintenanceCenterId if provided
@@ -191,7 +182,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // Update branch
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
-        const { code, name, address, type, maintenanceCenterId, parentBranchId, isActive, authorizedHWID } = req.body;
+        const { name, address, type, maintenanceCenterId, parentBranchId, isActive, authorizedHWID } = req.body;
 
         // Check if branch exists
         const existing = await db.branch.findUnique({
@@ -199,16 +190,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
         });
         if (!existing) {
             return res.status(404).json({ error: 'الفرع غير موجود' });
-        }
-
-        // Check for duplicate code
-        if (code && code !== existing.code) {
-            const duplicate = await db.branch.findUnique({
-                where: { code }
-            });
-            if (duplicate) {
-                return res.status(400).json({ error: 'كود الفرع موجود مسبقاً' });
-            }
         }
 
         // Validate maintenanceCenterId if provided
@@ -224,7 +205,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
         const branch = await db.branch.update({
             where: { id: req.params.id },
             data: {
-                code: code || existing.code,
                 name: name || existing.name,
                 address: address !== undefined ? (address || null) : existing.address,
                 type: type || existing.type,
