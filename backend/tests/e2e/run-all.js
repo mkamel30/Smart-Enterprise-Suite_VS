@@ -56,11 +56,11 @@ async function checkServer(url, name) {
   return false;
 }
 
-function runTestSuite(name, scriptPath) {
+function runTestSuite(name, scriptPath, cwd) {
   return new Promise((resolve) => {
     printHeader(name);
-    const child = spawn(process.execPath, [scriptPath], {
-      cwd: path.dirname(scriptPath),
+    const child = spawn('node', [scriptPath], {
+      cwd: cwd || path.dirname(scriptPath),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -110,13 +110,15 @@ async function main() {
 
   const branchResult = await runTestSuite(
     'SUITE 1: Branch App E2E Tests',
-    path.join(process.cwd(), 'tests/e2e/branch-app-tester.js')
+    path.join(process.cwd(), 'backend/tests/e2e/branch-app-tester.js')
   );
   results.push({ name: 'Branch App', ...branchResult });
 
+  const portalScriptPath = path.resolve(process.cwd(), '../SmartEnterprise_AD/backend/tests/e2e/portal-tester.js');
   const portalResult = await runTestSuite(
     'SUITE 2: Admin Portal E2E Tests',
-    path.join(process.cwd(), '../../SmartEnterprise_AD/backend/tests/e2e/portal-tester.js')
+    portalScriptPath,
+    path.dirname(portalScriptPath)
   );
   results.push({ name: 'Admin Portal', ...portalResult });
 
