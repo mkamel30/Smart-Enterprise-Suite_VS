@@ -8,7 +8,7 @@ const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || (getJwtSecret()
 
 function ApiError(message, status = 500) {
     const e = new Error(message);
-    e.status = status;
+    e.statusCode = status;
     return e;
 }
 

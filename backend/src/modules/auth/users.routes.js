@@ -59,7 +59,6 @@ router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) =
                 displayName: true,
                 role: true,
                 branchId: true,
-                canDoMaintenance: true,
                 isActive: true,
                 createdAt: true,
                 branch: {
@@ -92,7 +91,6 @@ router.get('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res
             displayName: true,
             role: true,
             branchId: true,
-            canDoMaintenance: true,
             isActive: true,
             theme: true,
             fontFamily: true,
@@ -112,7 +110,7 @@ router.get('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res
 
 // POST create user (admin: super admin or branch admin)
 router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) => {
-    const { email, displayName, password, role, branchId, canDoMaintenance } = req.body;
+    const { email, displayName, password, role, branchId } = req.body;
 
     const isGlobalUser = isGlobalRole(req.user.role);
     const isVirtualUser = role === ROLES.BRANCH_TECH;
@@ -158,8 +156,7 @@ router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) 
             password: hashedPassword,
             role: role || 'CS_AGENT',
             branchId: targetBranchId,
-            canDoMaintenance: canDoMaintenance || false,
-            isActive: true // Default to active
+            isActive: true
         },
         select: {
             id: true,
@@ -167,7 +164,6 @@ router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) 
             displayName: true,
             role: true,
             branchId: true,
-            canDoMaintenance: true,
             isActive: true,
             createdAt: true
         }
@@ -191,7 +187,7 @@ router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req, res) 
 
 // PUT update user (admin: super admin or branch admin)
 router.put('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res) => {
-    const { displayName, role, branchId, canDoMaintenance, password } = req.body;
+    const { displayName, role, branchId, password } = req.body;
 
     const existing = await db.user.findFirst({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'المستخدم غير موجود' });
@@ -221,7 +217,6 @@ router.put('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res
     } else if (!isGlobalUser) {
         // Keep existing branchId for branch admins
     }
-    if (canDoMaintenance !== undefined) updateData.canDoMaintenance = canDoMaintenance;
     if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive === true || req.body.isActive === 'true';
 
     if (password) {
@@ -249,7 +244,6 @@ router.put('/:id', authenticateToken, requireAdmin, asyncHandler(async (req, res
             displayName: true,
             role: true,
             branchId: true,
-            canDoMaintenance: true,
             isActive: true,
             createdAt: true
         }

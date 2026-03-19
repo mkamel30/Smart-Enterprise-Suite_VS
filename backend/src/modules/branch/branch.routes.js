@@ -24,7 +24,6 @@ router.get('/', authenticateToken, async (req, res) => {
                 orderBy: { createdAt: 'desc' },
                 include: {
                     parentBranch: { select: { id: true, name: true, code: true } },
-                    maintenanceCenter: { select: { id: true, name: true, code: true } },
                     _count: {
                         select: {
                             users: true,
@@ -124,7 +123,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create branch
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { name, address, type, maintenanceCenterId, parentBranchId, isActive, authorizedHWID } = req.body;
+        const { name, address, type, parentBranchId, isActive, authorizedHWID } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: 'الاسم مطلوب' });
@@ -149,16 +148,6 @@ router.post('/', authenticateToken, async (req, res) => {
             code = `BR${String(nextNum).padStart(3, '0')}`;
         }
 
-        // Validate maintenanceCenterId if provided
-        if (maintenanceCenterId) {
-            const center = await db.branch.findUnique({
-                where: { id: maintenanceCenterId }
-            });
-            if (!center || center.type !== 'MAINTENANCE_CENTER') {
-                return res.status(400).json({ error: 'مركز الصيانة غير صالح' });
-            }
-        }
-
         const branch = await db.branch.create({
             data: {
                 code,
@@ -166,7 +155,6 @@ router.post('/', authenticateToken, async (req, res) => {
                 address: address || null,
                 type: type || 'BRANCH',
                 isActive: isActive !== undefined ? isActive : true,
-                maintenanceCenterId: maintenanceCenterId || null,
                 parentBranchId: parentBranchId || null,
                 authorizedHWID: authorizedHWID || null
             }
@@ -182,7 +170,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // Update branch
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
-        const { name, address, type, maintenanceCenterId, parentBranchId, isActive, authorizedHWID } = req.body;
+        const { name, address, type, parentBranchId, isActive, authorizedHWID } = req.body;
 
         // Check if branch exists
         const existing = await db.branch.findUnique({
@@ -192,16 +180,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'الفرع غير موجود' });
         }
 
-        // Validate maintenanceCenterId if provided
-        if (maintenanceCenterId) {
-            const center = await db.branch.findUnique({
-                where: { id: maintenanceCenterId }
-            });
-            if (!center || center.type !== 'MAINTENANCE_CENTER') {
-                return res.status(400).json({ error: 'مركز الصيانة غير صالح' });
-            }
-        }
-
         const branch = await db.branch.update({
             where: { id: req.params.id },
             data: {
@@ -209,7 +187,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 address: address !== undefined ? (address || null) : existing.address,
                 type: type || existing.type,
                 isActive: isActive !== undefined ? isActive : existing.isActive,
-                maintenanceCenterId: maintenanceCenterId !== undefined ? (maintenanceCenterId || null) : existing.maintenanceCenterId,
                 parentBranchId: parentBranchId !== undefined ? (parentBranchId || null) : existing.parentBranchId,
                 authorizedHWID: authorizedHWID !== undefined ? (authorizedHWID || null) : existing.authorizedHWID
             }
@@ -298,11 +275,12 @@ router.get('/centers/with-branches', authenticateToken, async (req, res) => {
             where: { type: 'MAINTENANCE_CENTER' },
             orderBy: { name: 'asc' },
             include: {
-                servicedBranches: {
+                childBranches: {
+                    where: { isActive: true },
                     select: { id: true, name: true, code: true }
                 },
                 _count: {
-                    select: { servicedBranches: true }
+                    select: { childBranches: true }
                 }
             }
         });
@@ -318,7 +296,7 @@ router.get('/center/:centerId/branches', authenticateToken, async (req, res) => 
     try {
         const { centerId } = req.params;
         const branches = await db.branch.findMany({
-            where: { maintenanceCenterId: centerId },
+            where: { parentBranchId: centerId },
             orderBy: { name: 'asc' }
         });
         res.json(branches);

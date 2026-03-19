@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 // Rate limiters
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV !== 'production' ? 1000 : 10,
   message: 'Too many login attempts, please try again after 15 minutes'
 });
 
