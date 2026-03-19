@@ -82,7 +82,7 @@ export function InventoryMovementReport({ data }: InventoryMovementReportProps) 
                         حركة قطع الغيار الشهرية
                     </h3>
                     <div className="h-[350px] w-full" dir="ltr">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={350}>
                             <AreaChart data={chartData}>
                                 <defs>
                                     <linearGradient id="colorPaid" x1="0" y1="0" x2="0" y2="1">
@@ -153,7 +153,7 @@ export function InventoryMovementReport({ data }: InventoryMovementReportProps) 
                         توزيع الفروع
                     </h3>
                     <div className="h-[300px] w-full" dir="ltr">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={branchBreakdown.slice(0, 10)} layout="vertical" margin={{ left: 100 }}>
                                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
                                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 700 }} tickFormatter={formatCurrency} />

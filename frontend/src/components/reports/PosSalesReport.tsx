@@ -76,7 +76,7 @@ export function PosSalesReport({ data, granularity }: PosSalesReportProps) {
                         منحنى المبيعات {granularity === 'monthly' ? 'الشهرية' : 'اليومية'}
                     </h3>
                     <div className="h-[350px] w-full" dir="ltr">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={350}>
                             <AreaChart data={chartData}>
                                 <defs>
                                     <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">

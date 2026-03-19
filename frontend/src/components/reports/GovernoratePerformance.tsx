@@ -71,7 +71,7 @@ export function GovernoratePerformance({ data }: GovernoratePerformanceProps) {
                         أداء الفروع حسب الأنشطة
                     </h3>
                     <div className="h-[400px] w-full" dir="ltr">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={400}>
                             <BarChart data={chartData} layout="vertical" margin={{ left: 80 }}>
                                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
                                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 700 }} />

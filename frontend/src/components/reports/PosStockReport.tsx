@@ -75,7 +75,7 @@ export function PosStockReport({ data }: PosStockReportProps) {
                         توزيع الموديلات
                     </h3>
                     <div className="h-[300px] w-full" dir="ltr">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={modelChartData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                                 <XAxis

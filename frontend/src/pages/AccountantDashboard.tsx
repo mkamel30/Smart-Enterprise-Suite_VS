@@ -458,7 +458,7 @@ export default function AccountantDashboard() {
                             <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center min-h-[400px]">
                                 <h3 className="text-lg font-black text-slate-800 mb-6 w-full text-right">توزيع مصادر الدخل</h3>
                                 <div className="w-full h-[300px]">
-                                    <ResponsiveContainer width="100%" height="100%">
+                                    <ResponsiveContainer width="100%" height={300}>
                                         <RechartsPie width={400} height={400}>
                                             <Pie
                                                 data={revenueSourceData}

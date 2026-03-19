@@ -65,7 +65,7 @@ export function FinancialOverview({ data }: FinancialOverviewProps) {
                         منحنى تطور الأداء المالي (6 أشهر)
                     </h3>
                     <div className="h-[350px] w-full" dir="ltr">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={350}>
                             <AreaChart data={trends}>
                                 <defs>
                                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -97,7 +97,7 @@ export function FinancialOverview({ data }: FinancialOverviewProps) {
 
                     <div className="flex flex-col items-center justify-center h-full pb-10">
                         <div className="relative w-48 h-48">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={192}>
                                 <RechartsPieChart>
                                     <Pie
                                         data={[
