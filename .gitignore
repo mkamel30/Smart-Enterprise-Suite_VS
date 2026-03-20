@@ -41,3 +41,8 @@ LOGIN_INFO.txt
 # logs
 logs/
 *.log
+
+# noise
+nul
+backend/start-e2e.bat
+backend/ops/scripts/check-users.js
