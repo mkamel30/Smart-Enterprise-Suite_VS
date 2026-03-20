@@ -53,7 +53,7 @@ router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
 
 // GET price change logs
 router.get('/:id/price-logs', authenticateToken, asyncHandler(async (req, res) => {
-    const logs = await db.priceChangeLog.findMany({
+    const logs = await db.sparePartPriceLog.findMany({
         where: { partId: req.params.id },
         orderBy: { changedAt: 'desc' }
     });

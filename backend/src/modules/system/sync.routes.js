@@ -40,15 +40,14 @@ router.get('/metrics', portalAuth, asyncHandler(async (req, res) => {
 
 // POST /api/system/sync/parameters - Push global params from Master to Branch (Backup mechanism)
 router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
-    const { machineParameters, globalParameters, spareParts, users } = req.body;
+    const { machineParameters, globalParameters, masterSpareParts, sparePartPriceLogs, users } = req.body;
 
-    if (!machineParameters && !globalParameters && !spareParts && !users) {
+    if (!machineParameters && !globalParameters && !masterSpareParts && !sparePartPriceLogs && !users) {
         return error(res, 'No data to sync', 400);
     }
 
     await db.$transaction(async (tx) => {
         if (machineParameters && Array.isArray(machineParameters)) {
-            // Update or create machine parameters
             for (const param of machineParameters) {
                 await tx.machineParameter.upsert({
                     where: { prefix: param.prefix },
@@ -58,11 +57,10 @@ router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
             }
         }
 
-        if (spareParts && Array.isArray(spareParts)) {
-            // Update or create spare parts
-            for (const part of spareParts) {
-                await tx.sparePart.upsert({
-                    where: { id: part.id || part.partNumber },
+        if (masterSpareParts && Array.isArray(masterSpareParts)) {
+            for (const part of masterSpareParts) {
+                await tx.masterSparePart.upsert({
+                    where: { id: part.id },
                     update: {
                         partNumber: part.partNumber,
                         name: part.name,
@@ -70,7 +68,7 @@ router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
                         compatibleModels: part.compatibleModels,
                         defaultCost: part.defaultCost,
                         isConsumable: part.isConsumable,
-                        allowsMultiple: part.allowsMultiple
+                        category: part.category
                     },
                     create: {
                         id: part.id,
@@ -80,14 +78,33 @@ router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
                         compatibleModels: part.compatibleModels,
                         defaultCost: part.defaultCost,
                         isConsumable: part.isConsumable,
-                        allowsMultiple: part.allowsMultiple
+                        category: part.category
+                    }
+                });
+            }
+        }
+
+        if (sparePartPriceLogs && Array.isArray(sparePartPriceLogs)) {
+            for (const log of sparePartPriceLogs) {
+                await tx.sparePartPriceLog.upsert({
+                    where: { id: log.id },
+                    update: {
+                        oldCost: log.oldCost,
+                        newCost: log.newCost,
+                        changedBy: log.changedBy
+                    },
+                    create: {
+                        id: log.id,
+                        partId: log.partId,
+                        oldCost: log.oldCost,
+                        newCost: log.newCost,
+                        changedBy: log.changedBy
                     }
                 });
             }
         }
 
         if (users && Array.isArray(users)) {
-            // Update or create users (admin or branch users)
             for (const user of users) {
                 await tx.user.upsert({
                     where: { username: user.username },
@@ -160,7 +177,7 @@ router.post('/request-sync', portalAuth, asyncHandler(async (req, res) => {
     try {
         const response = await axios.post(
             `${portalUrl}/api/system/sync/request-sync`,
-            { entities: entities || ['branches', 'users', 'machineParameters', 'spareParts', 'globalParameters'] },
+            { entities: entities || ['branches', 'users', 'machineParameters', 'masterSpareParts', 'sparePartPriceLogs', 'globalParameters'] },
             {
                 headers: {
                     'x-portal-sync-key': apiKey,

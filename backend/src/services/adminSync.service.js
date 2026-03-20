@@ -83,7 +83,8 @@ class AdminSyncService {
             if (data.branches) await this.syncBranches(data.branches);
             if (data.users) await this.syncUsers(data.users);
             if (data.machineParameters) await this.syncMachineParameters(data.machineParameters);
-            if (data.spareParts) await this.syncSpareParts(data.spareParts);
+            if (data.masterSpareParts) await this.syncSpareParts(data.masterSpareParts);
+            if (data.sparePartPriceLogs) await this.syncSparePartPriceLogs(data.sparePartPriceLogs);
             if (data.globalParameters) await this.syncGlobalParameters(data.globalParameters);
 
             console.log('AdminSync: Initial sync from portal complete');
@@ -109,6 +110,41 @@ class AdminSyncService {
                 await this.pushAllDataToAdmin();
             }
         });
+
+        this.socket.on('request_branch_stock', async (data) => {
+            const { partId, requestId } = data;
+            console.log(`AdminSync: Admin requested stock for part ${partId}`);
+            try {
+                const branchCode = process.env.BRANCH_CODE || 'UNKNOWN';
+                const branch = await db.branch.findFirst();
+                const branchName = branch?.name || branchCode;
+
+                const stockItem = await db.branchSparePartStock.findUnique({
+                    where: { partId }
+                });
+
+                this.socket.emit('branch_stock_response', {
+                    requestId,
+                    partId,
+                    branchId: branch?.id,
+                    branchCode,
+                    branchName,
+                    quantity: stockItem?.quantity || 0,
+                    location: stockItem?.location || null,
+                    lastUpdated: stockItem?.lastUpdated || null,
+                    timestamp: new Date()
+                });
+                console.log(`AdminSync: Sent stock response for part ${partId}`);
+            } catch (error) {
+                console.error('AdminSync: Error responding to stock request:', error.message);
+                this.socket.emit('branch_stock_response', {
+                    requestId,
+                    partId,
+                    error: error.message,
+                    timestamp: new Date()
+                });
+            }
+        });
     }
 
     async processEntityUpdate(entityType, action, payload) {
@@ -121,6 +157,9 @@ class AdminSyncService {
                 break;
             case 'SPARE_PART':
                 await this.syncSpareParts(Array.isArray(payload) ? payload : [payload], action);
+                break;
+            case 'SPARE_PART_PRICE_LOG':
+                await this.syncSparePartPriceLogs(Array.isArray(payload) ? payload : [payload], action);
                 break;
             case 'USER':
                 await this.syncUsers(Array.isArray(payload) ? payload : [payload], action);
@@ -167,10 +206,10 @@ class AdminSyncService {
     async syncSpareParts(parts, action) {
         for (const part of parts) {
             if (action === 'DELETE') {
-                await db.sparePart.deleteMany({ where: { id: part.id } }).catch(() => {});
+                await db.masterSparePart.deleteMany({ where: { id: part.id } }).catch(() => {});
             } else {
-                await db.sparePart.upsert({
-                    where: { id: part.id || part.partNumber },
+                await db.masterSparePart.upsert({
+                    where: { id: part.id },
                     update: {
                         partNumber: part.partNumber,
                         name: part.name,
@@ -178,7 +217,7 @@ class AdminSyncService {
                         compatibleModels: part.compatibleModels,
                         defaultCost: part.defaultCost,
                         isConsumable: part.isConsumable,
-                        allowsMultiple: part.allowsMultiple
+                        category: part.category
                     },
                     create: {
                         id: part.id,
@@ -188,12 +227,37 @@ class AdminSyncService {
                         compatibleModels: part.compatibleModels,
                         defaultCost: part.defaultCost,
                         isConsumable: part.isConsumable,
-                        allowsMultiple: part.allowsMultiple
+                        category: part.category
                     }
                 });
-                console.log(`AdminSync: Synced sparePart ${part.name}`);
+                console.log(`AdminSync: Synced masterSparePart ${part.name}`);
             }
         }
+    }
+
+    async syncSparePartPriceLogs(logs, action) {
+        for (const log of logs) {
+            if (action === 'DELETE') {
+                await db.sparePartPriceLog.deleteMany({ where: { id: log.id } }).catch(() => {});
+            } else {
+                await db.sparePartPriceLog.upsert({
+                    where: { id: log.id },
+                    update: {
+                        oldCost: log.oldCost,
+                        newCost: log.newCost,
+                        changedBy: log.changedBy
+                    },
+                    create: {
+                        id: log.id,
+                        partId: log.partId,
+                        oldCost: log.oldCost,
+                        newCost: log.newCost,
+                        changedBy: log.changedBy
+                    }
+                });
+            }
+        }
+        console.log(`AdminSync: Synced ${logs.length} spare part price logs`);
     }
 
     async syncUsers(users, action) {
@@ -312,22 +376,20 @@ class AdminSyncService {
 
         console.log('AdminSync: Gathering data for full push...');
         try {
-            const [users, machineParams, spareParts] = await Promise.all([
+            const [users, machineParams] = await Promise.all([
                 db.user.findMany({ include: { branch: true } }),
-                db.machineParameter.findMany(),
-                db.sparePart.findMany()
+                db.machineParameter.findMany()
             ]);
 
             const payload = {
                 branchCode: this.branchCode,
                 users,
                 machineParams,
-                spareParts,
                 timestamp: new Date()
             };
 
             this.socket.emit('branch_push_all', payload);
-            console.log(`AdminSync: Full push sent (${users.length} users, ${machineParams.length} params, ${spareParts.length} parts)`);
+            console.log(`AdminSync: Full push sent (${users.length} users, ${machineParams.length} params)`);
         } catch (error) {
             console.error('AdminSync: Full push failed:', error.message);
         }
