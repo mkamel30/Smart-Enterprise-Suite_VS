@@ -111,7 +111,7 @@ class AdminSyncService {
             }
         });
 
-        this.socket.on('request_branch_stock', async (data) => {
+        this.socket.on('admin_request_branch_stock', async (data) => {
             const { partId, requestId } = data;
             console.log(`AdminSync: Admin requested stock for part ${partId}`);
             try {
