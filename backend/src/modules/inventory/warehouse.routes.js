@@ -49,12 +49,7 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
     return error(res, 'القطع الغيار تُدار من لوحة الإدارة المركزية فقط', 403);
 }));
 
-// PUT update spare part - BLOCKED: spare parts are managed by admin portal only
-router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
-    return error(res, 'القطع الغيار تُدار من لوحة الإدارة المركزية فقط', 403);
-}));
-
-// PUT update stock quantity for a spare part (branch manages this)
+// PUT update stock quantity for a spare part (branch manages this) — MUST be before /:id
 router.put('/:id/stock', authenticateToken, asyncHandler(async (req, res) => {
     const { quantity, location } = req.body;
     const partId = req.params.id;
@@ -77,6 +72,11 @@ router.put('/:id/stock', authenticateToken, asyncHandler(async (req, res) => {
     });
 
     return success(res, stock);
+}));
+
+// PUT update spare part - BLOCKED: spare parts are managed by admin portal only
+router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
+    return error(res, 'القطع الغيار تُدار من لوحة الإدارة المركزية فقط', 403);
 }));
 
 // GET price change logs
