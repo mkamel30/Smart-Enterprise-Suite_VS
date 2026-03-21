@@ -610,7 +610,7 @@ function InventoryRow({ item, onUpdate }: { item: any; onUpdate: () => void }) {
 
     const handleSave = async () => {
         try {
-            await api.put(`/warehouse/${item.id}/stock`, { quantity, location });
+            await api.put(`/spare-parts/${item.id}/stock`, { quantity, location });
             setIsEditing(false);
             onUpdate();
             toast.success('تم التحديث بنجاح');
