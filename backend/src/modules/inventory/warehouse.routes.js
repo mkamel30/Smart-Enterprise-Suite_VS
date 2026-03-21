@@ -12,7 +12,7 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 const { exportToExcel, setExcelHeaders, generateExportFilename } = require('../../../utils/excel');
 
-// GET spare parts
+// GET spare parts — from MasterSparePart catalog (synced from admin portal)
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
     const { limit, offset } = parsePaginationParams(req.query);
     const search = req.query.search || '';
@@ -22,20 +22,23 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
         where.OR = [
             { name: { contains: search } },
             { partNumber: { contains: search } },
-            { description: { contains: search } },
-            { compatibleModels: { contains: search } }
+            { compatibleModels: { contains: search } },
+            { category: { contains: search } }
         ];
     }
 
     const [parts, total] = await Promise.all([
-        db.sparePart.findMany({
+        db.masterSparePart.findMany({
             where,
-            include: { inventoryItems: true },
+            include: {
+                branchStocks: { take: 1 },
+                priceLogs: { orderBy: { changedAt: 'desc' }, take: 3 }
+            },
             take: limit,
             skip: offset,
             orderBy: { partNumber: 'asc' }
         }),
-        db.sparePart.count({ where })
+        db.masterSparePart.count({ where })
     ]);
 
     return success(res, createPaginationResponse(parts, total, limit, offset));
@@ -49,6 +52,31 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
 // PUT update spare part - BLOCKED: spare parts are managed by admin portal only
 router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
     return error(res, 'القطع الغيار تُدار من لوحة الإدارة المركزية فقط', 403);
+}));
+
+// PUT update stock quantity for a spare part (branch manages this)
+router.put('/:id/stock', authenticateToken, asyncHandler(async (req, res) => {
+    const { quantity, location } = req.body;
+    const partId = req.params.id;
+
+    if (quantity === undefined || quantity < 0) {
+        return error(res, 'الكمية غير صالحة', 400);
+    }
+
+    // Check the part exists
+    const part = await db.masterSparePart.findUnique({ where: { id: partId } });
+    if (!part) {
+        return error(res, 'قطعة الغيار غير موجودة', 404);
+    }
+
+    // Upsert the stock record
+    const stock = await db.branchSparePartStock.upsert({
+        where: { partId },
+        update: { quantity, location, lastUpdated: new Date() },
+        create: { partId, quantity, location: location || null }
+    });
+
+    return success(res, stock);
 }));
 
 // GET price change logs

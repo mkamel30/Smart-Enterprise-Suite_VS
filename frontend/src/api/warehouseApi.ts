@@ -3,8 +3,16 @@ import { request, downloadFile } from './baseClient';
 import type { SparePart } from '../lib/types';
 
 export const warehouseApi = {
-    // Spare Parts
-    getSpareParts: (): Promise<SparePart[]> => request('/spare-parts'),
+    // Spare Parts (MasterSparePart catalog from admin portal)
+    getSpareParts: (params?: { page?: number; limit?: number; search?: string; model?: string }): Promise<any> => {
+        const query = new URLSearchParams();
+        if (params?.page) query.set('page', String(params.page));
+        if (params?.limit) query.set('limit', String(params.limit));
+        if (params?.search) query.set('search', params.search);
+        if (params?.model) query.set('model', params.model);
+        const qs = query.toString();
+        return request(`/spare-parts${qs ? '?' + qs : ''}`);
+    },
     createSparePart: (data: any) => request('/spare-parts', { method: 'POST', body: JSON.stringify(data) }),
     updateSparePart: (id: string, data: any) => request(`/spare-parts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteSparePart: (id: string) => request(`/spare-parts/${id}`, { method: 'DELETE' }),

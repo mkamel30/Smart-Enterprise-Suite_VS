@@ -100,18 +100,16 @@ export default function Warehouse() {
         reader.readAsBinaryString(file);
     };
 
-    // Server-side Pagination Query
+    // Server-side Pagination Query (MasterSparePart catalog from admin portal)
     const { data: inventoryData, isLoading } = useQuery<any>({
-        queryKey: ['inventory', activeBranchId, filterBranchId, page, limit, searchQuery, selectedModel],
-        queryFn: () => api.getInventory({
-            branchId: activeBranchId || filterBranchId,
+        queryKey: ['inventory', activeBranchId, page, limit, searchQuery, selectedModel],
+        queryFn: () => api.getSpareParts({
             page,
             limit,
-            search: searchQuery,
-            model: selectedModel
+            search: searchQuery
         }),
         enabled: !!user,
-        placeholderData: keepPreviousData // Keep data while fetching new page (TanStack Query v5)
+        placeholderData: keepPreviousData
     });
 
     // Unpack inventory data (handle array vs paginated object)
@@ -603,14 +601,16 @@ export default function Warehouse() {
     );
 }
 
-// Inventory Row with inline editing
+// Inventory Row with inline editing (MasterSparePart + BranchSparePartStock)
 function InventoryRow({ item, onUpdate }: { item: any; onUpdate: () => void }) {
     const [isEditing, setIsEditing] = useState(false);
-    const [quantity, setQuantity] = useState(item.quantity);
+    const currentStock = item.branchStocks?.[0]?.quantity || 0;
+    const [quantity, setQuantity] = useState(currentStock);
+    const [location, setLocation] = useState(item.branchStocks?.[0]?.location || '');
 
     const handleSave = async () => {
         try {
-            await api.put(`/warehouse/${item.id}`, { quantity });
+            await api.put(`/warehouse/${item.id}/stock`, { quantity, location });
             setIsEditing(false);
             onUpdate();
             toast.success('تم التحديث بنجاح');
@@ -623,9 +623,9 @@ function InventoryRow({ item, onUpdate }: { item: any; onUpdate: () => void }) {
 
     return (
         <tr className="border-t hover:bg-slate-50">
-            <td className="p-4 font-mono text-sm">{item.partNumber}</td>
+            <td className="p-4 font-mono text-sm">{item.partNumber || '-'}</td>
             <td className="p-4 font-medium">{item.name}</td>
-            <td className="p-4 text-sm">{item.compatibleModels?.split(';').join(' • ') || '-'}</td>
+            <td className="p-4 text-sm">{item.compatibleModels?.split(';').filter(Boolean).join(' • ') || '-'}</td>
             <td className="p-4">{item.defaultCost} ج.م</td>
             <td className="p-4">
                 {isEditing ? (
@@ -637,8 +637,8 @@ function InventoryRow({ item, onUpdate }: { item: any; onUpdate: () => void }) {
                         autoFocus
                     />
                 ) : (
-                    <span className={`px-3 py-1 rounded-full font-bold ${item.quantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {item.quantity}
+                    <span className={`px-3 py-1 rounded-full font-bold ${currentStock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {currentStock}
                     </span>
                 )}
             </td>
@@ -646,7 +646,7 @@ function InventoryRow({ item, onUpdate }: { item: any; onUpdate: () => void }) {
                 {isEditing ? (
                     <div className="flex gap-1">
                         <button onClick={handleSave} className="px-2 py-1 bg-green-600 text-white rounded text-sm">حفظ</button>
-                        <button onClick={() => { setIsEditing(false); setQuantity(item.quantity); }} className="px-2 py-1 border rounded text-sm">إلغاء</button>
+                        <button onClick={() => { setIsEditing(false); setQuantity(currentStock); setLocation(item.branchStocks?.[0]?.location || ''); }} className="px-2 py-1 border rounded text-sm">إلغاء</button>
                     </div>
                 ) : (
                     <button onClick={() => setIsEditing(true)} className="px-3 py-1 border rounded hover:bg-slate-100 text-sm">
