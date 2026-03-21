@@ -274,31 +274,29 @@ class AdminSyncService {
                     }
                 }
 
-                const userWhere = user.id ? { id: user.id } : { username: user.username };
-                await db.user.upsert({
-                    where: userWhere,
-                    update: {
-                        uid: user.uid,
-                        username: user.username,
-                        email: user.email,
-                        displayName: user.displayName,
-                        role: user.role,
-                        password: user.password,
-                        isActive: user.isActive,
-                        branchId: localBranchId
-                    },
-                    create: {
-                        id: user.id || undefined,
-                        uid: user.uid,
-                        username: user.username,
-                        email: user.email,
-                        displayName: user.displayName,
-                        role: user.role,
-                        password: user.password,
-                        isActive: user.isActive,
-                        branchId: localBranchId
-                    }
-                });
+                // Check by ID, then by username, then by email (handles unique constraint conflicts)
+                const existingById = user.id ? await db.user.findUnique({ where: { id: user.id } }).catch(() => null) : null;
+                const existingByUsername = user.username ? await db.user.findUnique({ where: { username: user.username } }).catch(() => null) : null;
+                const existingByEmail = user.email ? await db.user.findUnique({ where: { email: user.email } }).catch(() => null) : null;
+
+                const existing = existingById || existingByUsername || existingByEmail;
+
+                const userData = {
+                    uid: user.uid,
+                    username: user.username,
+                    email: user.email,
+                    displayName: user.displayName,
+                    role: user.role,
+                    password: user.password,
+                    isActive: user.isActive,
+                    branchId: localBranchId
+                };
+
+                if (existing) {
+                    await db.user.update({ where: { id: existing.id }, data: userData });
+                } else {
+                    await db.user.create({ data: { ...userData, id: user.id || undefined } });
+                }
                 console.log(`AdminSync: Synced user ${user.username}`);
             }
         }
