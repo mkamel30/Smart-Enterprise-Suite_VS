@@ -204,6 +204,62 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ===================== API ROUTES =====================
 
+// ===================== FIRST-RUN SETUP (PUBLIC) =====================
+
+// Public endpoint for first-run setup — no auth required
+app.post('/api/setup/create-user', async (req, res) => {
+  try {
+    const { uid, username, email, displayName, role, password, branchId, branchCode } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'اسم المستخدم وكلمة المرور مطلوبين' });
+    }
+
+    // Check if any users exist — only allow setup when DB is empty
+    const userCount = await db.user.count();
+    if (userCount > 0) {
+      return res.status(403).json({ error: 'الإعداد مكتمل بالفعل — يوجد مستخدمون' });
+    }
+
+    // Create or link branch
+    if (branchId && branchCode) {
+      const existingBranch = await db.branch.findUnique({ where: { id: branchId } });
+      if (!existingBranch) {
+        await db.branch.create({
+          data: {
+            id: branchId,
+            code: branchCode,
+            name: req.body.branchName || branchCode,
+            type: req.body.branchType || 'BRANCH',
+            isActive: true
+          }
+        });
+      }
+    }
+
+    // Create user
+    const user = await db.user.create({
+      data: {
+        uid,
+        username,
+        email,
+        displayName,
+        role: role || 'ADMIN',
+        password,
+        branchId,
+        isActive: true,
+        mustChangePassword: false
+      }
+    });
+
+    logger.info(`[SETUP] First user created: ${username}`);
+    res.json({ success: true, user: { id: user.id, username: user.username, displayName: user.displayName } });
+  } catch (error) {
+    logger.error({ err: error }, '[SETUP] Failed to create user');
+    res.status(500).json({ error: 'فشل إنشاء المستخدم' });
+  }
+});
+
 // Load all modules via centralized module loader
 const apiModules = require('./src/modules/index');
 app.use('/api', apiModules);
