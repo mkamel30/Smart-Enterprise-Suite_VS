@@ -54,6 +54,18 @@ router.post('/parameters', portalAuth, asyncHandler(async (req, res) => {
                     update: { model: param.model, manufacturer: param.manufacturer },
                     create: { prefix: param.prefix, model: param.model, manufacturer: param.manufacturer }
                 });
+
+                // Update POS machines and warehouse machines matching this prefix
+                if (param.prefix && param.model) {
+                    await tx.posMachine.updateMany({
+                        where: { serialNumber: { startsWith: param.prefix } },
+                        data: { model: param.model, manufacturer: param.manufacturer }
+                    }).catch(() => {});
+                    await tx.warehouseMachine.updateMany({
+                        where: { serialNumber: { startsWith: param.prefix } },
+                        data: { model: param.model, manufacturer: param.manufacturer }
+                    }).catch(() => {});
+                }
             }
         }
 
