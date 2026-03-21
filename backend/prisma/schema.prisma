@@ -527,3 +527,15 @@ model MaintenanceApproval {
   branch          Branch?            @relation(fields: [branchId], references: [id])
   request         MaintenanceRequest @relation(fields: [requestId], references: [id])
 }
+
+// --- SYNC LOG ---
+
+model SyncLog {
+  id          String   @id @default(cuid())
+  type        String   // PULL, PUSH, MACHINE_PARAMS, USERS, SPARE_PARTS, BRANCHES
+  status      String   // SUCCESS, FAILED, SKIPPED
+  message     String
+  details     String?
+  itemCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+}

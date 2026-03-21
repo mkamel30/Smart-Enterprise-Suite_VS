@@ -14,6 +14,14 @@ class AdminSyncService {
         this.lastError = null;
     }
 
+    async logSync(type, status, message, itemCount = 0, details = null) {
+        try {
+            await db.syncLog.create({
+                data: { type, status, message, itemCount, details: details ? String(details).substring(0, 1000) : null }
+            });
+        } catch (e) { /* ignore logging errors */ }
+    }
+
     getStatus() {
         return {
             portalConfigured: !!this.portalUrl,
@@ -47,6 +55,8 @@ class AdminSyncService {
             this.isConnected = true;
             this.lastError = null;
             console.log('AdminSync: Connected to Central Portal');
+            await this.logSync('CONNECT', 'SUCCESS', 'تم الاتصال بالخادم المركزي');
+
             this.socket.emit('branch_identify', { branchCode: this.branchCode });
 
             console.log('AdminSync: Requesting initial sync...');
@@ -62,30 +72,37 @@ class AdminSyncService {
         this.socket.on('disconnect', () => {
             this.isConnected = false;
             console.warn('AdminSync: Disconnected from Central Portal');
+            this.logSync('DISCONNECT', 'SKIPPED', 'انقطع الاتصال بالخادم المركزي');
         });
 
         this.socket.on('connect_error', (err) => {
             this.isConnected = false;
             this.lastError = err.message;
             console.error('AdminSync Connection Error:', err.message);
+            this.logSync('CONNECT', 'FAILED', 'فشل الاتصال بالخادم: ' + err.message);
         });
 
         this.socket.on('portal_sync_response', async (response) => {
             if (!response.success) {
                 console.error('AdminSync: Sync response error:', response.error);
                 this.lastError = response.error;
+                await this.logSync('PULL', 'FAILED', 'فشل المزامنة من الخادم: ' + (response.error || 'خطأ غير معروف'));
                 return;
             }
 
             this.lastSync = new Date();
             this.lastError = null;
             const { data } = response;
-            if (data.branches) await this.syncBranches(data.branches);
-            if (data.users) await this.syncUsers(data.users);
-            if (data.machineParameters) await this.syncMachineParameters(data.machineParameters);
-            if (data.masterSpareParts) await this.syncSpareParts(data.masterSpareParts);
-            if (data.sparePartPriceLogs) await this.syncSparePartPriceLogs(data.sparePartPriceLogs);
-            if (data.globalParameters) await this.syncGlobalParameters(data.globalParameters);
+            let totalItems = 0;
+
+            if (data.branches) { await this.syncBranches(data.branches); totalItems += data.branches.length; }
+            if (data.users) { await this.syncUsers(data.users); totalItems += data.users.length; }
+            if (data.machineParameters) { await this.syncMachineParameters(data.machineParameters); totalItems += data.machineParameters.length; }
+            if (data.masterSpareParts) { await this.syncSpareParts(data.masterSpareParts); totalItems += data.masterSpareParts.length; }
+            if (data.sparePartPriceLogs) { await this.syncSparePartPriceLogs(data.sparePartPriceLogs); totalItems += data.sparePartPriceLogs.length; }
+            if (data.globalParameters) { await this.syncGlobalParameters(data.globalParameters); totalItems += data.globalParameters.length; }
+
+            await this.logSync('PULL', 'SUCCESS', `تم استقبال ${totalItems} عنصر من الخادم`, totalItems);
 
             console.log('AdminSync: Initial sync from portal complete');
         });
@@ -99,8 +116,10 @@ class AdminSyncService {
                 if (queueId) {
                     this.socket.emit('ack_update', { queueId });
                 }
+                await this.logSync('UPDATE', 'SUCCESS', `${entityType} (${action}): تم التحديث بنجاح`, payload?.length || 1);
             } catch (err) {
                 console.error(`AdminSync: Failed to process ${entityType} update:`, err.message);
+                await this.logSync('UPDATE', 'FAILED', `${entityType} (${action}): ${err.message}`, 0, err.message);
             }
         });
 
@@ -419,6 +438,7 @@ class AdminSyncService {
     async pushAllDataToAdmin() {
         if (!this.socket?.connected) {
             console.warn('AdminSync: Cannot push — not connected');
+            await this.logSync('PUSH', 'FAILED', 'فشل الإرسال — لا يوجد اتصال');
             return;
         }
 
@@ -438,8 +458,10 @@ class AdminSyncService {
 
             this.socket.emit('branch_push_all', payload);
             console.log(`AdminSync: Full push sent (${users.length} users, ${machineParams.length} params)`);
+            await this.logSync('PUSH', 'SUCCESS', `تم إرسال ${users.length + machineParams.length} عنصر إلى الخادم`, users.length + machineParams.length);
         } catch (error) {
             console.error('AdminSync: Full push failed:', error.message);
+            await this.logSync('PUSH', 'FAILED', 'فشل الإرسال: ' + error.message);
         }
     }
 }

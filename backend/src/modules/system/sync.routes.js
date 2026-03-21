@@ -217,4 +217,26 @@ router.get('/update/check', authenticateToken, asyncHandler(async (req, res) => 
     });
 }));
 
+// GET /api/system/sync/logs - Get sync logs (paginated)
+router.get('/logs', authenticateToken, asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    const type = req.query.type || '';
+
+    const where = {};
+    if (type) where.type = type;
+
+    const [logs, total] = await Promise.all([
+        db.syncLog.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: offset
+        }),
+        db.syncLog.count({ where })
+    ]);
+
+    return success(res, { data: logs, pagination: { total, limit, offset, pages: Math.ceil(total / limit) } });
+}));
+
 module.exports = router;
