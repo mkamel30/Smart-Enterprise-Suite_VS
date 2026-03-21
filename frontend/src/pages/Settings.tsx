@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../api/client';
-import { Lock, Palette, Database, Users, Shield } from 'lucide-react';
+import { Lock, Palette, Database, Users, Shield, Wifi } from 'lucide-react';
 import { DatabaseAdmin } from '../components/DatabaseAdmin';
 import { ROLES } from '../lib/permissions';
 import { useAuth } from '../context/AuthContext';
@@ -12,13 +12,14 @@ import { MachineParametersTab } from '../components/settings/MachineParametersTa
 import { SparePartsTab } from '../components/settings/SparePartsTab';
 import { ClientTypesTab } from '../components/settings/ClientTypesTab';
 import { PermissionsTab } from '../components/settings/PermissionsTab';
+import { SyncLogsTab } from '../components/settings/SyncLogsTab';
 
 export default function Settings() {
     const { user } = useAuth();
     const isAdmin = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.MANAGEMENT;
     const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN;
 
-    const [activeTab, setActiveTab] = useState<'machines' | 'parts' | 'database' | 'appearance' | 'security' | 'client-types' | 'permissions'>(
+    const [activeTab, setActiveTab] = useState<'machines' | 'parts' | 'database' | 'appearance' | 'security' | 'client-types' | 'permissions' | 'sync-logs'>(
         isAdmin ? 'machines' : 'appearance'
     );
 
@@ -64,6 +65,12 @@ export default function Settings() {
                             icon={<Shield size={16} />}
                             label="الصلاحيات"
                         />
+                        <TabButton
+                            active={activeTab === 'sync-logs'}
+                            onClick={() => setActiveTab('sync-logs')}
+                            icon={<Wifi size={16} />}
+                            label="سجل المزامنة"
+                        />
                     </>
                 )}
 
@@ -85,6 +92,7 @@ export default function Settings() {
                 {activeTab === 'appearance' && <AppearanceTab />}
                 {activeTab === 'security' && <SecurityTab />}
                 {activeTab === 'permissions' && isAdmin && <PermissionsTab />}
+                {activeTab === 'sync-logs' && <SyncLogsTab />}
                 {activeTab === 'database' && isSuperAdmin && (
                     <div className="bg-card rounded-[2rem] border border-border shadow-2xl p-8">
                         <DatabaseAdmin />

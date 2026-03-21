@@ -323,6 +323,7 @@ class ApiClient {
     applySystemUpdate = systemApi.applyUpdate;
     getSyncStatus = systemApi.getSyncStatus;
     triggerSync = systemApi.triggerSync;
+    getSyncLogs = systemApi.getSyncLogs;
 }
 
 export const api = new ApiClient();
