@@ -309,26 +309,50 @@ class AdminSyncService {
             if (action === 'DELETE') {
                 await db.branch.deleteMany({ where: { id: branch.id } }).catch(() => {});
             } else {
-                await db.branch.upsert({
-                    where: { id: branch.id },
-                    update: {
-                        code: branch.code,
-                        name: branch.name,
-                        location: branch.location,
-                        type: branch.type,
-                        status: branch.status,
-                        parentBranchId: branch.parentBranchId
-                    },
-                    create: {
-                        id: branch.id,
-                        code: branch.code,
-                        name: branch.name,
-                        location: branch.location,
-                        type: branch.type,
-                        status: branch.status,
-                        parentBranchId: branch.parentBranchId
-                    }
-                });
+                // Check by ID first, then by code (handles auto-registered branches)
+                const existingById = await db.branch.findUnique({ where: { id: branch.id } }).catch(() => null);
+                const existingByCode = await db.branch.findUnique({ where: { code: branch.code } }).catch(() => null);
+
+                if (existingById) {
+                    // Branch exists with this ID — update it
+                    await db.branch.update({
+                        where: { id: branch.id },
+                        data: {
+                            code: branch.code,
+                            name: branch.name,
+                            location: branch.location,
+                            type: branch.type,
+                            status: branch.status,
+                            parentBranchId: branch.parentBranchId
+                        }
+                    });
+                } else if (existingByCode) {
+                    // Branch exists by code (auto-registered) — update its ID to match portal
+                    await db.branch.update({
+                        where: { code: branch.code },
+                        data: {
+                            id: branch.id,
+                            name: branch.name,
+                            location: branch.location,
+                            type: branch.type,
+                            status: branch.status,
+                            parentBranchId: branch.parentBranchId
+                        }
+                    });
+                } else {
+                    // Create new branch
+                    await db.branch.create({
+                        data: {
+                            id: branch.id,
+                            code: branch.code,
+                            name: branch.name,
+                            location: branch.location,
+                            type: branch.type,
+                            status: branch.status,
+                            parentBranchId: branch.parentBranchId
+                        }
+                    });
+                }
                 console.log(`AdminSync: Synced branch ${branch.code}`);
             }
         }
