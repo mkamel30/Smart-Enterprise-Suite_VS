@@ -206,6 +206,16 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ===================== FIRST-RUN SETUP (PUBLIC) =====================
 
+// Public endpoint to check if setup is needed (no auth required)
+app.get('/api/setup/status', async (req, res) => {
+  try {
+    const userCount = await db.user.count();
+    res.json({ needsSetup: userCount === 0 });
+  } catch (error) {
+    res.json({ needsSetup: true });
+  }
+});
+
 // Public endpoint for first-run setup — no auth required
 app.post('/api/setup/create-user', async (req, res) => {
   try {

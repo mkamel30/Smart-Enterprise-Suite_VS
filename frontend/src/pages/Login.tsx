@@ -23,14 +23,9 @@ export default function Login() {
         const checkUsers = async () => {
             try {
                 const localApi = `http://${window.location.hostname}:5002`;
-                const res = await fetch(`${localApi}/api/users?limit=1`);
-                if (!res.ok) {
-                    setNeedsSetup(true);
-                    return;
-                }
+                const res = await fetch(`${localApi}/api/setup/status`);
                 const data = await res.json();
-                const hasUsers = Array.isArray(data.data) ? data.data.length > 0 : false;
-                setNeedsSetup(!hasUsers);
+                setNeedsSetup(data.needsSetup);
             } catch {
                 setNeedsSetup(true);
             }
