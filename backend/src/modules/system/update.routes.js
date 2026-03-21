@@ -10,7 +10,7 @@ const execPromise = util.promisify(exec);
 
 const UPDATE_MANIFEST_URL = process.env.UPDATE_MANIFEST_URL || 'https://api.github.com/repos/mkamel30/SmartEnterprise_BR/releases/latest';
 
-router.get('/check', authenticateToken, requireSuperAdmin, asyncHandler(async (req, res) => {
+router.get('/check', authenticateToken, asyncHandler(async (req, res) => {
     try {
         const response = await axios.get(UPDATE_MANIFEST_URL);
         const latestVersion = response.data.tag_name;

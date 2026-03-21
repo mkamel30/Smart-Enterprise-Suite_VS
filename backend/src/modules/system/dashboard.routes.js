@@ -113,9 +113,10 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
  * Shows: Total users, branches, machines, daily ops, branch performance
  */
 router.get('/admin-summary', authenticateToken, asyncHandler(async (req, res) => {
-    // Only Super Admin can access this endpoint
-    if (req.user.role !== ROLES.SUPER_ADMIN) {
-        return error(res, 'صلاحية الوصول مرفوضة: مدير النظام فقط', 403);
+    // Only admin roles can access this endpoint
+    const allowedRoles = [ROLES.SUPER_ADMIN, ROLES.MANAGEMENT, ROLES.BRANCH_ADMIN];
+    if (!allowedRoles.includes(req.user.role)) {
+        return error(res, 'صلاحية الوصول مرفوضة', 403);
     }
 
     const summary = await dashboardService.getAdminSummary();
