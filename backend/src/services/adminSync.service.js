@@ -199,6 +199,32 @@ class AdminSyncService {
                     create: { prefix: p.prefix, model: p.model, manufacturer: p.manufacturer }
                 });
                 console.log(`AdminSync: Synced machineParameter ${p.prefix}`);
+
+                // Update all POS machines and Warehouse machines that match this prefix
+                if (p.prefix && p.model) {
+                    const posMachines = await db.posMachine.findMany({
+                        where: { serialNumber: { startsWith: p.prefix } }
+                    });
+                    const warehouseMachines = await db.warehouseMachine.findMany({
+                        where: { serialNumber: { startsWith: p.prefix } }
+                    });
+
+                    if (posMachines.length > 0) {
+                        await db.posMachine.updateMany({
+                            where: { serialNumber: { startsWith: p.prefix } },
+                            data: { model: p.model, manufacturer: p.manufacturer }
+                        });
+                        console.log(`AdminSync: Updated ${posMachines.length} POS machines for prefix ${p.prefix}`);
+                    }
+
+                    if (warehouseMachines.length > 0) {
+                        await db.warehouseMachine.updateMany({
+                            where: { serialNumber: { startsWith: p.prefix } },
+                            data: { model: p.model, manufacturer: p.manufacturer }
+                        });
+                        console.log(`AdminSync: Updated ${warehouseMachines.length} warehouse machines for prefix ${p.prefix}`);
+                    }
+                }
             }
         }
     }
