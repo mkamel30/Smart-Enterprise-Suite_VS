@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
+import SetupScreen from '../components/SetupScreen';
+
+const PORTAL_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5005';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -14,6 +17,45 @@ export default function Login() {
     const [userIdForMfa, setUserIdForMfa] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        const checkUsers = async () => {
+            try {
+                const localApi = `http://${window.location.hostname}:5002`;
+                const res = await fetch(`${localApi}/api/users?limit=1`);
+                if (!res.ok) {
+                    setNeedsSetup(true);
+                    return;
+                }
+                const data = await res.json();
+                const hasUsers = Array.isArray(data.data) ? data.data.length > 0 : false;
+                setNeedsSetup(!hasUsers);
+            } catch {
+                setNeedsSetup(true);
+            }
+        };
+        checkUsers();
+    }, []);
+
+    const handleSetupComplete = (userData: any, branchData: any) => {
+        setNeedsSetup(false);
+        if (userData?.username) {
+            setEmail(userData.email || userData.username);
+        }
+    };
+
+    if (needsSetup === null) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-primary/95 to-primary/90" dir="rtl">
+                <Loader2 className="animate-spin text-white" size={32} />
+            </div>
+        );
+    }
+
+    if (needsSetup) {
+        return <SetupScreen portalUrl={PORTAL_URL} onSetupComplete={handleSetupComplete} />;
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,15 +86,15 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-smart-gradient p-4" dir="rtl">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 animate-slide-up">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-primary/95 to-primary/90 p-4 sm:p-6 md:p-8" dir="rtl">
+            <div className="w-full max-w-sm sm:max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8 animate-slide-up overflow-y-auto max-h-[95vh]">
                 <div className="text-center mb-8">
                     <img
                         src="/logo.png"
                         alt="شعار النظام"
-                        className="mx-auto h-24 mb-4 object-contain"
+                        className="mx-auto h-16 sm:h-20 md:h-24 mb-4 object-contain"
                     />
-                    <h1 className="text-3xl font-extrabold text-primary font-inter tracking-tight">Smart Enterprise Suite</h1>
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary font-inter tracking-tight">Smart Enterprise Suite</h1>
                     <p className="text-muted-foreground mt-2">نظام إدارة ذكي للفروع والصيانة</p>
                 </div>
 
