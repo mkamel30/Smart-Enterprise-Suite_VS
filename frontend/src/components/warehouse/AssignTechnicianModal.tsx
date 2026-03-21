@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import { api } from '../../api/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { Dialog, DialogContent } from '../ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import { cn } from '../../lib/utils';
 
 interface AssignTechnicianModalProps {
@@ -67,6 +67,8 @@ export function AssignTechnicianModal({ isOpen, onClose, machineId, serialNumber
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="p-0 border-0 flex flex-col max-h-[92vh] h-auto overflow-hidden sm:max-w-md rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
+                <DialogTitle className="sr-only">تعيين فني</DialogTitle>
+                <DialogDescription className="sr-only">اختيار فني للصيانة</DialogDescription>
 
                 {/* Header Section with Tech-Blue Gradient */}
                 <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-primary to-primary/90 relative overflow-hidden text-right">

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, X, Package, PenTool, CheckCircle2, Loader2, Wrench, AlertCircle, Trash2, ClipboardCheck, Settings, Plus, Minus, DollarSign, Sparkles } from 'lucide-react';
 import { api } from '../api/client';
-import { Dialog, DialogContent } from './ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -167,6 +167,8 @@ export default function ProcessingModal({ isOpen, onClose, machine, onSuccess }:
                 className="p-0 border-0 flex flex-col max-h-[96vh] h-auto overflow-hidden sm:max-w-3xl rounded-[3rem] shadow-2xl bg-white [&>button]:hidden text-right"
                 dir="rtl"
             >
+                <DialogTitle className="sr-only">معالجة ماكينة</DialogTitle>
+                <DialogDescription className="sr-only">فحص ومعالجة ماكينة في المخزن</DialogDescription>
                 {/* Premium Header */}
                 <div className={cn("modal-header shrink-0 p-8 pb-6 bg-gradient-to-br relative overflow-hidden text-right transition-all duration-700", config.headerGradient)}>
                     <div className="absolute top-0 left-0 w-full h-full opacity-15 pointer-events-none">

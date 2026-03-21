@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, AlertCircle, Wrench, ArrowUpRight, Hash, FileText, Loader2, Cpu, Database, Settings2 } from 'lucide-react';
-import { Dialog, DialogContent } from '../ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import { cn } from '../../lib/utils';
 
 interface MachineRepairModalProps {
@@ -42,6 +42,8 @@ export const MachineRepairModal: React.FC<MachineRepairModalProps> = ({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] h-auto overflow-hidden sm:max-w-md rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
+                <DialogTitle className="sr-only">إبلاغ عطل</DialogTitle>
+                <DialogDescription className="sr-only">الإبلاغ عن عطل ماكينة خارجية</DialogDescription>
 
                 {/* Header Section with Emerald Gradient */}
                 <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-emerald-600 to-teal-700 relative overflow-hidden">

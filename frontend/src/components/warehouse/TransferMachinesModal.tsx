@@ -3,7 +3,7 @@ import { X, Send, MapPin, ClipboardList, CheckCircle, Loader2, Building2, Extern
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useAuth } from '../../context/AuthContext';
-import { Dialog, DialogContent } from '../ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import { cn } from '../../lib/utils';
 
 interface TransferMachinesModalProps {
@@ -57,6 +57,8 @@ export const TransferMachinesModal: React.FC<TransferMachinesModalProps> = ({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] h-auto overflow-hidden sm:max-w-md rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
+                <DialogTitle className="sr-only">تحويل ماكينات</DialogTitle>
+                <DialogDescription className="sr-only">إرسال ماكينات لفرع آخر</DialogDescription>
 
                 {/* Header Section */}
                 <div className="modal-header shrink-0 p-8 pb-6 bg-smart-gradient relative overflow-hidden">

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, RotateCcw, Search, AlertTriangle, Monitor, Loader2, ArrowLeftRight, User, Hash, FileText, CheckCircle, Smartphone, Building2 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useQuery } from '@tanstack/react-query';
-import { Dialog, DialogContent } from '../ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import { cn } from '../../lib/utils';
 
 interface MachineExchangeModalProps {
@@ -96,6 +96,8 @@ export const MachineExchangeModal: React.FC<MachineExchangeModalProps> = ({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] h-auto overflow-hidden sm:max-w-xl rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
+                <DialogTitle className="sr-only">استبدال ماكينة</DialogTitle>
+                <DialogDescription className="sr-only">اختيار ماكينة بديلة من المخزن</DialogDescription>
 
                 {/* Header Section with Indigo Gradient */}
                 <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-primary to-primary/90 relative overflow-hidden">

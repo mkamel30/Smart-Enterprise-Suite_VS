@@ -3,7 +3,7 @@ import { X, CheckCircle, AlertCircle, Wrench, Plus, Trash2, Package, Hash, Setti
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { Dialog, DialogContent } from '../ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import { cn } from '../../lib/utils';
 
 interface RepairModalProps {
@@ -86,6 +86,8 @@ export const RepairModal: React.FC<RepairModalProps> = ({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="p-0 border-0 flex flex-col max-h-[95vh] h-auto overflow-hidden sm:max-w-2xl rounded-[2.5rem] shadow-2xl bg-white [&>button]:hidden text-right" dir="rtl">
+                <DialogTitle className="sr-only">طلب صيانة</DialogTitle>
+                <DialogDescription className="sr-only">إبلاغ عن عطل ماكينة وقطع الغيار المطلوبة</DialogDescription>
 
                 {/* Header Section with Purple Gradient */}
                 <div className="modal-header shrink-0 p-8 pb-6 bg-gradient-to-br from-primary to-primary/90 relative overflow-hidden">
