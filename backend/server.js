@@ -221,10 +221,26 @@ app.post('/api/setup/create-user', async (req, res) => {
       return res.status(403).json({ error: 'الإعداد مكتمل بالفعل — يوجد مستخدمون' });
     }
 
-    // Create or link branch
+    // Create or link branch (update existing by code or create new)
     if (branchId && branchCode) {
-      const existingBranch = await db.branch.findUnique({ where: { id: branchId } });
-      if (!existingBranch) {
+      const existingById = await db.branch.findUnique({ where: { id: branchId } });
+      const existingByCode = await db.branch.findUnique({ where: { code: branchCode } });
+
+      if (existingById) {
+        // Branch exists with portal ID — fine
+      } else if (existingByCode) {
+        // Branch exists by code (auto-registered) — update its ID and fields
+        await db.branch.update({
+          where: { code: branchCode },
+          data: {
+            id: branchId,
+            name: req.body.branchName || existingByCode.name,
+            type: req.body.branchType || existingByCode.type,
+            isActive: true
+          }
+        });
+      } else {
+        // Create new branch
         await db.branch.create({
           data: {
             id: branchId,
