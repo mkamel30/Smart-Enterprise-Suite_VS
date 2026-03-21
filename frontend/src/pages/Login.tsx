@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 import SetupScreen from '../components/SetupScreen';
 
-const PORTAL_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5005';
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || 'https://smartenterprise-ad.onrender.com';
 
 export default function Login() {
     const navigate = useNavigate();

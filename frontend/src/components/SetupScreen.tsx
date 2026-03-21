@@ -46,9 +46,9 @@ export default function SetupScreen({ portalUrl, onSetupComplete }: Props) {
             setStatus('syncing');
             setStepText('جاري حفظ البيانات محلياً...');
 
-            // Save user to local SQLite via API
+            // Save user to local SQLite via public setup endpoint
             const localApi = `http://${window.location.hostname}:5002`;
-            const userPayload = {
+            const setupPayload = {
                 uid: result.user.uid,
                 username: result.user.username,
                 email: result.user.email,
@@ -56,34 +56,21 @@ export default function SetupScreen({ portalUrl, onSetupComplete }: Props) {
                 role: result.user.role,
                 password: result.user.password,
                 branchId: result.branch.id,
-                isActive: true,
-                mustChangePassword: false
+                branchCode: result.branch.code,
+                branchName: result.branch.name,
+                branchType: result.branch.type
             };
 
-            const saveRes = await fetch(`${localApi}/api/users`, {
+            const saveRes = await fetch(`${localApi}/api/setup/create-user`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userPayload)
+                body: JSON.stringify(setupPayload)
             });
 
             if (!saveRes.ok) {
-                throw new Error('فشل حفظ المستخدم محلياً');
+                const errData = await saveRes.json().catch(() => ({}));
+                throw new Error(errData.error || 'فشل حفظ المستخدم محلياً');
             }
-
-            // Save branch info
-            const branchPayload = {
-                id: result.branch.id,
-                code: result.branch.code,
-                name: result.branch.name,
-                type: result.branch.type,
-                isActive: true
-            };
-
-            await fetch(`${localApi}/api/branches`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(branchPayload)
-            }).catch(() => {});
 
             // Step 4: Done
             setStatus('success');

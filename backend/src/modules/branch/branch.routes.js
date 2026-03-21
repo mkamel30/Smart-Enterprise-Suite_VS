@@ -15,12 +15,28 @@ router.get('/system-info/hwid', authenticateToken, (req, res) => {
     res.json({ hwid: security.getHWID() });
 });
 
-// Get all branches - PAGINATED
+// Get all branches - PAGINATED (filtered by role)
 router.get('/', authenticateToken, async (req, res) => {
     try {
         const { limit, offset } = parsePaginationParams(req.query);
+        const userRole = req.user?.role;
+        const userBranchId = req.user?.branchId;
+
+        // Role-based filtering
+        let whereClause = {};
+        if (userRole !== ROLES.SUPER_ADMIN && userRole !== ROLES.MANAGEMENT) {
+            // Non-admin users see only their branch + child branches
+            whereClause = {
+                OR: [
+                    { id: userBranchId },
+                    { parentBranchId: userBranchId }
+                ]
+            };
+        }
+
         const [branches, total] = await Promise.all([
             db.branch.findMany({
+                where: whereClause,
                 orderBy: { createdAt: 'desc' },
                 include: {
                     parentBranch: { select: { id: true, name: true, code: true } },
@@ -35,7 +51,7 @@ router.get('/', authenticateToken, async (req, res) => {
                 take: limit,
                 skip: offset
             }),
-            db.branch.count()
+            db.branch.count({ where: whereClause })
         ]);
         res.json(createPaginationResponse(branches, total, limit, offset));
     } catch (error) {
